@@ -27,7 +27,17 @@ func save_city(city: City, path: String) -> Dictionary:
 	if not readback.ok or readback.city.canonical() != city.canonical():
 		return Codec.fail("Temporary save verification failed. Previous save retained.")
 	# Never rotate a corrupt primary over a good backup.
-	if files.exists(path) and load_city(path).ok:
+	var current: Dictionary = load_city(path) if files.exists(path) else {"ok": false}
+	if current.ok:
+		# An earlier-format primary or backup is copied before its first replacement
+		# unless a preserved copy already exists (D20): rotation replaces both.
+		var previous: Dictionary = load_city(backup) if files.exists(backup) else {"ok": false}
+		for entry in [[path, current], [backup, previous]]:
+			var old_schema: int = int(entry[1].get("schema", City.SCHEMA)) if entry[1].ok else City.SCHEMA
+			if old_schema < City.SCHEMA:
+				err = preserve_original(entry[0], path, old_schema)
+				if err != OK:
+					return Codec.fail("Could not keep a copy of the earlier-format save (%s). Previous save retained." % error_string(err))
 		err = files.copy_file(path, backup + ".tmp")
 		if err != OK or not load_city(backup + ".tmp").ok:
 			return Codec.fail("Could not prepare a verified backup. Previous save retained.")
@@ -38,3 +48,21 @@ func save_city(city: City, path: String) -> Dictionary:
 	if err != OK:
 		return Codec.fail("Could not replace save (%s). Previous save or backup retained." % error_string(err))
 	return {"ok": true, "message": "Saved locally. The previous valid save is kept as a backup."}
+
+## Earlier-format saves are copied byte-for-byte once, beside the primary, before
+## their first replacement (D20). An existing preserved copy is never overwritten.
+static func preserved_path(path: String, schema: int) -> String:
+	return path.get_basename() + ".schema%d.json" % schema
+
+func preserve_original(source: String, path: String, schema: int) -> Error:
+	var preserved: String = preserved_path(path, schema)
+	if files.exists(preserved):
+		return OK
+	var err: Error = files.copy_file(source, preserved + ".tmp")
+	if err != OK:
+		return err
+	var original: Dictionary = files.read_text(source)
+	var copy: Dictionary = files.read_text(preserved + ".tmp")
+	if not original.ok or not copy.ok or String(copy.text) != String(original.text):
+		return ERR_FILE_CORRUPT
+	return files.replace_file(preserved + ".tmp", preserved)

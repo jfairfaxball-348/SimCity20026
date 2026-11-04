@@ -1,6 +1,6 @@
 # Untitled city builder
 
-**M0/M1 and M2a implemented and tested locally on 4 November 2026.** Version **0.2.0-m2a** adds road access and home-zone explanations to the saveable building foundation. Growth, power, and the city economy remain future work. This is not a public release.
+**M0/M1, M2a, and M2b implemented and tested locally on 4 November 2026.** Version **0.3.0-m2b** adds power stations, power networks, and power-shortage explanations to the saveable building and road-access foundation. Growth and the city economy remain future work. This is not a public release.
 
 The user confirmed desktop players, a possible Steam release, relaxed building, charming pixel art, and approachable controls. The historical games informed the research; this project's code, map generation, geometric graphics, and interface were created independently. The repository name is a workspace identifier, not a cleared product title.
 
@@ -22,34 +22,46 @@ The explicit pin is **Godot 4.7.2 Standard**, `4.7.2.stable.official.ed1daf0bf`,
 ## What works
 
 - Original seeded 64×64 coastal map; integer-scaled pixel world with separately scalable UI.
-- Road and home-zone strokes, demolition, preview prices, integer funds, atomic rejection, and free identical repainting.
+- Road and home-zone strokes, single power-station placement, demolition, preview prices, integer funds, atomic rejection, and free identical repainting.
 - A marked outside link, orthogonal road connectivity, immediate disconnection/reconnection, and home access from a connected road beside the plot.
-- Hover inspection explains missing roads, isolated districts, connected access, and inactive links; optional plus/minus access marks do not rely on colour alone.
+- Power stations supplying 20 home plots each through the roads and stations they touch, nearest plots first, with or without the outside link.
+- Hover inspection explains road access and power separately: missing road, isolated district, missing station, disconnection, and capacity shortage. Optional +/− access marks and bolt/× power marks do not rely on colour alone. The toolbar shows power used/capacity and plots short.
 - Camera pan/zoom/centering, grid toggle, mouse/keyboard controls, three text sizes, and four window sizes.
 - Pause, 1× and 3× time, construction while paused, suspension on focus loss and during dialogs.
-- Manual validated saves, prior-save backup, explicit recovery, unsaved-change prompts, and restart/load.
+- Manual validated saves, prior-save backup, explicit recovery, unsaved-change prompts, restart/load, and migration of earlier saves with the original file preserved.
 
-There are **no residents, growth, power, shops/workshops, taxes, projects, audio, controller route, or autosaves yet**. Home zones remain empty even with road access. Prices are provisional: roads $10, home zones $25, clear free with no refund; initial funds $10,000.
+There are **no residents, growth, shops/workshops, upkeep, taxes, projects, audio, controller route, or autosaves yet**. Home plots remain empty even with road access and power. Prices are provisional: roads $10, home zones $25, power station $500, clear free with no refund; initial funds $10,000.
 
-Start at the **gold flag** on the east edge, tile `(63,32)` on the default map. Lay a road on that tile, join roads along shared sides, then place home plots beside the connected street. Diagonals and other map-edge roads do not supply access. Removing a bridge or the root road removes service immediately; rebuilding restores it. Press **Home** to return to the link.
+Start at the **gold flag** on the east edge, tile `(63,32)` on the default map. Lay a road on that tile, join roads along shared sides, then place home plots beside the connected street. Diagonals and other map-edge roads do not supply access. Press **P** and place a power station beside a street: it powers up to 20 plots on that network. When a network is overbuilt, the plots farthest from a station go without power first; add another station to that network. A station does not carry road access, so place it beside or at the end of a street rather than in the middle of it. Removing a bridge, root road, or station cuts service immediately; rebuilding restores it. Press **Home** to return to the link.
 
 | Control | Action |
 | --- | --- |
-| 1 / 2 / 3 | Road / home zone / clear |
+| 1 / 2 / 3; P | Road / home zone / clear; power station |
 | Left drag; right click or Escape | Preview and commit a stroke; cancel |
 | WASD / arrows / middle drag | Pan; keyboard taps also move the camera |
 | Wheel / + / −; Home | Zoom; return to the outside link |
-| Hover; R | Inspect a tile; toggle road access marks |
+| Hover; R; E | Inspect a tile; toggle road access marks; toggle power marks |
 | Space; 4 / 5 | Pause/resume; normal/fast |
 | Ctrl+S / Ctrl+L; F6 | Save/load; display and text settings |
 
-Saves use `%APPDATA%/OriginalCityBuilder/saves/manual.json`, with `manual.json.bak` as the previous good save. Restarting begins a new paused map; use Load to restore the saved city. M1 saves remain supported without migration: access is derived from their existing roads and never stored. Camera/display/overlay preferences are not persisted.
+Saves use `%APPDATA%/OriginalCityBuilder/saves/manual.json`, with `manual.json.bak` as the previous good save. Restarting begins a new paused map; use Load to restore the saved city. The save format is now **schema 2**. M1/M2a (schema 1) saves load and are updated in memory without writing. Before a save replaces a schema-1 file (the save or its backup), its exact original bytes are kept once as `manual.schema1.json`. Version 0.2.0 cannot read schema 2, so roll back with that preserved copy. Road access and power are derived and never stored. Camera/display/overlay preferences are not persisted.
 
 ## Evidence and limits
 
-The M2a local check run passed **151 model/storage/scene checks** and **133 checks against the exported PCK under the pinned editor runtime**. The actual release executable passed headless startup and native Windows checks for missing-road/isolated/connected explanations, bridge demolition, reconnection, overlay toggling, save, exit, restart, and load. The preserved M1 fixture retains its exact canonical authoritative state.
+The M2b local check run passed **233 model/storage/scene checks** and **252 checks against the exported PCK under the pinned editor runtime**, plus headless startup of the release executable. The suite includes deterministic capacity/tie/ordering tests, deliberate allocation mutations, schema-1 migration with preserved originals, and 1280×720/1366×768/1920×1080/1280×800 layouts at three text sizes.
 
-The new inspector and placement-error layout were checked natively at 1280×720 with standard/largest text. Automated checks cover 1280×720, 1366×768, 1920×1080, and 1280×800 at three text sizes, including long explanations and rejected strokes. Earlier M1 native checks at other sizes are historical, not new M2a evidence. Windows DPI variations, controllers, a fresh machine/profile, other operating systems, performance targets, and enjoyment remain unverified. See the [M2a evidence](docs/sessions/2026-11-04-m2a.md) and [M0/M1 evidence](docs/sessions/2026-11-04-m0-m1.md).
+The actual release executable was then exercised natively at 1280×720 by posting input to its window and capturing it. Desktop computer-use tools were unavailable in that session. The run covered:
+
+- loading a real M2a save (migration message, unchanged file);
+- station placement and supply;
+- a five-plot shortage;
+- bridge disconnection, with powered-without-access and access-without-power plots;
+- save, exit, restart, and load;
+- reconnection and second-station recovery;
+- mark toggles, largest text, and the unsaved-change prompt;
+- on the final build, migration and recovery from a schema-1 backup over a corrupt save.
+
+Physical keyboard/mouse input, other window sizes natively, Windows DPI variations, controllers, a fresh machine/profile, other operating systems, performance targets, and enjoyment remain unverified. See the [M2b evidence](docs/sessions/2026-11-04-m2b.md), [M2a evidence](docs/sessions/2026-11-04-m2a.md), and [M0/M1 evidence](docs/sessions/2026-11-04-m0-m1.md).
 
 ## Continue here
 
@@ -65,4 +77,4 @@ The new inspector and placement-error layout were checked natively at 1280×720 
 | [Asset ledger](licenses/ASSETS.md) | Current placeholders and bundled engine/font notices |
 | [Research sources](docs/RESEARCH_SOURCES.md) | Dated planning evidence |
 
-M2a is complete; **M2b–M2d remain unimplemented**. The next small assignment is power access, specified in the handoff. No root source licence, final title, price, release date, or additional platform support has been chosen. The owner authorised committing/pushing the source checkpoint on `codex/m2a-road-access`; builds, caches, and local test saves remain ignored. No store publication or public game release occurred.
+M2a and M2b are complete; **M2c–M2d remain unimplemented**. The next small assignment is growth (homes/shops/workshops, demand, bootstrap), specified in the handoff. No root source licence, final title, price, release date, or additional platform support has been chosen. The owner authorised committing/pushing the M2b source checkpoint, which is on `codex/m2b-power-access` (branched from the default `codex/m2a-road-access`); builds, caches, and local test saves remain ignored. No store publication or public game release occurred.

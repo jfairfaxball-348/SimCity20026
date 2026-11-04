@@ -32,13 +32,17 @@ var side: PanelContainer
 var bottom: PanelContainer
 var cash_label: Label
 var day_label: Label
+var grid_label: Label
 var selection_label: Label
 var inspector: PanelContainer
 var access_label: Label
+var power_label: Label
 var scope_label: Label
 var legend_label: Label
 var access_button: Button
+var power_button: Button
 var inspected_cell: Vector2i = Vector2i(-1, -1)
+var inspector_target: Rect2 = Rect2()
 var preview_label: Label
 var status_label: Label
 var zoom_label: Label
@@ -78,7 +82,7 @@ func _ready() -> void:
 	_center_camera()
 	_inspect_cell(city.access.root)
 	last_usec = Time.get_ticks_usec()
-	_status("Begin at the gold flag: lay a road on its tile, then connect streets and home plots along their sides.")
+	_status("Begin at the gold flag: lay a road on its tile, connect streets and home plots along their sides, then add a power station (P) beside a street.")
 
 func _build_ui() -> void:
 	top = _panel()
@@ -96,6 +100,9 @@ func _build_ui() -> void:
 	day_label = _label("", 16)
 	day_label.custom_minimum_size.x = 145
 	row.add_child(day_label)
+	grid_label = _label("", 16)
+	grid_label.custom_minimum_size.x = 150
+	row.add_child(grid_label)
 	for value in [0,1,3]:
 		var button := _button("Pause" if value == 0 else "%dx" % value, func(): _set_speed(value))
 		button.toggle_mode = true
@@ -108,27 +115,45 @@ func _build_ui() -> void:
 	column.add_theme_constant_override("separation", 6)
 	side.add_child(column)
 	column.add_child(_label("LAY OUT YOUR TOWN", 13, Style.MUTED))
-	for entry in [["road", "1  Roads · $10"], ["home", "2  Home zones · $25"], ["clear", "3  Clear · free"]]:
+	var power_price: String = Balance.money(Balance.POWER_COST).trim_suffix(".00")
+	for entry in [["road", "1  Roads · $10"], ["home", "2  Home zones · $25"], ["power", "P  Power station · " + power_price], ["clear", "3  Clear · free"]]:
 		var kind: String = entry[0]
 		var button := _button(entry[1], func(): _select_tool(kind))
 		button.toggle_mode = true
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.custom_minimum_size.y = 40
-		button.tooltip_text = "Clear is free, with no refund." if kind == "clear" else "Price per tile; identical repainting is free."
+		button.custom_minimum_size.y = 36
+		match kind:
+			"clear": button.tooltip_text = "Clear is free, with no refund."
+			"power": button.tooltip_text = "One station per placement. It supplies %d home plots through the roads it touches." % Balance.POWER_CAPACITY
+			_: button.tooltip_text = "Price per tile; identical repainting is free."
 		column.add_child(button)
 		tool_buttons[kind] = button
 	column.add_child(HSeparator.new())
 	var outside_button := _button("Outside link  [Home]", _center_camera)
 	column.add_child(outside_button)
-	access_button = _button("Road access  [R]", _toggle_access)
-	access_button.toggle_mode = true
+	var marks := HBoxContainer.new()
+	marks.add_theme_constant_override("separation", 6)
+	column.add_child(marks)
+	access_button = _button("Road [R]", _toggle_access)
+	access_button.tooltip_text = "Road access marks: + connected / − missing"
+	power_button = _button("Power [E]", _toggle_power)
+	power_button.tooltip_text = "Power marks: bolt powered / × unpowered plot"
+	for toggle: Button in [access_button, power_button]:
+		toggle.toggle_mode = true
+		toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		marks.add_child(toggle)
 	access_button.set_pressed_no_signal(world.access_visible)
-	column.add_child(access_button)
-	for button: Button in [outside_button, access_button] + tool_buttons.values():
+	power_button.set_pressed_no_signal(world.power_visible)
+	var display_button := _button("Display & text", _open_settings)
+	var help_button := _button("Controls & notes", _open_help)
+	for button: Button in [outside_button, access_button, power_button, display_button, help_button] + tool_buttons.values():
 		for style_name in ["normal", "hover", "pressed", "focus"]:
 			var compact: StyleBox = theme.get_stylebox(style_name, "Button").duplicate()
 			compact.content_margin_top = 4
 			compact.content_margin_bottom = 4
+			if button == access_button or button == power_button:
+				compact.content_margin_left = 6
+				compact.content_margin_right = 6
 			button.add_theme_stylebox_override(style_name, compact)
 	preview_label = _label("", 16, Style.ACCENT)
 	preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -145,23 +170,25 @@ func _build_ui() -> void:
 	zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	zoom_row.add_child(zoom_label)
 	zoom_row.add_child(_button("+", func(): _zoom(1)))
-	column.add_child(_button("Display & text", _open_settings))
-	column.add_child(_button("Controls & notes", _open_help))
+	column.add_child(display_button)
+	column.add_child(help_button)
 	inspector = _panel()
 	var details := VBoxContainer.new()
 	details.add_theme_constant_override("separation", 6)
 	inspector.add_child(details)
 	selection_label = _label("", 16)
 	access_label = _label("", 16, Style.ACCENT)
-	legend_label = _label("Road access: + connected / − missing", 14, Style.MUTED)
-	scope_label = _label("Empty plots only. Growth and power are not implemented.", 16, Style.MUTED)
-	for label: Label in [selection_label, access_label, legend_label, scope_label]:
+	power_label = _label("", 16, Style.ACCENT)
+	legend_label = _label("", 14, Style.MUTED)
+	scope_label = _label("Growth not implemented; plots stay empty.", 16, Style.MUTED)
+	for label: Label in [selection_label, access_label, power_label, legend_label, scope_label]:
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		# Establish wrapping width before the first container layout; a zero-width
 		# label otherwise requests a very tall panel on native startup.
 		label.custom_minimum_size.x = 348
 		details.add_child(label)
-	access_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	power_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_update_legend()
 	bottom = _panel()
 	status_label = _label("", 15)
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -213,7 +240,7 @@ func _build_dialogs() -> void:
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_dialog.dialog_text = "1 / 2 / 3   Roads, home zones, clear plots\nLeft drag   Preview a stroke; release to build\nRight mouse / Escape   Cancel stroke\nWASD / arrows / middle drag   Pan     Wheel / + / −   Zoom\nSpace   Pause / resume     4 / 5   Normal / fast\nCtrl+S / Ctrl+L   Save / load     Home   Outside link\nR   Toggle road access marks: + connected / − missing\n\nLay a road on the gold flag to activate the outside link.\nJoin roads along shared sides; diagonals do not connect.\nA home needs a connected road beside it. Hover to inspect.\nOther edge roads do not connect to the outside.\n\nNo residents, growth, taxes, or power yet. Plots stay empty.\nManual saves are local; Load is explicit after restarting.\nA previous good save is retained for recovery.\n\nOriginal geometric graphics. Godot/font: bundled notices."
+	help_dialog.dialog_text = "1 / 2 / 3   Roads, home zones, clear     P   Power station\nLeft drag   Preview a stroke; release to build\nRight mouse / Escape   Cancel stroke\nWASD / arrows / middle drag   Pan     Wheel / + / −   Zoom\nSpace   Pause / resume     4 / 5   Normal / fast\nCtrl+S / Ctrl+L   Save / load     Home   Outside link\nR   Road access marks: + connected / − missing\nE   Power marks: bolt powered / × unpowered plot\n\nLay a road on the gold flag to activate the outside link.\nJoin roads along shared sides; diagonals do not connect.\nA home needs a connected road beside it. Hover to inspect.\n\nA power station supplies %d plots through the roads and\nstations it touches, nearest plots first. It works without\nthe outside link: road access and power are separate needs.\n\nNo residents, growth, or taxes yet. Plots stay empty.\nManual saves are local; Load is explicit after restarting.\nOriginal geometric graphics. Godot/font: bundled notices." % Balance.POWER_CAPACITY
 	add_child(help_dialog)
 	load_dialog = ConfirmationDialog.new()
 	load_dialog.title = "Load saved city?"
@@ -250,13 +277,21 @@ func _layout_ui() -> void:
 	side.size = Vector2(228 if font_size == 16 else 252, available.y - 208)
 	bottom.position = Vector2(16,available.y - 84)
 	bottom.size = Vector2(available.x - 32,68)
-	var inspector_width: int = 380 if font_size == 16 else 420
-	var inspector_height: int = 250 if font_size == 16 else 280
-	for label: Label in [selection_label, access_label, legend_label, scope_label]:
+	# Wider rather than taller at larger text, so the centred outside link stays uncovered.
+	var inspector_width: int = 380 if font_size == 16 else 430 if font_size == 18 else 460
+	var inspector_height: int = 320
+	for label: Label in [selection_label, access_label, power_label, legend_label, scope_label]:
 		label.custom_minimum_size.x = inspector_width - 32
-	inspector.size = Vector2(inspector_width, inspector_height)
-	inspector.position = Vector2(available.x - inspector_width - 16, bottom.position.y - inspector_height - 12)
+	inspector_target = Rect2(Vector2(available.x - inspector_width - 16, bottom.position.y - inspector_height - 12), Vector2(inspector_width, inspector_height))
+	_fit_inspector()
 	_cancel_stroke()
+
+func _fit_inspector() -> void:
+	# Labels can briefly wrap at a previous width while text size changes, which grows
+	# the panel; a Control never shrinks by itself, so restore the target each refresh.
+	if inspector != null and inspector_target.size != Vector2.ZERO and inspector.get_rect() != inspector_target:
+		inspector.size = inspector_target.size
+		inspector.position = inspector_target.position
 
 func _set_text_size(amount: int) -> void:
 	font_size = amount
@@ -264,6 +299,7 @@ func _set_text_size(amount: int) -> void:
 	(side.get_child(0) as VBoxContainer).add_theme_constant_override("separation", 6 if amount == 16 else 4)
 	selection_label.add_theme_font_size_override("font_size", amount)
 	access_label.add_theme_font_size_override("font_size", amount)
+	power_label.add_theme_font_size_override("font_size", amount)
 	scope_label.add_theme_font_size_override("font_size", amount)
 	legend_label.add_theme_font_size_override("font_size", amount - 2)
 	preview_label.add_theme_font_size_override("font_size", amount)
@@ -315,7 +351,7 @@ func _shortcut_input(event: InputEvent) -> void:
 	if _modal_open(): return
 	if event is InputEventKey and event.echo: return
 	var handled: bool = true
-	for kind in ["road", "home", "clear"]:
+	for kind in ["road", "home", "power", "clear"]:
 		if event.is_action_pressed("tool_" + kind):
 			_select_tool(kind)
 			get_viewport().set_input_as_handled()
@@ -335,6 +371,8 @@ func _shortcut_input(event: InputEvent) -> void:
 		world.queue_redraw()
 	elif event.is_action_pressed("toggle_access"):
 		_toggle_access()
+	elif event.is_action_pressed("toggle_power"):
+		_toggle_power()
 	elif event.is_action_pressed("center_camera"):
 		_center_camera()
 	elif event.is_action_pressed("cancel_stroke"):
@@ -380,7 +418,11 @@ func _view_position(point: Vector2) -> Vector2:
 	return (point - world_rect.position) / world_scale
 
 func _extend_stroke(cell: Vector2i) -> void:
-	if stroke.is_empty():
+	if tool == "power":
+		# One station per placement: the preview follows the pointer instead of painting.
+		stroke.clear()
+		stroke.append(cell)
+	elif stroke.is_empty():
 		stroke.append(cell)
 	else:
 		var current: Vector2i = stroke.back()
@@ -401,18 +443,23 @@ func _update_hover() -> void:
 	_inspect_cell(inspected_cell)
 
 func _inspect_cell(cell: Vector2i) -> void:
+	_fit_inspector()
 	if not city.inside(cell):
 		selection_label.text = "%d × %d coastal map" % [city.width, city.height]
 		access_label.text = "No boundary land for an outside link. Road access is unavailable."
+		power_label.text = _power_text(cell)
 		return
 	inspected_cell = cell
 	var i: int = city.index(cell)
-	var land_use: String = "Water" if city.terrain[i] == City.WATER else ["Open ground", "Road", "Empty home zone"][city.occupancy[i]]
+	power_label.text = _power_text(cell)
+	var land_use: String = "Water" if city.terrain[i] == City.WATER else ["Open ground", "Road", "Empty home zone", "Power station"][city.occupancy[i]]
 	selection_label.text = "TILE %d, %d · %s" % [cell.x, cell.y, land_use]
 	if city.access.root.x < 0:
 		access_label.text = "No boundary land for an outside link. Road access is unavailable."
 	elif cell == city.access.root:
 		access_label.text = "Outside link active. Join roads along shared sides." if city.occupancy[i] == City.ROAD else "Outside link: clear this home plot, then lay a road here." if city.occupancy[i] == City.HOME else "Outside link inactive. Lay a road on this flagged tile."
+	elif city.occupancy[i] == City.POWER:
+		access_label.text = "Power works without the outside link. Stations do not carry road access."
 	elif city.occupancy[i] == City.HOME:
 		match city.access.home_reason(city, cell):
 			"connected": access_label.text = "Road access connected. A road beside this plot reaches the outside link."
@@ -424,10 +471,49 @@ func _inspect_cell(cell: Vector2i) -> void:
 	else:
 		access_label.text = "Water cannot be built on." if city.terrain[i] == City.WATER else "Place home plots beside connected roads. Diagonals do not provide access."
 
+func _power_text(cell: Vector2i) -> String:
+	var grid = city.power
+	if not city.inside(cell) or city.terrain[city.index(cell)] == City.WATER:
+		return ""
+	var i: int = city.index(cell)
+	var network: int = grid.network_of[i]
+	match city.occupancy[i]:
+		City.HOME:
+			match grid.home_reason(city, cell):
+				"powered": return "Powered. Network: %s." % _network_use(grid.home_network[i])
+				"shortage": return "No power: its network is full (%d of %d units). Add a station; nearest plots are served first." % [grid.network_used[grid.home_network[i]], grid.network_capacity[grid.home_network[i]]]
+				"disconnected": return "No power: the road beside this plot does not reach a power station."
+				"no_source": return "No power station yet. Place one (P) beside a road that reaches this plot."
+			return "No power: add a road beside this plot that reaches a power station."
+		City.ROAD:
+			if grid.carries_power(i): return "Carries power. Network: %s." % _network_use(network)
+			return "No power station built yet." if grid.station_count == 0 else "No power station on this road network."
+		City.POWER:
+			return "Supplies %d units. Network: %s, %d station%s." % [Balance.POWER_CAPACITY, _network_use(network), grid.network_stations[network], "" if grid.network_stations[network] == 1 else "s"]
+	return "Power stations (P) supply plots through the roads they touch."
+
+func _network_use(network: int) -> String:
+	var grid = city.power
+	var text: String = "%d of %d units used" % [grid.network_used[network], grid.network_capacity[network]]
+	var short: int = grid.network_short[network]
+	return text + (", %d plot%s short" % [short, "" if short == 1 else "s"] if short > 0 else "")
+
+func _update_legend() -> void:
+	var parts: Array[String] = []
+	parts.append("+/− road access" if world.access_visible else "road marks hidden (R)")
+	parts.append("bolt/× power" if world.power_visible else "power marks hidden (E)")
+	legend_label.text = "Marks: " + " · ".join(parts)
+
 func _toggle_access() -> void:
 	world.access_visible = not world.access_visible
 	access_button.set_pressed_no_signal(world.access_visible)
-	legend_label.text = "Road access: + connected / − missing" if world.access_visible else "Road access marks hidden. Press R to show."
+	_update_legend()
+	world.queue_redraw()
+
+func _toggle_power() -> void:
+	world.power_visible = not world.power_visible
+	power_button.set_pressed_no_signal(world.power_visible)
+	_update_legend()
 	world.queue_redraw()
 
 func _update_preview() -> void:
@@ -436,7 +522,14 @@ func _update_preview() -> void:
 	var result: Dictionary = city.preview(tool, cells)
 	world.preview_cells = stroke.duplicate()
 	world.preview_valid = bool(result.ok)
-	preview_label.text = ("Stroke: %s\nRelease to build" % Balance.money(int(result.cost))) if not stroke.is_empty() and result.ok else ("Cost: %s" % Balance.money(int(result.cost))) if result.ok else String(result.message)
+	if not result.ok:
+		preview_label.text = String(result.message)
+	elif tool == "power" and not result.changed.is_empty():
+		preview_label.text = "%s for %d plots\n%s" % [Balance.money(int(result.cost)), Balance.POWER_CAPACITY, "Release to build" if not stroke.is_empty() else "Click to place"]
+	elif not stroke.is_empty():
+		preview_label.text = "Stroke: %s\nRelease to build" % Balance.money(int(result.cost))
+	else:
+		preview_label.text = "Cost: %s" % Balance.money(int(result.cost))
 	world.queue_redraw()
 
 func _commit_stroke() -> void:
@@ -474,6 +567,8 @@ func _set_speed(value: int) -> void:
 func _refresh_metrics() -> void:
 	cash_label.text = Balance.money(city.cash)
 	day_label.text = "Day %d\n%s" % [city.tick + 1, "Paused" if speed == 0 or focus_paused else "%dx speed" % speed]
+	var grid = city.power
+	grid_label.text = "Power %d / %d\n%s" % [grid.total_used, grid.total_capacity, "No stations" if grid.station_count == 0 else "%d plot%s short" % [grid.short_homes, "" if grid.short_homes == 1 else "s"] if grid.short_homes > 0 else "No shortage"]
 
 func _status(message: String) -> void:
 	status_label.text = message
@@ -528,7 +623,13 @@ func _load_path(path: String) -> void:
 	world.clamp_camera()
 	world.queue_redraw()
 	_update_preview()
-	_status("Previous backup restored. Save to make it the current save." if path.ends_with(".bak") else "City restored. Time is paused; your layout and funds are intact.")
+	var preserved_name: String = Store.preserved_path(path.trim_suffix(".bak"), maxi(1, int(result.get("migrated_from", 0)))).get_file()
+	if int(result.get("migrated_from", 0)) > 0 and path.ends_with(".bak"):
+		_status("Previous backup restored from earlier format %d. Save to make it current; earlier-format bytes are kept as %s before being replaced." % [result.migrated_from, preserved_name])
+	elif int(result.get("migrated_from", 0)) > 0:
+		_status("Earlier save format %d loaded; nothing was written. Saving updates it and keeps the original as %s." % [result.migrated_from, preserved_name])
+	else:
+		_status("Previous backup restored. Save to make it the current save." if path.ends_with(".bak") else "City restored. Time is paused; your layout and funds are intact.")
 	if path.ends_with(".bak"): dirty = true
 	print("LOAD ", path, " sequence=", city.sequence, " tick=", city.tick)
 

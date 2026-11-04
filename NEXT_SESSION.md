@@ -1,28 +1,28 @@
-# Next agent: M2b power access
+# Next agent: M2c growth
 
-Updated **4 November 2026**, after the user explicitly authorised M2a road access, Windows-export testing, docs/handoff, and then committing/pushing the source checkpoint. The earlier research-only restriction is historical.
+Updated **4 November 2026**, after the user explicitly authorised M2b power access, Windows-export testing, docs/handoff, then commit and push. Earlier research-only restrictions are historical.
 
 ## Current checkpoint
 
-**M0/M1 and M2a implemented and locally tested. M2b–M2d are not implemented.** Read [README](README.md), [AGENTS](AGENTS.md), [Decisions](docs/DECISIONS.md), [Toolchain](docs/TOOLCHAIN.md), and [M2a evidence](docs/sessions/2026-11-04-m2a.md) before editing. The [M0/M1 record](docs/sessions/2026-11-04-m0-m1.md) is historical foundation evidence.
+**M0/M1, M2a, and M2b implemented and locally tested. M2c–M2d are not implemented.** Read [README](README.md), [AGENTS](AGENTS.md), [Decisions](docs/DECISIONS.md) (especially D17–D21 and the access/power rules), [Toolchain](docs/TOOLCHAIN.md), and [M2b evidence](docs/sessions/2026-11-04-m2b.md) before editing. The [M2a](docs/sessions/2026-11-04-m2a.md) and [M0/M1](docs/sessions/2026-11-04-m0-m1.md) records are historical.
 
 - Godot **4.7.2 Standard**, exact output `4.7.2.stable.official.ed1daf0bf`, matching isolated Windows x64 templates, Compatibility renderer. Use `tools/`; the global wrapper still resolves to 4.6.3.
-- Game version **0.2.0-m2a**, project `game/project.godot`, scene/script `game/scenes/main.tscn` / `game/scripts/main.gd`.
-- Model `game/scripts/sim/city_state.gd`: flat arrays, ordered synchronous validated commands, integer cents, fixed clock, seeded RNG. Original 64×64 coastal map; no per-cell Nodes.
-- `game/scripts/sim/road_access.gd`: scene-independent derived reachability and home access. Full rebuild after initialization/validated decoding and each successful occupancy-changing command. Home edits refresh service too. No recomputation per tick/frame, no serialized access, no RNG use.
-- Roads, empty home zones, demolition, atomic costs, no-op repaint, camera, pause/1×/3×, scalable text, manual save/backup/recovery work.
-- UI: original gold flag, hover inspector with reasons, R access marks (`+` connected / `−` missing), Home/outside-link button. The inspector retains the last inspected tile over UI and always states that growth/power are not implemented.
-- Local export `builds/windows/citybuilder.exe` + PCK; archive `builds/citybuilder-0.2.0-m2a-windows-x64.zip`. Generated, ignored, not a public release.
-- Source branch `codex/m2a-road-access`; configured remote `origin` is `https://github.com/jfairfaxball-348/SimCity20026.git`. The repo had no commits and the remote advertised no refs at M2a start. The owner authorised the initial source commit/push, including the prior uncommitted foundation. Reinspect actual Git state before editing; preserve unrelated work.
-- No residents, growth, power, shops/workshops, taxes, parks, projects, autosaves, controller route, or audio. The M2 gate is still open.
+- Game version **0.3.0-m2b**, project `game/project.godot`, scene/script `game/scenes/main.tscn` / `game/scripts/main.gd`.
+- Model `game/scripts/sim/city_state.gd`: flat arrays, ordered synchronous validated commands, integer cents, fixed clock, seeded RNG. `rebuild_derived()` rebuilds `road_access.gd` then `power_grid.gd` after initialization, validated decoding, and each successful occupancy-changing command. Nothing derived is serialized or touched by ticks.
+- UI: gold outside-link flag, P power-station tool, hover inspector with separate road-access and power lines, R access marks (+/−), E power marks (bolt/×), toolbar "Power used / capacity · N plots short", migration status message.
+- Local export `builds/windows/citybuilder.exe` + PCK; archive `builds/citybuilder-0.3.0-m2b-windows-x64.zip`. Generated, ignored, not a public release.
+- M2b source branch `codex/m2b-power-access`, branched from the repository's default `codex/m2a-road-access` (M2a, `1e1d143`) and pushed at the owner's instruction. It is not merged into the default; no PR was opened. Remote `origin` = `https://github.com/jfairfaxball-348/SimCity20026.git`. Reinspect Git before editing; preserve unrelated work. Build M2c on a fresh `codex/` branch from wherever M2b lands.
+- No residents, growth, shops/workshops, upkeep, taxes, parks, projects, autosaves, controller route, or audio. The M2 gate is still open.
 
-## Road-access contract to retain
+## Contracts to retain
 
-Decision D17 was written before implementation. The outside link is a marker on `(width - 1, height / 2)` on generated maps, using integer division. On custom/legacy terrain, choose boundary land nearest that preferred tile by Manhattan distance, breaking ties by row-major index. No boundary land means no link and an explicit unavailable-access explanation. Root selection ignores occupancy, command order, and RNG.
+**Road access (D17, unchanged).** One outside link on `(width - 1, height / 2)` for generated maps. Custom terrain picks the nearest boundary land by Manhattan distance, ties by row-major index; with no boundary land there is no link. The marker is not a free road: an ordinary $10 road on it activates access. Only side-sharing roads transmit access. Homes, stations, diagonals, and open land do not relay it.
 
-The marker is not a free road or reserved cell. Lay an ordinary $10 road on it to activate access. If a legacy home occupies it, preserve that home and explain that it must be cleared before laying a road. Clearing the root road removes access; the flag remains. Other edge roads are not outside connections.
+**Power (D19).** One single-tile power station: $500, 20 units, one per command, never on the link marker, free clear with no refund. Each home plot needs 1 unit. Road + station tiles joined by sides form a network; stations relay power but not road access. Power does not require the outside link.
 
-Only side-sharing roads transmit access. A home gets access from a side-sharing reachable road; homes, diagonals, and open land do not relay it. Rejected commands/previews/no-op repaint leave state and service unchanged. BFS uses a fixed neighbour order and an iterative queue. Power will need connected components, not just this one-root reachability mask.
+Allocation is nearest-first by (station distance, row-major plot index). Each plot draws from its touching network with room by (distance, network order), where network order is the row-major index of the network's first tile. There is no stored allocation memory, so a newly zoned nearer plot can displace a farther one. Decide explicitly whether M2c needs stable allocation once buildings grow; if so, it needs persistent state and a new version.
+
+**Explanations.** Home power reasons: `powered`, `shortage`, `disconnected`, `no_adjacent_network`, `no_source`. Road access reasons are unchanged. The inspector keeps them on separate lines and the scope line states that growth is not implemented. M2c growth is specified to need **both** road access and power.
 
 ## Verification to retain
 
@@ -33,44 +33,46 @@ Only side-sharing roads transmit access. A home gets access from a side-sharing 
 .\tools\package.ps1           # After exercising the export being packaged
 ```
 
-M2a passed **151 source model/storage/scene checks** and **133 exported-PCK checks**. Source tests include diagonal/row-wrap separation, isolated districts, root/bridge demolition, reconnection, alternate paths/cycles, new/cleared homes, unusual saved terrain, 128×128 full reachability, deterministic ordering, and the original M1 fixture. All prior command/clock/save-recovery checks remain.
+M2b passed **233 source checks** and **252 exported-PCK checks**, plus release-EXE headless startup. Source tests cover capacity accounting, deterministic plot and network ties, nearest-first versus row-major ordering, spill to a farther network, relay rules, bridge/source removal and recovery, rejected-command spending, reload continuation, 128×128 bounds, schema-1 migration, preserved originals, and rejected newer schemas. Five deliberate allocation mutations all fail the suite; keep a scenario that distinguishes each rule you add.
 
-Packed checks use the pinned **editor runtime with the release PCK**, not the release EXE as a script runner. Standard release templates disable `--script`/`--main-pack` overrides. The actual EXE has separate headless-startup and native UI evidence.
+Packed checks use the pinned **editor runtime with the release PCK**; standard release templates disable `--script`. Native M2b testing drove the actual EXE by posting window messages to its own handle. Hover moved the real cursor briefly; captures used `PrintWindow`. Desktop computer-use tools were unavailable in that session. If they are available next time, prefer them for physical-input evidence. The driver is `builds/validation/native/native_driver.py` (ignored, local).
 
-Native M2a testing covered missing-road/isolated/connected explanations, construction costs, bridge demolition, save/close/restart/reload while disconnected, reconnection, and connected-save reload. The new layout was inspected at 1280×720 with standard/largest text. Automated checks cover 1280×720, 1366×768, 1920×1080, 1280×800 and text 16/18/20, including first-frame geometry and long explanations/rejection text. Do not infer broader native display, DPI, controller, performance, fresh-machine, or other-platform support.
+Helpers were run under **Windows PowerShell 5.1** (PowerShell 7 was not installed this session). They are now 5.1-safe: complete logs, UTF-8 logs, BOM-free manifest. They have not been re-run under PowerShell 7 since those changes.
 
-The first native run caught oversized initial autowrap geometry; widths are now set before layout. Largest text plus placement-error messages also exposed sidebar overflow; compact controls and regression coverage now reserve room. Keep testing real rejection messages, not only the short idle cost label.
-
-Logs and copied native test cities are under ignored `builds/validation/`. The original manual save and backup were preserved/restored after native testing; use the session record for exact local evidence. CI is not configured or claimed executed. Its adoption is a separate future task now that a source baseline is authorised.
+Native evidence covers 1280×720 at standard/largest text only. At largest text the Controls & notes dialog uses nearly the full 720p height, so shorten or scroll it before adding more lines. Keep testing real rejection and shortage text at all sizes; the inspector is capped at 320 px to keep the centred flag visible and re-fits itself after text-size changes. CI is not configured.
 
 ## Save and architecture cautions
 
-- Schema **1**, simulation/content **m1-1**, bounded JSON (512 KiB). Game version is separate. M2a adds observational derived access without changing serialized IDs, generation, prices, RNG, or the clock.
-- `game/tests/fixtures/m1-schema1.json` was produced by unchanged M1 code before M2a. Its exact canonical state and deterministic continuation must remain intact. See the fixture README/hash. No general migration exists.
-- Dimensions 8..128; terrain 0 land / 1 water; occupancy 0 empty / 1 road / 2 home. Seed/RNG are signed 64-bit decimal strings. Money/tick/microseconds/sequence are bounded integers.
-- Save path `%APPDATA%/OriginalCityBuilder/saves/manual.json`; prior good backup `.bak`. Validate a fresh model before replacing the live city. Temporary writes are verified; failure preserves current city. Recovery is best effort, not a power-loss guarantee.
-- Prices remain provisional: $10 road, $25 home, free clear/no refund, $10,000 starting funds.
-- One day/tick, 1 second at 1×, 3× fast, construction while paused. Eight ticks/frame; retain one simulated hour of backlog, discard excess. Focus loss/dialogs suspend time. No offline catch-up or economics.
-- Synchronous input-order commands between clock updates; strokes sort/deduplicate before atomic validation. Command records are logged, but there is no durable replay journal.
-- World is a custom-drawn Node2D in a 640×360 SubViewport, separate scalable UI. No imported art/audio. Camera, window/text size, and overlay preferences reset on restart.
-- New persistent facilities/power state will require explicit schema/simulation/content version decisions. Do not add new meanings to schema-1 occupancy IDs silently.
+- Schema **2**, simulation/content **m2b-1**, bounded JSON (512 KiB). Occupancy 0 empty / 1 road / 2 home / 3 power station; terrain 0 land / 1 water. Seed/RNG are signed 64-bit decimal strings.
+- Schema 1 (`m1-1`, IDs 0–2) migrates in memory by changing only the version fields. Before a save replaces a schema-1 primary or rotates over a schema-1 backup, its bytes are preserved once as `manual.schema1.json`. Newer or inconsistent saves are refused without changes. Build 0.2.0 cannot read schema 2.
+- Fixtures: `m1-schema1.json`, `m2a-schema1.json` (written by unchanged M2a code), `m2b-schema2.json`. Preserve their bytes; see the fixture README. Any new persistent meaning (grown buildings, zone types, development level) needs a new schema/simulation/content version, a migration from schema 2 (and 1), and a new preserved sample.
+- Save path `%APPDATA%/OriginalCityBuilder/saves/manual.json`; prior good backup `.bak`. Validate a fresh model before replacing the live city. Recovery is best effort, not a power-loss guarantee.
+- Prices remain provisional: $10 road, $25 home, $500 power station, free clear with no refund, $10,000 starting funds. No upkeep or income.
+- One day/tick, 1 second at 1×, 3× fast, construction while paused. Eight ticks/frame; one simulated hour of retained backlog. Focus loss/dialogs suspend time. No offline catch-up.
+- The world is a custom-drawn Node2D in a 640×360 SubViewport with separate scalable UI. There is no imported art/audio. Camera, window/text size, and overlay preferences reset on restart.
 
-## Smallest next assignment: M2b power access
+## Smallest next assignment: M2c growth
 
-When asked to continue, implement **one small power source, component supply/capacity, deterministic allocation, and clear zone power explanations**, then stop at the checkpoint. Do not add growth or monthly economics to complete M2b.
+When asked to continue, implement **homes/shops/workshops, bounded aggregate growth, population/jobs/demand, and an explicit bootstrap rule that avoids an empty-town deadlock**, then stop at the checkpoint. Do not add monthly income/upkeep (M2d).
 
-1. Inspect Git and rerun current verification. Preserve the M1 fixture and an M2a continuation example.
-2. Specify the power-source placement/price/capacity, zone demand units, adjacency rules, and shortage allocation order in Decisions before coding. Decide explicitly whether power works on an isolated road component; outside access and local supply are distinct conditions.
-3. Add scene-independent deterministic road components and bounded supply/demand allocation. Retain road access as its own prerequisite/diagnostic. No detailed electrical simulation or separate power-line tools are needed.
-4. Introduce only the minimum persistent source state and commands. Deliberately version it and test migration of supported M1/M2a saves, preserving original files, or explicitly reject unsupported saves with a clear explanation. Do not silently reinterpret schema 1.
-5. Explain missing source, disconnection, and capacity shortage in the inspector. Keep empty plots and the unimplemented-growth boundary clear.
-6. Test capacity accounting, isolated components, source/bridge removal, reconnection, deterministic shortage ties, rejected-command spending, and save/reload continuation.
-7. Exercise the exact Windows export with a working component and a shortage/disconnection/recovery, including save/restart/load. Update README, Decisions, evidence, and this handoff.
+1. Inspect Git and rerun current verification. Preserve all three fixtures.
+2. In Decisions, before coding, specify:
+   - zone types and their power demand;
+   - development levels and growth/decline rules;
+   - the requirements (road access **and** power, plus demand);
+   - the bootstrap demand;
+   - tick cadence and system order;
+   - deterministic tie-breaks and RNG use (if any);
+   - whether power allocation must become stable for grown buildings.
+3. Keep growth aggregate and bounded; no individual citizens. Evaluate from the prior completed state and apply changes together.
+4. Version the new persistent state deliberately and migrate schema 2 (and 1) saves with preserved originals, or explicitly reject them with a clear explanation.
+5. Explain why each plot is or is not growing, including demand, access, power, and shortage. Keep explanations within the 320 px inspector at all text sizes.
+6. Test an empty town that grows, a disconnected district, a power shortage, decline/recovery, determinism across save/reload, and bounded 128×128 ticks.
+7. Exercise the exact Windows export with growth, a shortage, and save/restart/load. Update README, Decisions, evidence, and this handoff.
 
 ## Later slices (future)
 
-- **M2c:** homes/shops/workshops, bounded aggregate growth, population/jobs/demand, explicit bootstrap rule avoiding an empty-town deadlock.
-- **M2d:** specified monthly income/upkeep, park/amenity, understandable deficit recovery, viable-opening/disconnection/shortage/overbuild scenario tests.
+- **M2d:** specified monthly income/upkeep (including station upkeep), park/amenity, understandable deficit recovery, viable-opening/disconnection/shortage/overbuild scenario tests.
 - **M2 gate:** an empty town can grow; shortages/failures can be explained and recovered from; save continuation and accounting invariants pass in the export.
 
 Keep the relaxed desktop experience central. Use original placeholders and neutral identifiers. No purchases, external messaging, store upload/publication, or public game release follows from this handoff.

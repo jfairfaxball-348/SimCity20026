@@ -1,6 +1,6 @@
 # Technical plan
 
-Status, 4 November 2026: **M0/M1 and M2a road access implemented and locally tested**; power, growth, economy, projects, and later release work below remain proposals. See [Toolchain](TOOLCHAIN.md), [M2a evidence](sessions/2026-11-04-m2a.md), and [Decisions](DECISIONS.md) for the implemented contract and limitations.
+Status, 4 November 2026: **M0/M1, M2a road access, and M2b power access implemented and locally tested**; growth, economy, projects, and later release work below remain proposals. See [Toolchain](TOOLCHAIN.md), [M2b evidence](sessions/2026-11-04-m2b.md), and [Decisions](DECISIONS.md) for the implemented contract and limitations.
 
 ## Repository shape
 
@@ -91,15 +91,21 @@ Document boundary cases before coding each system. Avoid reading partially updat
 
 `City.rebuild_access()` runs at initialization, validated load, and after every successful occupancy-changing command (including home edits). Full bounded recomputation updates both arrays synchronously, so neither UI nor a subsequent command can see stale access. Rejected/no-op commands and previews do not rebuild or alter it; ticks do not touch topology. The iterative queue has fixed neighbour order and no RNG/scene dependency. Terrain fixture edits must explicitly rebuild. Reachability is derived and absent from snapshots.
 
-The renderer shows an original gold flag inside the root tile and optional plus/minus access marks. A separate inspector explains each home state and states that growth/power are not implemented. Home returns the camera to the link; R toggles marks. Text widths are established before first layout to avoid native autowrap inflation. Small loaded maps are centered rather than clamped with inverted bounds.
+The renderer shows an original gold flag inside the root tile and optional plus/minus access marks. A separate inspector explains each home state and states that growth is not implemented (M2a also said power; M2b implemented it). Home returns the camera to the link; R toggles marks. Text widths are established before first layout to avoid native autowrap inflation. Small loaded maps are centered rather than clamped with inverted bounds.
 
-**Proposed M2b:** power travels along the simplified road network. Sources add capacity to their connected component; occupied zones consume it. Define deterministic shortage allocation and show the player why a site lacks supply. No electrical load-flow simulation or separate power-line network is planned. M2a's single-root reachability is not a general component map; add separate component analysis for power rather than conflating supply with outside access.
+**Implemented in M2b:** `sim/power_grid.gd` labels power networks: road and power-station tiles joined by shared sides, in row-major order with iterative flood fills. Stations relay power but not road access, and power does not need the outside link. Each station adds 20 units; each home plot requests 1.
+
+A multi-source search gives every network tile its distance from the nearest station. Plots touching a sourced network are served nearest-first by (distance, row-major index). Each takes a unit from the touching network with room that has the smallest (distance, network order); the rest are short of capacity. Reasons distinguish powered, shortage, disconnected, no road/station beside the plot, and no station built.
+
+`City.rebuild_derived()` rebuilds access then power at initialization, validated load, and after every successful occupancy-changing command. Nothing is serialized, ticks never touch it, and no RNG is used. A headless 128×128 striped rebuild took about 71–78 ms locally, which is acceptable per command but not per frame.
+
+The renderer adds an original station glyph and bolt/× marks (E). The inspector keeps road access and power on separate lines within a fixed 320 px panel. There is no allocation memory, so a newly zoned nearer plot can displace a farther one; M2c must decide whether grown buildings need stable allocation (persistent state).
 
 Homes supply population, workshops supply jobs, and shops meet local demand. Growth requires access, sufficient power, and demand; amenities encourage it and workshop nuisance can discourage nearby homes. Use aggregate counts. An explicit small bootstrap demand must let an empty town start growing without a circular “no residents until jobs/no jobs until residents” deadlock.
 
 Economic equations and tuning values are original project design work for M2. Put them in content/balance data with units, bounds, and explanations. Do not copy a classic game's constants or formula tables. Test a viable opening, a disconnected district, a power shortage, a high-cost overbuild, and a recoverable deficit. The default mode needs a clearly explained recovery route; the exact aid policy is an M2 balancing decision.
 
-M2a still stops before these power, economic, and growth systems. The clock remains tick-only.
+M2b still stops before these economic and growth systems. The clock remains tick-only; growth will need the system order above (access and power before growth).
 
 ## Presentation and controls
 
@@ -123,7 +129,9 @@ Write to a temporary file in the same directory, close and validate it, retain t
 
 Save schema versioning is separate from game versioning. During prototypes, document any intentional incompatibility. Before a public demo, establish fixture-based migration tests for every supported schema, preserve an original copy during migration, and set a stated compatibility policy.
 
-M2a game version `0.2.0-m2a` deliberately retains schema 1 and simulation/content `m1-1`: the serialized model, map generation, prices, clock, and RNG are unchanged. Access has no growth/economic effect. The pre-change `tests/fixtures/m1-schema1.json` must retain its exact canonical snapshot and deterministic continuation. No migration exists or is required for this derived-only slice. Future power/building state needs an explicit version and compatibility decision.
+M2a game version `0.2.0-m2a` retained schema 1 and simulation/content `m1-1`. M2b (`0.3.0-m2b`) adds occupancy ID 3 and therefore moves to **schema 2, simulation/content `m2b-1`** (D20). Schema-1 saves are validated and migrated in memory by changing only the version fields; loading never writes.
+
+Before a save replaces a schema-1 primary or rotates over a schema-1 backup, the exact bytes are preserved once as `manual.schema1.json`. Newer or inconsistent saves are refused unchanged. Fixtures `m1-schema1.json` and `m2a-schema1.json` (written by unchanged earlier code) and `m2b-schema2.json` are hash-checked, and their migration/round trips are asserted. Future building/growth state needs a new version, a schema-2 migration, and its own preserved sample.
 
 ## Verification and performance
 

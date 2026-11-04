@@ -1,6 +1,6 @@
 # Delivery and release plan
 
-Status, 4 November 2026: **M0/M1 and M2a implemented and locally tested; M2b–M2d and M3–M5 not started.** See the [M2a evidence](sessions/2026-11-04-m2a.md) and [foundation evidence](sessions/2026-11-04-m0-m1.md) for actual checks and limits; no public game release has occurred.
+Status, 4 November 2026: **M0/M1, M2a, and M2b implemented and locally tested; M2c–M2d and M3–M5 not started.** See the [M2b evidence](sessions/2026-11-04-m2b.md), [M2a evidence](sessions/2026-11-04-m2a.md), and [foundation evidence](sessions/2026-11-04-m0-m1.md) for actual checks and limits; no public game release has occurred.
 
 ## Milestones and gates
 
@@ -15,7 +15,7 @@ Each milestone should produce a runnable checkpoint, a short evidence record, an
 | M4: content-complete candidate | Tuned 128x128 limit if profiling supports it; bounded content/project set; settings/accessibility; save migration | No missing advertised systems; busy-city profile; content and asset provenance audit; closed beta feedback |
 | M5: release candidate / 1.0 | Regression fixes, store material, distribution notices, packaging, account/store work if authorised | Release checklist passes on supported targets; store reviews complete where required; rollback package and support route ready |
 
-The next agent's default small assignment is **M2b power access**, in [NEXT_SESSION.md](../NEXT_SESSION.md). M2a completes only the road-access part of M2; homes remain vacant. The full native 1080p and Windows DPI matrix remains unverified despite passing automated layout checks; resolve it before claiming broader display support. If M3 feedback is weak, improve the existing experience before expanding M4's content. Keep optional ports, disasters, and advanced transport out of the critical path.
+The next agent's default small assignment is **M2c growth**, in [NEXT_SESSION.md](../NEXT_SESSION.md). M2a and M2b complete the road-access and power parts of M2; homes remain vacant. The full native 1080p and Windows DPI matrix remains unverified despite passing automated layout checks; resolve it before claiming broader display support. If M3 feedback is weak, improve the existing experience before expanding M4's content. Keep optional ports, disasters, and advanced transport out of the critical path.
 
 ## Effort and spending assumptions
 

@@ -11,6 +11,7 @@ var origin: Vector2 = Vector2(32, 240)
 var zoom: int = 1
 var grid_visible: bool = true
 var access_visible: bool = true
+var power_visible: bool = true
 var hover: Vector2i = Vector2i(-1, -1)
 var preview_cells: Array[Vector2i] = []
 var preview_valid: bool = true
@@ -78,6 +79,8 @@ func _draw_cell(cell: Vector2i) -> void:
 	match city.occupancy[i]:
 		City.ROAD:
 			_draw_road(cell, at, z)
+		City.POWER:
+			_draw_station(at, rect, z)
 		City.HOME:
 			draw_rect(rect.grow(-z), Color("577c62"))
 			draw_rect(rect.grow(-2 * z), Color("a3b389"), false, z)
@@ -104,6 +107,37 @@ func _draw_cell(cell: Vector2i) -> void:
 		draw_line(mark - Vector2(2, 0) * z, mark + Vector2(2, 0) * z, color, z)
 		if connected:
 			draw_line(mark - Vector2(0, 2) * z, mark + Vector2(0, 2) * z, color, z)
+	if power_visible:
+		_draw_power_mark(i, at, z)
+
+func _draw_power_mark(i: int, at: Vector2, z: float) -> void:
+	# Shape, not colour alone: a bolt means supplied, a cross means an unpowered plot.
+	var use: int = city.occupancy[i]
+	var powered: bool = city.power.home_state[i] == city.power.POWERED if use == City.HOME else city.power.carries_power(i)
+	if use not in [City.ROAD, City.HOME] or (use == City.ROAD and not powered):
+		return
+	var mark: Vector2 = at + Vector2(4, 12) * z
+	draw_rect(Rect2(mark - Vector2(3, 3) * z, Vector2(7, 7) * z), Color("304842"))
+	if powered:
+		_draw_bolt(mark, z, Color("f2d36b"))
+	else:
+		var color := Color("f0be97")
+		draw_line(mark + Vector2(-2, -2) * z, mark + Vector2(2, 2) * z, color, z)
+		draw_line(mark + Vector2(-2, 2) * z, mark + Vector2(2, -2) * z, color, z)
+
+func _draw_bolt(center: Vector2, z: float, color: Color) -> void:
+	var points := PackedVector2Array([center + Vector2(1, -3) * z, center + Vector2(-1, 0) * z,
+		center + Vector2(1, 0) * z, center + Vector2(-1, 3) * z])
+	draw_polyline(points, color, z)
+
+func _draw_station(at: Vector2, rect: Rect2, z: float) -> void:
+	# An original squat generating hall with a chimney and a bolt sign.
+	draw_rect(rect.grow(-z), Color("3f5257"))
+	draw_rect(Rect2(at + Vector2(10, 1) * z, Vector2(2, 4) * z), Color("8c6f4e"))
+	draw_rect(Rect2(at + Vector2(2, 4) * z, Vector2(12, 2) * z), Color("8c6f4e"))
+	draw_rect(Rect2(at + Vector2(3, 6) * z, Vector2(10, 7) * z), Color("d8cfa6"))
+	draw_rect(Rect2(at + Vector2(3, 13) * z, Vector2(10, 1) * z), Color("a59c7a"))
+	_draw_bolt(at + Vector2(8, 9) * z, z, Color("c7902f"))
 
 func _draw_outside_link() -> void:
 	if city.access.root.x < 0: return

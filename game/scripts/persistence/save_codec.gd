@@ -12,10 +12,17 @@ static func decode(text: String) -> Dictionary:
 	var data: Dictionary = parser.data
 	if not integer(data.get("schema_version"), 1, 1000000):
 		return fail("Save schema is missing or invalid.")
-	if int(data.schema_version) != City.SCHEMA:
-		return fail("This save uses an unsupported schema. The file was not changed.")
-	if data.get("simulation_version") != City.SIMULATION or data.get("content_version") != City.CONTENT:
+	var schema: int = int(data.schema_version)
+	if schema > City.SCHEMA:
+		return fail("This save was made by a newer version of the game (format %d). The file was not changed." % schema)
+	if schema != City.SCHEMA and schema != City.LEGACY_SCHEMA:
+		return fail("This save uses an unsupported format (%d). The file was not changed." % schema)
+	# Schema 1 (M1/M2a) is accepted only with its own version pair and IDs 0..2.
+	var version: String = City.SIMULATION if schema == City.SCHEMA else City.LEGACY_VERSION
+	var content: String = City.CONTENT if schema == City.SCHEMA else City.LEGACY_VERSION
+	if data.get("simulation_version") != version or data.get("content_version") != content:
 		return fail("This save belongs to a different simulation/content version.")
+	var max_use: int = City.POWER if schema == City.SCHEMA else City.HOME
 	if not integer(data.get("width"), 8, 128) or not integer(data.get("height"), 8, 128):
 		return fail("Invalid map dimensions.")
 	if not signed_integer_string(data.get("seed")) or not signed_integer_string(data.get("random_state")):
@@ -30,7 +37,7 @@ static func decode(text: String) -> Dictionary:
 	if data.terrain.size() != count or data.occupancy.size() != count:
 		return fail("Map array length does not match dimensions.")
 	for i in range(count):
-		if not integer(data.terrain[i], City.LAND, City.WATER) or not integer(data.occupancy[i], City.EMPTY, City.HOME):
+		if not integer(data.terrain[i], City.LAND, City.WATER) or not integer(data.occupancy[i], City.EMPTY, max_use):
 			return fail("Unknown terrain or land-use identifier.")
 		if int(data.terrain[i]) == City.WATER and int(data.occupancy[i]) != City.EMPTY:
 			return fail("Save contains construction on water.")
@@ -46,8 +53,10 @@ static func decode(text: String) -> Dictionary:
 	city.tick = int(data.tick)
 	city.pending_us = int(data.pending_us)
 	city.sequence = int(data.sequence)
-	city.rebuild_access()
-	return {"ok": true, "city": city, "message": "City restored."}
+	# Migration from schema 1 changes only the version fields written by snapshot().
+	city.rebuild_derived()
+	return {"ok": true, "city": city, "message": "City restored.", "schema": schema,
+		"migrated_from": schema if schema != City.SCHEMA else 0}
 
 static func integer(value: Variant, minimum: int, maximum: int) -> bool:
 	if typeof(value) not in [TYPE_INT, TYPE_FLOAT]:

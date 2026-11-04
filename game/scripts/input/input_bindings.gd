@@ -2,11 +2,11 @@ extends RefCounted
 
 static func install() -> void:
 	var keys: Dictionary = {
-		"tool_road": [KEY_1], "tool_home": [KEY_2], "tool_clear": [KEY_3],
+		"tool_road": [KEY_1], "tool_home": [KEY_2], "tool_clear": [KEY_3], "tool_power": [KEY_P],
 		"pause_city": [KEY_SPACE], "normal_speed": [KEY_4], "fast_speed": [KEY_5],
 		"pan_left": [KEY_A, KEY_LEFT], "pan_right": [KEY_D, KEY_RIGHT],
 		"pan_up": [KEY_W, KEY_UP], "pan_down": [KEY_S, KEY_DOWN],
-		"toggle_grid": [KEY_G], "toggle_access": [KEY_R], "center_camera": [KEY_HOME],
+		"toggle_grid": [KEY_G], "toggle_access": [KEY_R], "toggle_power": [KEY_E], "center_camera": [KEY_HOME],
 		"cancel_stroke": [KEY_ESCAPE], "zoom_in": [KEY_EQUAL, KEY_KP_ADD],
 		"zoom_out": [KEY_MINUS, KEY_KP_SUBTRACT], "display_settings": [KEY_F6]}
 	for action: String in keys:

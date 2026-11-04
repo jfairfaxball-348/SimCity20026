@@ -1,17 +1,24 @@
 extends RefCounted
 ## Authoritative data and synchronous ordered commands; no scene dependencies.
+## Road access and power are derived from terrain/occupancy and never serialized.
 const Balance = preload("res://content/balance.gd")
 const Access = preload("res://scripts/sim/road_access.gd")
+const Power = preload("res://scripts/sim/power_grid.gd")
 const LAND: int = 0
 const WATER: int = 1
 const EMPTY: int = 0
 const ROAD: int = 1
 const HOME: int = 2
+const POWER: int = 3
 const MAX_TICK: int = 1_000_000_000
 const MAX_PENDING_US: int = 3_600_000_000
-const SCHEMA: int = 1
-const SIMULATION: String = "m1-1"
-const CONTENT: String = "m1-1"
+const SCHEMA: int = 2
+const SIMULATION: String = "m2b-1"
+const CONTENT: String = "m2b-1"
+## Supported earlier format (M1/M2a): IDs 0..2 only, migrated in memory (D20).
+const LEGACY_SCHEMA: int = 1
+const LEGACY_VERSION: String = "m1-1"
+const TOOLS: Dictionary = {"road": ROAD, "home": HOME, "power": POWER, "clear": EMPTY}
 
 var width: int = 64
 var height: int = 64
@@ -24,6 +31,7 @@ var pending_us: int = 0
 var sequence: int = 0
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var access: Access = Access.new()
+var power: Power = Power.new()
 
 func initialize(map_seed: int = 198624, map_width: int = 64, map_height: int = 64) -> void:
 	width = clampi(map_width, 8, 128)
@@ -43,12 +51,14 @@ func initialize(map_seed: int = 198624, map_width: int = 64, map_height: int = 6
 		var shoreline: int = clampi(width / 10 + y / 14 + rng.randi_range(-1, 1), 1, width - 1)
 		for x in range(shoreline):
 			terrain[index(Vector2i(x, y))] = WATER
-	rebuild_access()
+	rebuild_derived()
 
-func rebuild_access() -> void:
+func rebuild_derived() -> void:
 	# Terrain is immutable in play. Call after initialization/validated decoding,
 	# or from fixture setup after changing terrain. Commands own occupancy edits.
+	# Access first: power placement rules read the outside-link root.
 	access.rebuild(self)
+	power.rebuild(self)
 
 func inside(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < width and cell.y < height
@@ -57,7 +67,7 @@ func index(cell: Vector2i) -> int:
 	return cell.y * width + cell.x
 
 func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
-	if kind not in ["road", "home", "clear"]:
+	if not TOOLS.has(kind):
 		return _failure("Unknown construction tool.")
 	if cells.size() > width * height:
 		return _failure("That stroke is too large.")
@@ -66,10 +76,12 @@ func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 		if not inside(cell):
 			return _failure("Keep the entire stroke inside the map.")
 		unique[index(cell)] = true
+	if kind == "power" and unique.size() > 1:
+		return _failure("Place one power station at a time.")
 	var indices: Array = unique.keys()
 	indices.sort()
 	var changed: Array[int] = []
-	var target: int = ROAD if kind == "road" else HOME if kind == "home" else EMPTY
+	var target: int = TOOLS[kind]
 	for raw_index in indices:
 		var i: int = int(raw_index)
 		if terrain[i] == WATER:
@@ -77,7 +89,9 @@ func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 		if occupancy[i] == target:
 			continue
 		if kind != "clear" and occupancy[i] != EMPTY:
-			return _failure("Clear the existing road or zone first.")
+			return _failure("Clear the existing road, zone, or station first.")
+		if kind == "power" and access.root.x >= 0 and i == index(access.root):
+			return _failure("Keep the outside-link flag free for its road.")
 		changed.append(i)
 	var charge: int = changed.size() * Balance.cost(kind)
 	if charge > cash:
@@ -99,10 +113,13 @@ func apply_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 		occupancy[int(i)] = int(result.target)
 	cash -= int(result.cost)
 	sequence += 1
-	rebuild_access()
+	rebuild_derived()
 	result["record"] = {"tick": tick, "sequence": sequence, "kind": kind,
 		"indices": changed.duplicate(), "cost": result.cost}
-	result.message = "%d tile%s · %s" % [changed.size(), "" if changed.size() == 1 else "s", Balance.money(int(result.cost))]
+	if kind == "power":
+		result.message = "Power station built · %s · supplies up to %d plots on its network." % [Balance.money(int(result.cost)), Balance.POWER_CAPACITY / Balance.HOME_POWER_DEMAND]
+	else:
+		result.message = "%d tile%s · %s" % [changed.size(), "" if changed.size() == 1 else "s", Balance.money(int(result.cost))]
 	return result
 
 func snapshot() -> Dictionary:

@@ -16,6 +16,7 @@ class FaultFiles extends FileOps:
 		return super.write_text(path, "{" if fault == "truncate" else text)
 	func copy_file(from: String, to: String) -> Error:
 		if fault == "backup_copy": return ERR_CANT_CREATE
+		if fault == "preserve_copy" and to.contains(".schema1.json"): return ERR_CANT_CREATE
 		return super.copy_file(from, to)
 	func replace_file(from: String, to: String) -> Error:
 		if fault == "backup_replace" and to.ends_with(".bak"): return ERR_CANT_CREATE
@@ -35,7 +36,7 @@ func fresh() -> City:
 	var city := City.new()
 	city.initialize(91, 8, 8)
 	city.terrain.fill(City.LAND)
-	city.rebuild_access()
+	city.rebuild_derived()
 	return city
 
 func command(city: City, kind: String, cells: Array[Vector2i]) -> Dictionary:
@@ -44,6 +45,8 @@ func command(city: City, kind: String, cells: Array[Vector2i]) -> Dictionary:
 func run() -> void:
 	test_commands()
 	test_access()
+	test_power()
+	test_migration()
 	test_clock()
 	test_codec()
 	test_storage()
@@ -51,7 +54,7 @@ func run() -> void:
 	await test_scene()
 	if "--prove-failure-exit" in OS.get_cmdline_user_args():
 		check(false, "Deliberate runner failure to verify exit code")
-	print(JSON.stringify({"suite": "M2a", "checks": checks, "failed": failures.size(), "failures": failures}))
+	print(JSON.stringify({"suite": "M2b", "checks": checks, "failed": failures.size(), "failures": failures}))
 	quit(0 if failures.is_empty() else 1)
 
 func test_commands() -> void:
@@ -158,17 +161,17 @@ func test_access() -> void:
 	command(a,"clear",[Vector2i(6,4)])
 	check(a.access.connected_roads.count(1) == 5, "alternate route preserves service after one bridge removal")
 	snapshot = a.canonical()
-	a.rebuild_access()
+	a.rebuild_derived()
 	check(a.canonical() == snapshot, "derived rebuild leaves authoritative data and RNG unchanged")
 
 	city = fresh()
 	city.terrain[city.index(gate)] = City.WATER
-	city.rebuild_access()
+	city.rebuild_derived()
 	check(city.access.root == Vector2i(7,3), "water at preferred root uses nearest boundary land with stable tie-break")
 	for y in range(8):
 		for x in range(8):
 			if x in [0,7] or y in [0,7]: city.terrain[city.index(Vector2i(x,y))] = City.WATER
-	city.rebuild_access()
+	city.rebuild_derived()
 	command(city,"home",[Vector2i(4,4)])
 	check(city.access.root == Vector2i(-1,-1) and city.access.home_reason(city,Vector2i(4,4)) == "no_outside_link", "water-only boundary is valid but explains unavailable access")
 	restored = Codec.decode(city.canonical()).city
@@ -187,7 +190,7 @@ func test_access() -> void:
 
 	var fixture: String = FileAccess.get_file_as_string("res://tests/fixtures/m1-schema1.json").strip_edges()
 	var decoded: Dictionary = Codec.decode(fixture)
-	check(decoded.ok and decoded.city.canonical() == fixture, "pre-M2a fixture loads with byte-identical canonical M1 state")
+	check(decoded.ok and decoded.city.canonical() == migrated_text(fixture), "pre-M2a fixture migrates with only its version fields changed")
 	if decoded.ok:
 		city = decoded.city
 		check(city.access.connected_roads.count(1) == 3 and city.access.served_homes.count(1) == 1, "legacy roads derive connected and disconnected districts")
@@ -249,7 +252,7 @@ func test_codec() -> void:
 		check(not Codec.decode(bad_text).ok, "reject malformed/incomplete data: " + bad_text)
 	check(not Codec.decode(" ".repeat(Codec.MAX_BYTES + 1)).ok, "oversize save rejected")
 	var mutations: Array = [
-		["schema_version",2], ["schema_version",0], ["schema_version",true],
+		["schema_version",3], ["schema_version",1], ["schema_version",0], ["schema_version",true],
 		["simulation_version","future"], ["content_version","future"],
 		["width",129], ["height",7], ["width",64.5], ["cash",-1],
 		["cash",1.5], ["cash",true], ["tick",-1], ["sequence",-1],
@@ -265,12 +268,21 @@ func test_codec() -> void:
 	data.terrain[0] = 2
 	check(not Codec.decode(JSON.stringify(data)).ok, "unknown terrain identifier")
 	data = city.snapshot()
-	data.occupancy[0] = 3
+	data.occupancy[0] = 4
 	check(not Codec.decode(JSON.stringify(data)).ok, "unknown use identifier")
+	data = city.snapshot()
+	data.occupancy[0] = City.POWER
+	check(Codec.decode(JSON.stringify(data)).ok, "schema 2 accepts power-station identifier")
+	data.schema_version = 1
+	data.simulation_version = "m1-1"
+	data.content_version = "m1-1"
+	check(not Codec.decode(JSON.stringify(data)).ok, "schema 1 rejects identifier 3 instead of reinterpreting it")
 	data = city.snapshot()
 	data.terrain[0] = City.WATER
 	data.occupancy[0] = City.HOME
 	check(not Codec.decode(JSON.stringify(data)).ok, "inconsistent occupied water")
+	data.occupancy[0] = City.POWER
+	check(not Codec.decode(JSON.stringify(data)).ok, "power station on water rejected")
 	check(city.canonical() == original, "failed decoding never mutates live model")
 	for number in ["-9223372036854775808","9223372036854775807","0"]:
 		check(Codec.signed_integer_string(number), "valid signed state " + number)
@@ -336,6 +348,289 @@ func test_scene() -> void:
 	main._extend_stroke(Vector2i(30,30))
 	main._commit_stroke()
 	check(main.city.occupancy[main.city.index(Vector2i(30,30))] == City.HOME, "scene command uses authoritative model")
+	main._select_tool("power")
+	main._extend_stroke(Vector2i(31,30))
+	main._extend_stroke(Vector2i(33,30))
+	check(main.stroke.size() == 1 and main.stroke[0] == Vector2i(33,30), "power tool previews exactly one station under the pointer")
+	main._commit_stroke()
+	check(main.city.occupancy[main.city.index(Vector2i(33,30))] == City.POWER and main.city.power.station_count == 1 and main.city.cash == Balance.STARTING_CASH - Balance.HOME_COST - Balance.POWER_COST, "scene places one paid station")
+	main._inspect_cell(Vector2i(33,30))
+	check(main.power_label.text.contains("Supplies 20 units") and main.grid_label.text.begins_with("Power 0 / 20"), "inspector and toolbar report station capacity")
 	main.queue_free()
 	await process_frame
 	print("PASS group: scene initialization and model binding")
+
+func land(w: int, h: int) -> City:
+	var city := City.new()
+	city.initialize(91, w, h)
+	city.terrain.fill(City.LAND)
+	city.rebuild_derived()
+	return city
+
+func row(y: int, from_x: int, to_x: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for x in range(from_x, to_x + 1): out.append(Vector2i(x, y))
+	return out
+
+func column(x: int, from_y: int, to_y: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for y in range(from_y, to_y + 1): out.append(Vector2i(x, y))
+	return out
+
+func join(a: Array[Vector2i], b: Array[Vector2i]) -> Array[Vector2i]:
+	var out: Array[Vector2i] = a.duplicate()
+	out.append_array(b)
+	return out
+
+func one(cell: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = [cell]
+	return out
+
+func reason(city: City, cell: Vector2i) -> String:
+	return city.power.home_reason(city, cell)
+
+func net(city: City, cell: Vector2i) -> int:
+	return city.power.network_of[city.index(cell)]
+
+## Schema-1 text as it must look after in-memory migration: only version fields change.
+func migrated_text(legacy: String) -> String:
+	var quote: String = char(34)
+	var result: String = legacy.replace(quote + "content_version" + quote + ":" + quote + "m1-1" + quote, quote + "content_version" + quote + ":" + quote + "m2b-1" + quote)
+	result = result.replace(quote + "schema_version" + quote + ":1,", quote + "schema_version" + quote + ":2,")
+	return result.replace(quote + "simulation_version" + quote + ":" + quote + "m1-1" + quote, quote + "simulation_version" + quote + ":" + quote + "m2b-1" + quote)
+
+func test_power() -> void:
+	# One network: exact capacity accounting and nearest-first shortage ties.
+	var city: City = land(12, 8)
+	command(city, "road", row(4, 1, 10))
+	command(city, "home", join(row(3, 1, 10), row(5, 1, 10)))
+	check(city.power.station_count == 0 and city.power.total_capacity == 0 and city.power.powered_homes == 0, "no free power source exists")
+	check(reason(city, Vector2i(4, 3)) == "no_source", "plots explain that no power station exists")
+	check(net(city, Vector2i(1, 4)) == net(city, Vector2i(10, 4)) and net(city, Vector2i(4, 3)) == -1, "roads form one network; home plots are not network tiles")
+	var before_cash: int = city.cash
+	var built: Dictionary = command(city, "power", one(Vector2i(0, 4)))
+	check(built.ok and built.record.cost == Balance.POWER_COST and city.cash == before_cash - Balance.POWER_COST, "station charges its exact price once")
+	check(city.power.total_capacity == Balance.POWER_CAPACITY and city.power.total_used == 20 and city.power.powered_homes == 20 and city.power.short_homes == 0, "twenty plots exactly fill one station")
+	check(city.access.connected_roads.count(1) == 0 and reason(city, Vector2i(4, 3)) == "powered" and city.access.home_reason(city, Vector2i(4, 3)) == "disconnected_road", "power works on a road network without outside access")
+	command(city, "home", one(Vector2i(0, 3)))
+	check(reason(city, Vector2i(0, 3)) == "powered", "plot beside a station draws power directly")
+	check(reason(city, Vector2i(10, 3)) == "powered" and reason(city, Vector2i(10, 5)) == "shortage", "equal-distance shortage tie resolves by row-major plot order")
+	check(city.power.short_homes == 1 and city.power.network_short[net(city, Vector2i(5, 4))] == 1 and city.power.total_used == 20 and city.power.network_used[net(city, Vector2i(5, 4))] == 20, "shortage counted without exceeding capacity")
+	var states: PackedByteArray = city.power.home_state.duplicate()
+	var other: City = land(12, 8)
+	command(other, "home", one(Vector2i(0, 3)))
+	var homes: Array[Vector2i] = join(row(5, 1, 10), row(3, 1, 10))
+	homes.reverse()
+	command(other, "home", homes)
+	command(other, "power", one(Vector2i(0, 4)))
+	var roads: Array[Vector2i] = row(4, 1, 10)
+	roads.reverse()
+	command(other, "road", roads)
+	check(other.occupancy == city.occupancy and other.power.home_state == states and other.power.home_network == city.power.home_network, "allocation ignores command history and stroke order")
+	# Station on the east end: nearest-first and row-major order disagree here.
+	var east: City = land(12, 8)
+	command(east, "road", row(4, 0, 9))
+	command(east, "power", one(Vector2i(10, 4)))
+	command(east, "home", join(join(row(3, 0, 9), row(5, 0, 9)), one(Vector2i(10, 3))))
+	check(reason(east, Vector2i(10, 3)) == "powered" and reason(east, Vector2i(9, 5)) == "powered" and reason(east, Vector2i(0, 3)) == "powered" and reason(east, Vector2i(0, 5)) == "shortage", "the farthest plot is short, not the last plot in row-major order")
+
+	# Rejected or unaffordable commands spend nothing and leave power unchanged.
+	var snapshot: String = city.canonical()
+	var attempts: Array = [["power", [Vector2i(2, 6), Vector2i(3, 6)]], ["power", [Vector2i(4, 4)]], ["power", [Vector2i(4, 3)]],
+		["power", [Vector2i(11, 4)]], ["power", [Vector2i(12, 0)]], ["home", [Vector2i(0, 4)]], ["road", [Vector2i(0, 4)]]]
+	for attempt in attempts:
+		var cells: Array[Vector2i] = []
+		cells.assign(attempt[1])
+		check(not command(city, attempt[0], cells).ok and city.canonical() == snapshot and city.power.home_state == states, "rejected %s %s keeps funds, map, and power" % [attempt[0], attempt[1]])
+	var pair: Array[Vector2i] = [Vector2i(2, 6), Vector2i(3, 6)]
+	check(String(city.preview("power", one(Vector2i(11, 4))).message).contains("outside-link") and String(city.preview("power", pair).message).contains("one power station"), "station rejections explain the link and one-at-a-time rules")
+	other.terrain[other.index(Vector2i(5, 7))] = City.WATER
+	other.rebuild_derived()
+	snapshot = other.canonical()
+	check(not command(other, "power", one(Vector2i(5, 7))).ok and other.canonical() == snapshot, "station on water rejected")
+	city.cash = Balance.POWER_COST - 1
+	snapshot = city.canonical()
+	check(not command(city, "power", one(Vector2i(5, 6))).ok and city.canonical() == snapshot and city.power.home_state == states, "unaffordable station rejected without partial spending")
+	city.cash = Balance.POWER_COST
+	check(command(city, "power", one(Vector2i(5, 6))).ok and city.cash == 0, "exactly affordable station")
+	check(city.power.total_capacity == 40 and city.power.short_homes == 0 and reason(city, Vector2i(10, 5)) == "powered" and city.power.home_network[city.index(Vector2i(5, 5))] == net(city, Vector2i(5, 6)), "a second network relieves the shortage through a shared plot")
+	snapshot = city.canonical()
+	check(command(city, "power", one(Vector2i(5, 6))).ok and city.canonical() == snapshot, "repeating a station is a free no-op")
+	check(command(city, "clear", one(Vector2i(5, 6))).ok and city.cash == 0 and city.occupancy[city.index(Vector2i(5, 6))] == City.EMPTY, "station removal is free with no refund")
+	check(city.power.home_state == states and city.power.station_count == 1, "removing a source restores the shortage immediately")
+
+	# Bridge and source removal, then reconnection.
+	city.cash = Balance.STARTING_CASH
+	command(city, "clear", one(Vector2i(6, 4)))
+	check(reason(city, Vector2i(7, 3)) == "disconnected" and reason(city, Vector2i(5, 3)) == "powered" and city.power.short_homes == 0, "bridge removal disconnects the far district and frees capacity")
+	check(reason(city, Vector2i(6, 3)) == "no_adjacent_network" and not city.power.carries_power(city.index(Vector2i(7, 4))) and net(city, Vector2i(7, 4)) != net(city, Vector2i(5, 4)), "split network without a station carries no power")
+	command(city, "road", one(Vector2i(6, 4)))
+	check(city.power.home_state == states, "rebuilding the bridge restores the exact allocation")
+	command(city, "clear", one(Vector2i(0, 4)))
+	check(city.power.station_count == 0 and city.power.total_used == 0 and reason(city, Vector2i(4, 3)) == "no_source", "removing the only station explains the missing source")
+	command(city, "power", one(Vector2i(0, 4)))
+	check(city.power.home_state == states, "rebuilding the station restores supply")
+
+	# Relay rules: stations join roads for power only; diagonals and homes carry nothing.
+	var relay: City = fresh()
+	command(relay, "road", [Vector2i(7, 4), Vector2i(6, 4)])
+	command(relay, "power", one(Vector2i(5, 4)))
+	command(relay, "road", one(Vector2i(4, 4)))
+	command(relay, "home", [Vector2i(4, 3), Vector2i(6, 3)])
+	check(net(relay, Vector2i(7, 4)) == net(relay, Vector2i(4, 4)), "a station relays power between the roads it touches")
+	check(relay.access.connected_roads[relay.index(Vector2i(4, 4))] == 0 and relay.access.home_reason(relay, Vector2i(4, 3)) == "disconnected_road" and reason(relay, Vector2i(4, 3)) == "powered", "a station does not relay road access")
+	check(relay.access.home_reason(relay, Vector2i(6, 3)) == "connected" and reason(relay, Vector2i(6, 3)) == "powered", "connected plot reports both conditions separately")
+	command(relay, "power", one(Vector2i(1, 1)))
+	command(relay, "road", [Vector2i(2, 2), Vector2i(3, 1)])
+	command(relay, "home", [Vector2i(2, 1), Vector2i(4, 1)])
+	check(net(relay, Vector2i(2, 2)) != net(relay, Vector2i(1, 1)) and not relay.power.carries_power(relay.index(Vector2i(2, 2))), "a diagonal road does not join a station")
+	check(reason(relay, Vector2i(2, 1)) == "powered" and reason(relay, Vector2i(4, 1)) == "disconnected", "home plots do not relay power")
+
+	# Equal distance through two networks resolves by network order, whatever the build order.
+	for flipped in [false, true]:
+		var tie: City = land(8, 8)
+		var steps: Array = [["power", Vector2i(1, 3)], ["road", Vector2i(2, 3)], ["road", Vector2i(4, 3)], ["power", Vector2i(5, 3)], ["home", Vector2i(3, 3)]]
+		if flipped: steps.reverse()
+		for step in steps: command(tie, step[0], one(step[1]))
+		check(tie.power.home_network[tie.index(Vector2i(3, 3))] == net(tie, Vector2i(2, 3)) and net(tie, Vector2i(2, 3)) < net(tie, Vector2i(4, 3)), "equal-distance networks resolve by network order (reversed build %s)" % flipped)
+
+	# A full nearer network spills a later plot to a farther network with room.
+	var spill: City = land(16, 12)
+	command(spill, "power", one(Vector2i(1, 1)))
+	command(spill, "road", column(2, 1, 10))
+	homes = join(column(3, 1, 10), column(1, 2, 10))
+	homes.append(Vector2i(2, 0))
+	command(spill, "home", homes)
+	command(spill, "road", row(11, 3, 14))
+	command(spill, "power", one(Vector2i(15, 11)))
+	command(spill, "home", one(Vector2i(2, 11)))
+	var near: int = net(spill, Vector2i(2, 5))
+	var far: int = net(spill, Vector2i(3, 11))
+	check(near != far and reason(spill, Vector2i(2, 11)) == "powered" and spill.power.home_network[spill.index(Vector2i(2, 11))] == far, "plot uses a farther network with room when the nearer one is full")
+	check(spill.power.network_used[near] == 20 and spill.power.network_used[far] == 1 and spill.power.total_used == 21, "per-network and total accounting agree")
+	command(spill, "clear", one(Vector2i(15, 11)))
+	check(reason(spill, Vector2i(2, 11)) == "shortage" and spill.power.home_network[spill.index(Vector2i(2, 11))] == near and spill.power.network_short[near] == 1, "losing the spare network leaves the plot short on the full network")
+
+	# Save continuation; derived power is reconstructed and never serialized.
+	var decoded: Dictionary = Codec.decode(spill.canonical())
+	check(decoded.ok and decoded.migrated_from == 0 and decoded.city.power.home_state == spill.power.home_state and decoded.city.power.network_used == spill.power.network_used, "reload reconstructs the power allocation")
+	var keys: Array = spill.snapshot().keys()
+	keys.sort()
+	check(keys == ["cash", "content_version", "height", "occupancy", "pending_us", "random_state", "schema_version", "seed", "sequence", "simulation_version", "terrain", "tick", "width"], "power and access are absent from saves")
+	for item: City in [spill, decoded.city]:
+		command(item, "power", one(Vector2i(15, 11)))
+		Clock.advance(item, 2_000_000, 3)
+	check(spill.canonical() == decoded.city.canonical() and spill.power.home_state == decoded.city.power.home_state and spill.rng.randi() == decoded.city.rng.randi(), "continued commands after reload match the uninterrupted city")
+	states = spill.power.home_state.duplicate()
+	snapshot = spill.canonical()
+	spill.rebuild_derived()
+	check(spill.canonical() == snapshot and spill.power.home_state == states, "derived rebuild leaves authoritative state and RNG unchanged")
+	for i in range(20): Clock.advance(spill, 1_000_000, 3)
+	check(spill.power.home_state == states and spill.tick > 0, "clock ticks never change power")
+
+	# Bounded at the 128x128 ceiling: 64 road networks, eight sourced.
+	var big := City.new()
+	big.initialize(5, 128, 128)
+	big.terrain.fill(City.LAND)
+	big.rebuild_derived()
+	big.cash = Balance.MAX_CASH
+	var road_cells: Array[Vector2i] = []
+	var home_cells: Array[Vector2i] = []
+	for y in range(128):
+		for x in range(1, 128):
+			if y % 2 == 0: road_cells.append(Vector2i(x, y))
+			else: home_cells.append(Vector2i(x, y))
+	command(big, "road", road_cells)
+	command(big, "home", home_cells)
+	for y in range(0, 128, 16): command(big, "power", one(Vector2i(0, y)))
+	var started: int = Time.get_ticks_usec()
+	big.rebuild_derived()
+	var elapsed: int = Time.get_ticks_usec() - started
+	check(big.power.network_stations.size() == 64 and big.power.total_capacity == 160 and big.power.total_used == 160, "max map labels every network and caps supply")
+	check(big.power.powered_homes == 160 and big.power.short_homes == 127 + 7 * 254 - 160, "max map shortage count is exact")
+	big.occupancy.fill(City.ROAD)
+	big.occupancy[0] = City.POWER
+	big.rebuild_derived()
+	check(big.power.network_stations.size() == 1 and big.power.distance[big.index(Vector2i(127, 127))] == 254, "full-map iterative search reaches the far corner")
+	print("INFO power rebuild 128x128 striped city: %d us (local headless editor runtime; not a performance claim)" % elapsed)
+	print("PASS group: power networks, capacity, nearest-first allocation")
+
+func test_migration() -> void:
+	check(FileAccess.get_sha256("res://tests/fixtures/m1-schema1.json") == "f954b5c782f32d240e54912baea00ac6960b599fe5aa90f4eed96efeceadbb83", "M1 fixture bytes preserved")
+	check(FileAccess.get_sha256("res://tests/fixtures/m2a-schema1.json") == "a85895efbc23707538a8c97399a7cf9bd831bfeb21b8182144b68653d82f0c93", "M2a fixture bytes preserved")
+	var legacy: String = FileAccess.get_file_as_string("res://tests/fixtures/m2a-schema1.json")
+	var decoded: Dictionary = Codec.decode(legacy.strip_edges())
+	check(decoded.ok and decoded.migrated_from == 1 and decoded.city.canonical() == migrated_text(legacy.strip_edges()), "M2a fixture migrates with only its version fields changed")
+	var city: City = decoded.city
+	check(city.access.root == Vector2i(9, 4) and city.access.connected_roads.count(1) == 6 and city.access.served_homes.count(1) == 4, "migrated M2a city derives the access recorded by unchanged M2a code")
+	var expected: Dictionary = {Vector2i(2, 4): "no_adjacent_road", Vector2i(3, 2): "disconnected_road", Vector2i(4, 0): "disconnected_road",
+		Vector2i(5, 4): "connected", Vector2i(7, 3): "connected", Vector2i(7, 5): "connected", Vector2i(8, 3): "connected"}
+	var same: bool = true
+	for cell: Vector2i in expected: same = same and city.access.home_reason(city, cell) == expected[cell]
+	check(same, "migrated M2a home reasons match the unchanged M2a results")
+	check(city.power.station_count == 0 and reason(city, Vector2i(7, 3)) == "no_source", "legacy city gains no fabricated power")
+	var restored: City = Codec.decode(city.canonical()).city
+	check(Codec.decode(city.canonical()).migrated_from == 0 and restored.canonical() == city.canonical(), "migrated city round-trips as schema 2")
+	for item: City in [city, restored]:
+		command(item, "power", one(Vector2i(7, 1)))
+	check(reason(city, Vector2i(3, 2)) == "powered" and city.access.home_reason(city, Vector2i(3, 2)) == "disconnected_road" and reason(city, Vector2i(7, 3)) == "disconnected", "station powers the legacy isolated district while road access stays missing")
+	for item: City in [city, restored]:
+		command(item, "road", one(Vector2i(6, 2)))
+		Clock.advance(item, 1_000_000, 1)
+	check(reason(city, Vector2i(7, 3)) == "powered" and city.access.home_reason(city, Vector2i(3, 2)) == "connected" and city.cash == 971500 - Balance.POWER_COST - Balance.ROAD_COST, "rebuilt legacy bridge joins access and power")
+	check(city.canonical() == restored.canonical() and city.power.home_state == restored.power.home_state and city.rng.randi() == restored.rng.randi(), "legacy continuation matches after a schema-2 reload")
+
+	# Store-level migration: loading writes nothing; first save preserves the original bytes.
+	var files := FaultFiles.new()
+	var store := Store.new(files)
+	var base: String = OS.get_environment("CITY_TEST_DIR")
+	if base.is_empty(): base = "user://tests"
+	var path: String = base.path_join("migration_%d/manual.json" % Time.get_ticks_usec())
+	var preserved: String = Store.preserved_path(path, 1)
+	files.write_text(path, legacy)
+	var loaded: Dictionary = store.load_city(path)
+	check(loaded.ok and loaded.migrated_from == 1 and FileAccess.get_file_as_string(path) == legacy and not files.exists(preserved), "loading an earlier save writes nothing")
+	files.fault = "preserve_copy"
+	check(not store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(path) == legacy and not files.exists(preserved), "failed preservation leaves the earlier save untouched")
+	files.fault = ""
+	check(store.save_city(loaded.city, path).ok and int(store.load_city(path).schema) == 2, "migrated city saves as schema 2")
+	check(preserved.get_file() == "manual.schema1.json" and FileAccess.get_file_as_string(preserved) == legacy, "original earlier-format bytes kept beside the save")
+	check(FileAccess.get_file_as_string(path + ".bak") == legacy, "previous-good backup holds the earlier save")
+	command(loaded.city, "power", one(Vector2i(7, 1)))
+	check(store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(preserved) == legacy and int(store.load_city(path + ".bak").schema) == 2, "later saves rotate schema 2 and never overwrite the preserved original")
+
+	# Recovery from an earlier-format backup when the primary is corrupt.
+	var recover_path: String = base.path_join("recover_%d/manual.json" % Time.get_ticks_usec())
+	files.write_text(recover_path, "{corrupt")
+	files.write_text(recover_path + ".bak", legacy)
+	var from_backup: Dictionary = store.load_city(recover_path + ".bak")
+	check(from_backup.ok and from_backup.migrated_from == 1, "earlier-format backup loads for recovery")
+	check(store.save_city(from_backup.city, recover_path).ok and FileAccess.get_file_as_string(recover_path + ".bak") == legacy and not files.exists(Store.preserved_path(recover_path, 1)), "save over a corrupt primary leaves the earlier-format backup untouched")
+	command(from_backup.city, "road", one(Vector2i(6, 2)))
+	files.fault = "preserve_copy"
+	check(not store.save_city(from_backup.city, recover_path).ok and FileAccess.get_file_as_string(recover_path + ".bak") == legacy, "failed preservation never rotates over an earlier-format backup")
+	files.fault = ""
+	check(store.save_city(from_backup.city, recover_path).ok and FileAccess.get_file_as_string(Store.preserved_path(recover_path, 1)) == legacy and int(store.load_city(recover_path + ".bak").schema) == 2, "earlier-format backup is preserved before rotation replaces it")
+
+	# Unsupported or inconsistent saves are refused without changing their files.
+	var future: Dictionary = loaded.city.snapshot()
+	future.schema_version = 3
+	var future_path: String = path.get_base_dir().path_join("future.json")
+	files.write_text(future_path, JSON.stringify(future))
+	var future_text: String = FileAccess.get_file_as_string(future_path)
+	var refused: Dictionary = store.load_city(future_path)
+	check(not refused.ok and String(refused.message).contains("newer version") and FileAccess.get_file_as_string(future_path) == future_text, "newer schema refused clearly without changing the file")
+	var mismatched: Dictionary = loaded.city.snapshot()
+	mismatched.simulation_version = "m1-1"
+	mismatched.content_version = "m1-1"
+	check(not Codec.decode(JSON.stringify(mismatched)).ok, "schema 2 with schema-1 version strings refused")
+	# Current-format sample for a future migration: exact schema-2 round trip with a station.
+	check(FileAccess.get_sha256("res://tests/fixtures/m2b-schema2.json") == "27dbbaefca8ec3e1419d61b0e278c855cd8392c81d76b553128cf9c4c2b8c37a", "M2b schema-2 fixture bytes preserved")
+	var current_text: String = FileAccess.get_file_as_string("res://tests/fixtures/m2b-schema2.json").strip_edges()
+	var current: Dictionary = Codec.decode(current_text)
+	check(current.ok and current.migrated_from == 0 and current.city.canonical() == current_text, "M2b fixture loads with byte-identical canonical state")
+	if current.ok:
+		var sample: City = current.city
+		check(sample.power.station_count == 1 and sample.power.total_used == 4 and sample.power.short_homes == 0, "M2b fixture derives its recorded supply")
+		check(reason(sample, Vector2i(8, 1)) == "powered" and sample.access.home_reason(sample, Vector2i(8, 1)) == "no_adjacent_road" and reason(sample, Vector2i(7, 3)) == "disconnected" and sample.access.home_reason(sample, Vector2i(7, 3)) == "connected", "M2b fixture keeps power and road access independent")
+	print("PASS group: schema-1 migration and preserved originals")

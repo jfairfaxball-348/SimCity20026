@@ -9,9 +9,14 @@ $cityGame = Join-Path $cityRepo 'game'
 $cityValidation = Join-Path $cityRepo 'builds/validation'
 New-Item -ItemType Directory -Force -Path $cityValidation | Out-Null
 function Invoke-CityCheck([string[]]$CityArguments, [string]$LogName) {
-    $cityOutput = @(& $cityExe @CityArguments 2>&1)
+    # Local 'Continue': Windows PowerShell 5.1 otherwise aborts on the first stderr line.
+    $ErrorActionPreference = 'Continue'
+    $cityOutput = @(& $cityExe @CityArguments 2>&1 | ForEach-Object { "$_" })
     $cityExit = $LASTEXITCODE
-    $cityOutput | Tee-Object -FilePath (Join-Path $cityValidation $LogName)
+    $ErrorActionPreference = 'Stop'
+    # Explicit UTF-8 logs: Windows PowerShell 5.1 Tee-Object would write UTF-16.
+    Set-Content -LiteralPath (Join-Path $cityValidation $LogName) -Value $cityOutput -Encoding utf8
+    $cityOutput
     if ($cityExit -ne 0 -or ($cityOutput -match 'SCRIPT ERROR:|^ERROR:')) { throw "Godot check failed: $LogName (exit $cityExit)" }
 }
 if ($Action -eq 'Run') {
@@ -36,6 +41,12 @@ if ($Action -eq 'Export') {
     $cityRecords = @($cityDistributionFiles | ForEach-Object { Get-Item -LiteralPath (Join-Path $cityExport $_) } | ForEach-Object {
         [ordered]@{ file = $_.Name; bytes = $_.Length; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
     })
-    [ordered]@{ game_version = '0.2.0-m2a'; engine = $cityPin.version_output; schema = 1; files = $cityRecords } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $cityExport 'BUILD.json') -Encoding utf8
+    # Read version identifiers from source so the manifest cannot drift from the build.
+    $cityVersion = [regex]::Match((Get-Content -LiteralPath (Join-Path $cityGame 'project.godot') -Raw), 'config/version="([^"]+)"').Groups[1].Value
+    $citySchema = [int][regex]::Match((Get-Content -LiteralPath (Join-Path $cityGame 'scripts/sim/city_state.gd') -Raw), 'const SCHEMA: int = (\d+)').Groups[1].Value
+    if (-not $cityVersion -or $citySchema -lt 1) { throw 'Could not read game version or save schema from source.' }
+    $cityManifest = [ordered]@{ game_version = $cityVersion; engine = $cityPin.version_output; schema = $citySchema; files = $cityRecords } | ConvertTo-Json -Depth 4
+    # BOM-free UTF-8 under both Windows PowerShell 5.1 and PowerShell 7.
+    [IO.File]::WriteAllText((Join-Path $cityExport 'BUILD.json'), $cityManifest, (New-Object Text.UTF8Encoding $false))
     Write-Output "Exported to $cityExport"
 }
