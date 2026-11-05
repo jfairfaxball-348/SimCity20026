@@ -68,9 +68,11 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 
 ## Continue here
 
+The next assignment is one **Micropolis study** session under owner decision U10 (5 November 2026), followed by the unchanged M2d implementation assignment. The study is authorised but not yet performed. This follow-up prepared the study handoff only; no Micropolis or SimCity reference source was downloaded, opened, or read in this session. Study notes will be qualitative and original; implementation sessions must never open the reference source. See [Next session](NEXT_SESSION.md) and the [study boundary](docs/IP_AND_ASSETS.md#micropolis-study-and-implementation-boundary). The game remains unnamed and not GPL-licensed.
+
 | Document | Purpose |
 | --- | --- |
-| [Next session](NEXT_SESSION.md) | M2d monthly economy and amenity assignment |
+| [Next session](NEXT_SESSION.md) | Micropolis study next; unchanged M2d assignment queued afterward |
 | [Decisions](docs/DECISIONS.md) | Requirements and exact adopted rules |
 | [Toolchain](docs/TOOLCHAIN.md) | Setup, verification, export, packaging |
 | [Technical plan](docs/TECHNICAL_PLAN.md) | Architecture and future systems |
@@ -79,4 +81,4 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 | [IP and assets](docs/IP_AND_ASSETS.md) | Provenance and rights boundaries |
 | [Asset ledger](licenses/ASSETS.md) | Original placeholders and notices |
 
-**M2d remains unimplemented and the full M2 gate is open.** The M2c work branch is `codex/m2c-growth`; the default branch is `codex/m2a-road-access` (its name predates M2b/M2c). The owner authorised committing, pushing, and merging this source checkpoint. No final title, source licence, price, release date, public release, or additional supported platform has been selected.
+**M2d remains unimplemented and the full M2 gate is open.** M2c commit `826ecc3`, built on `codex/m2c-growth`, is pushed and merged into default branch `codex/m2a-road-access` (its name predates M2b/M2c). U10 changes the next-session order and research boundary only. No final title, source licence, price, release date, public release, or additional supported platform has been selected.
