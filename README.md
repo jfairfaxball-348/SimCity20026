@@ -78,11 +78,11 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 
 ## Continue here
 
-**M2d is complete at the local checkpoint.** Review [Next session](NEXT_SESSION.md) before further work; the proposed next session scopes M3 rather than starting its full feature list. The completed source-study permission remains exhausted. Implementation sessions must never open reference source; their only reference-study inputs are the [qualitative notes](docs/research/MICROPOLIS_STUDY.md) and [Decisions](docs/DECISIONS.md). The game remains original, unnamed, and not GPL-licensed.
+**M2d is complete at the local checkpoint.** Review [Next session](NEXT_SESSION.md) before further work; M3a scoping is complete and the next session implements only the [specified single-project prototype](docs/M3A_SPEC.md). No M3 code is implemented yet. The completed source-study permission remains exhausted. Implementation sessions must never open reference source; their only reference-study inputs are the [qualitative notes](docs/research/MICROPOLIS_STUDY.md) and [Decisions](docs/DECISIONS.md). The game remains original, unnamed, and not GPL-licensed.
 
 | Document | Purpose |
 | --- | --- |
-| [Next session](NEXT_SESSION.md) | M2d checkpoint, M3 scoping, and study boundary |
+| [Next session](NEXT_SESSION.md) | M2d checkpoint, bounded M3a implementation, and study boundary |
 | [Decisions](docs/DECISIONS.md) | Requirements and exact adopted rules |
 | [Toolchain](docs/TOOLCHAIN.md) | Setup, verification, export, packaging |
 | [Technical plan](docs/TECHNICAL_PLAN.md) | Architecture and future systems |
@@ -91,4 +91,4 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 | [IP and assets](docs/IP_AND_ASSETS.md) | Provenance and rights boundaries |
 | [Asset ledger](licenses/ASSETS.md) | Original placeholders and notices |
 
-**M2 local functional gate met; M3 remains unimplemented.** Work is on `codex/m2d-economy`, based on `97b1f55`; source delivery uses a pushed work branch and fast-forward integration into default branch `codex/m2a-road-access`. Commit/push/merge/fast-forward is now the standing completion workflow. No public release, title, source licence, price, release date, or additional supported platform was selected.
+**M2 local functional gate met; M3 remains unimplemented.** M2d was delivered at `f2093cb`; the documentation-only M3a scope uses `codex/m3a-scope`. Source delivery uses a pushed work branch and fast-forward integration into default branch `codex/m2a-road-access`. Commit/push/merge/fast-forward is now the standing completion workflow. No public release, title, source licence, price, release date, or additional supported platform was selected.

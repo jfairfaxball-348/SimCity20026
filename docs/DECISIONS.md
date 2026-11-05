@@ -18,6 +18,7 @@ Recorded: 4 November 2026. Use this file to distinguish the user's requirements 
 | U10 | Authorise one next-session study of the open-source Micropolis code (EA's 2008 GPL v3 release of the original 1989 SimCity) to inform this project's own design. Studying is allowed; copying or translating its code, tables, constants, text, art, or sound is not. The game stays original, unnamed, and not GPL-licensed. | Owner decision, **5 November 2026**; prepare the handoff now, conduct the study next session |
 | U11 | Perform the U10 study, follow AGENTS.md, write notes/provenance, update the handoff, then commit, push, and merge into the default branch | Explicit study-session request, **5 November 2026** |
 | U12 | Run the bounded M2d session from NEXT_SESSION, then continue to completion | Owner request, **5 November 2026**; local implementation, testing, evidence and handoff |
+| U13 | Run the next-session M3 scoping assignment, ending with a concrete M3a handoff | Owner request, **5 November 2026**; planning only in this session, standing source-delivery instruction applies |
 
 U06 superseded the earlier planning-only scope for M0/M1. U07 and U08 authorised M2a and M2b. U09 authorises M2c and source integration. U12 authorises M2d local implementation. The follow-up owner instruction authorises source delivery now and in future sessions: commit, push, merge and fast-forward completed work. Public game release remains separate.
 
@@ -56,6 +57,12 @@ D01–D06, D08, and the M1 part of D10 were adopted for the foundation. Later pr
 | <a id="d25"></a>D25 | Thirty-day integer budget; serviced taxes, universal facility upkeep, explicit waiver at zero | Recoverable relaxed-play deficits with auditable income/expenses; exact rules below. |
 | <a id="d26"></a>D26 | One pocket park gives covered homes growth priority within existing demand/caps | A local choice with a tested contention effect; no extra simulation system. |
 | <a id="d27"></a>D27 | Schema 4 / m2d-1 with last-budget inputs and schema-3 migration | Preserve earlier development and original save bytes; no retroactive collection. |
+
+## D28 - proposed M3a project, not implemented
+
+The scoping assignment selects one optional **A welcoming square** prototype: an existing park with three distinct developed, road-served and powered home plots within its existing radius. Explicit completion records a one-time achievement and decorates that park with original flowers. Park priority already applies from placement; completion adds no mechanical reward. Clearing the park removes the decoration, not the historical completion. This bounds the initial project hypothesis without altering D17-D27.
+
+[The M3a specification](M3A_SPEC.md) defines the exact proposed command, presentation, schema-5 record/migration, asset provenance, acceptance checks and stop point. This is a planning decision, not implemented behavior or evidence of enjoyment. The current build remains 0.5.0-m2d/schema 4. A subsequent request to run the next session starts only this bounded implementation; the full M3 bundle and its human playtest gates remain outstanding.
 
 ## M2d economy and amenity rule (specified before implementation, 5 November 2026)
 
@@ -150,3 +157,5 @@ None of these unanswered commercial questions prevents local prototype implement
 - 2026-11-05, U10 study completed under U11: inspected the pinned maintained engine and requested licence documents; wrote qualitative system notes, D17-D24 comparisons, and exhaustive consulted-file provenance. No reference code executed or incorporated, no game files changed, and no recommendations adopted. Updated the handoff to the unchanged M2d assignment; the reference-source reading permission is exhausted. Documentation delivery is authorised through commit, push, and default-branch integration.
 
 - 2026-11-05, U12 M2d: specified D25–D27 before model code, implemented monthly budgets, deficit recovery, park priority, schema 4 and preserved schema-3 originals. Passed 361 source / 324 packed checks and native Windows accounting/park/deficit/restart checks; restored user saves. Local M2 functional gate met, not a human enjoyment or performance-target pass. See [M2d evidence](sessions/2026-11-05-m2d.md). Follow-up owner instruction authorises delivery from `codex/m2d-economy` to the default branch by push and fast-forward integration, and makes this the standing completion workflow. No public release.
+
+- 2026-11-05, U13 M3 scoping: reviewed the delivered M2d checkpoint and product gates; specified proposed D28 and a bounded M3a implementation handoff. Documentation only; no game code, assets, saves or binaries changed, and no new runtime/playtest claim. See [scoping record](sessions/2026-11-05-m3a-scope.md).

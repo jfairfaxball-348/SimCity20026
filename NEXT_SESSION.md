@@ -1,6 +1,6 @@
-# Next session: scope the M3 playable slice
+# Next session: implement the bounded M3a project prototype
 
-Updated **5 November 2026** after M2d. **M0/M1 through M2d are implemented and locally tested. The local M2 functional gate is met. M3 is unimplemented.** This is a development checkpoint, not a public release or evidence of human enjoyment.
+Updated **5 November 2026** after M3a scoping. **M0/M1 through M2d are implemented and locally tested. The local M2 functional gate is met. M3 is unimplemented.** This is a development checkpoint, not a public release or evidence of human enjoyment.
 
 ## Start here
 
@@ -43,11 +43,15 @@ Packed driver uses the pinned **editor runtime with release PCK**; release EXE d
 
 ## Next assignment and stop point
 
-In a new conversation opened in this repository, **“Run next session” starts this assignment**: scope one small M3 sub-slice before implementation. It does not start the full M3 implementation bundle.
+The M3 scoping session is complete; see [M3a specification](docs/M3A_SPEC.md) and [scoping record](docs/sessions/2026-11-05-m3a-scope.md). **No M3 game code has been implemented.**
 
-1. Review this M2 checkpoint, current local diff, and the M3/product-brief gates. Keep source delivery separate from any public binary release.
-2. Propose one bounded neighbourhood-project prototype and its observable player benefit, or identify a concrete M2 usability issue that should precede it. Record rules, acceptance tests, save implications, original asset provenance, and a narrow stop point.
-3. End with a concrete M3a handoff. The full M3 bundle (project, onboarding, art/audio, controller, autosaves, observed playtests) is not implicitly authorised by this planning assignment.
+In a subsequent conversation, **“Run next session” authorises implementation of only the M3a specification**: one optional “A welcoming square” project using an existing park and three developed, serviced home plots in its radius. Explicit completion gives an original cosmetic flower decoration; it adds no economic or growth reward. The specification defines exact commands, demolition/repeat behavior, UI, schema-5 migration and acceptance checks. Read it before editing.
+
+1. Reconcile live Git state and create a scoped `codex/` branch; preserve unrelated work. Baseline M2d was delivered at `f2093cb60dbebe3dc7e12fc836ffa5ca749b1c34`. Use live refs for the subsequent planning commit.
+2. Implement the specified model/command and strict save migration first, then minimal project dialog, binding and original decoration. Adopt the proposed D28 rules when implementing; record deviations before coding and keep scope bounded.
+3. Preserve all five historical fixtures. Run source/packed checks with the pinned toolchain and exercise the actual Windows EXE as specified. Protect/restore real saves, close test processes, record evidence and package the tested export.
+4. Update README, Decisions, asset ledger, relevant plans and next handoff. Commit, push, integrate into the live default branch with a fast-forward where possible, and verify local/remote agreement under the standing instruction.
+5. Stop after this single verified project. M3's broader onboarding, final art/audio, controller route, autosaves and observed playtests remain future work. No public binary release.
 
 Do not add traffic, crime, pollution, disasters, land markets, citizen agents, extra amenities, or tax policy controls by analogy. M2d's values and park benefit are provisional and have not been tested for enjoyment; changing them requires a decision and meaningful regression tests.
 
