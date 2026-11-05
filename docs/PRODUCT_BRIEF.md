@@ -2,7 +2,7 @@
 
 Status: proposed design, 4 November 2026. User-confirmed priorities are recorded in [Decisions](DECISIONS.md).
 
-Implementation checkpoint: M0/M1 provides map editing, clock controls, and saves; M2a adds road access and home-zone explanations; M2b adds power stations, power networks, and shortage explanations. Growth, economy, projects, final art/audio, and the experience described below remain future work; see [README](../README.md) for current capabilities.
+Implementation checkpoint: M0/M1 provides map editing, clock controls, and saves; M2a adds road access and home-zone explanations; M2b adds power stations, power networks, and shortage explanations. M2c adds homes/shops/workshops, aggregate residents/jobs/demand, growth, and service-loss recovery. Monthly economy, projects, final art/audio, and the complete experience below remain future work; see [README](../README.md) for current capabilities.
 
 ## The experience
 

@@ -4,6 +4,7 @@ extends SceneTree
 const Store = preload("res://scripts/persistence/save_store.gd")
 const City = preload("res://scripts/sim/city_state.gd")
 const FileOps = preload("res://scripts/persistence/file_ops.gd")
+const Clock = preload("res://scripts/sim/simulation_clock.gd")
 var main: Control
 var checks: int = 0
 var failures: Array[String] = []
@@ -78,8 +79,8 @@ func screen_tile(cell: Vector2i) -> Rect2:
 	var rect: Rect2 = main.world.tile_rect(cell)
 	return Rect2(main.world_rect.position + rect.position * main.world_scale, rect.size * main.world_scale)
 
-const LONGEST_ACCESS: String = "No road beside this plot. Add a road along a shared side, then connect it to the outside link."
-const LONGEST_POWER: String = "No power: its network is full (20 of 20 units). Add a station; nearest plots are served first."
+const LONGEST_ACCESS: String = "No road beside this plot. Add one and join it to the outside link."
+const LONGEST_POWER: String = "No power: network full (20/20). Add a station; nearest plots get power first."
 const REJECTIONS: Array[String] = ["Not enough funds for the whole stroke.", "Clear the existing road, zone, or station first.", "Keep the outside-link flag free for its road."]
 
 func run() -> void:
@@ -108,6 +109,8 @@ func run() -> void:
 			var link: Rect2 = screen_tile(main.city.access.root)
 			check(main._is_world_position(link.get_center()) and not main.inspector.get_global_rect().intersects(link) and not main.side.get_global_rect().intersects(link), "centred outside link uncovered by panels %s text %d" % [resolution,amount])
 			main.grid_label.text = "Power 100 / 120\n10 plots short"
+			main.population_label.text = "Residents 131072 · Jobs 131072"
+			main.demand_label.text = "Demand  H 32768 · S 8192 · W 8192"
 			for message in REJECTIONS:
 				main.preview_label.text = message
 				await frames()
@@ -124,9 +127,15 @@ func run() -> void:
 				# Exercise the longest home reasons in every layout, without placing a city.
 				main.access_label.text = LONGEST_ACCESS
 				main.power_label.text = LONGEST_POWER
+				main.selection_label.text = "TILE 127, 127 · Workshop L2 · 8 jobs"
+				main.scope_label.text = "Demand 32768 · next check day 1000000001\nLoses a level in 2 check(s) unless services return."
 				await frames()
 				check(main.scope_label.get_global_rect().end.y <= main.inspector.get_global_rect().end.y and main.inspector.get_global_rect().end.y < main.bottom.position.y, "inspector text fits %s text %d cell %s" % [resolution,amount,cell])
 				check(main.power_label.get_global_rect().end.y <= main.legend_label.get_global_rect().position.y and main.inspector.size.y <= 320.5, "power reason does not overlap marks legend %s text %d cell %s" % [resolution,amount,cell])
+			main._open_help()
+			await frames()
+			check(main.help_dialog.size.y <= resolution.y and main.help_dialog.get_ok_button().get_global_rect().end.y <= resolution.y, "growth help and OK fit %s text %d" % [resolution,amount])
+			main.help_dialog.hide()
 		main._set_text_size(16)
 		main._center_camera()
 		var point: Vector2 = screen_cell(Vector2i(42,28))
@@ -200,12 +209,12 @@ func run() -> void:
 	await key(KEY_2)
 	await click(screen_cell(Vector2i(59,31)))
 	main._inspect_cell(Vector2i(59,31))
-	check("No road beside" in main.access_label.text and "Growth not implemented" in main.scope_label.text, "empty zone explains missing road and absent growth")
+	check("No road beside" in main.access_label.text and "Waiting for road access and power" in main.scope_label.text, "empty zone explains missing road and waiting growth")
 	check("No power station yet" in main.power_label.text and main.grid_label.text.begins_with("Power 0 / 0"), "empty zone explains the missing power source")
 	await key(KEY_1)
 	await drag_cells(Vector2i(59,32),Vector2i(61,32))
 	main._inspect_cell(Vector2i(59,31))
-	check("must connect to the outside link" in main.access_label.text and main.city.access.served_homes.count(1) == 0, "isolated district explanation in shipped UI")
+	check("Join this street to the outside link" in main.access_label.text and main.city.access.served_homes.count(1) == 0, "isolated district explanation in shipped UI")
 	await drag_cells(Vector2i(61,32),Vector2i(63,32))
 	main._inspect_cell(Vector2i(59,31))
 	check("Road access connected" in main.access_label.text and main.city.access.served_homes.count(1) == 1, "connecting root immediately updates home access")
@@ -239,9 +248,9 @@ func run() -> void:
 	await drag_cells(Vector2i(40,33),Vector2i(50,33))
 	check(main.city.power.powered_homes == 20 and main.city.power.short_homes == 11 and "11 plots short" in main.grid_label.text, "eleven-plot shortage shown in the toolbar")
 	main._inspect_cell(Vector2i(59,31))
-	check("network is full" in main.power_label.text and "20 of 20" in main.power_label.text and "Road access connected" in main.access_label.text, "farthest plot explains the capacity shortage")
+	check("network full" in main.power_label.text and "20/20" in main.power_label.text and "Road access connected" in main.access_label.text, "farthest plot explains the capacity shortage")
 	main._inspect_cell(Vector2i(50,33))
-	check("network is full" in main.power_label.text, "equal-distance tie beyond capacity is short")
+	check("network full" in main.power_label.text, "equal-distance tie beyond capacity is short")
 	main._inspect_cell(Vector2i(49,33))
 	check("Powered" in main.power_label.text and "11 plots short" in main.power_label.text, "nearer plot keeps power and reports the network shortage")
 	await key(KEY_3)
@@ -303,7 +312,8 @@ func run() -> void:
 	check(FileAccess.get_file_as_string(isolated.test_path) == legacy, "UI load leaves the earlier save file unchanged")
 	await key(KEY_S,true)
 	var preserved: String = isolated.test_path.get_base_dir().path_join("manual.schema1.json")
-	check(FileAccess.get_file_as_string(preserved) == legacy and int(isolated.load_city(main.SAVE_PATH).get("schema", 0)) == 2, "UI save writes schema 2 and preserves the original bytes")
+	check(FileAccess.get_file_as_string(preserved) == legacy and int(isolated.load_city(main.SAVE_PATH).get("schema", 0)) == 3, "UI save writes schema 3 and preserves the original bytes")
+	await growth_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -311,3 +321,76 @@ func run() -> void:
 	main.queue_free()
 	await frames()
 	quit(0 if failures.is_empty() else 1)
+
+func growth_days(count: int) -> void:
+	for day in range(count): Clock.advance(main.city, 1_000_000, 1)
+	main._refresh_metrics()
+	main.world.queue_redraw()
+	await frames()
+
+func growth_flow(isolated: IsolatedStore) -> void:
+	main.queue_free()
+	await frames()
+	main = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	main.store = isolated
+	main.set_process(false)
+	await frames()
+	await key(KEY_1)
+	await drag_cells(Vector2i(42, 31), Vector2i(63, 31))
+	await click(screen_cell(Vector2i(63, 32)))
+	await key(KEY_P)
+	await click(screen_cell(Vector2i(41, 31)))
+	await key(KEY_2)
+	await drag_cells(Vector2i(42, 30), Vector2i(47, 30))
+	await key(KEY_6)
+	check(main.tool == "shop", "6 selects shipped shop tool")
+	await drag_cells(Vector2i(42, 32), Vector2i(44, 32))
+	await key(KEY_7)
+	check(main.tool == "workshop", "7 selects shipped workshop tool")
+	await drag_cells(Vector2i(45, 32), Vector2i(47, 32))
+	check(main.city.growth.population == 0 and main.city.power.total_used == 12, "pointer-built empty mixed town receives service")
+	await growth_days(5)
+	main._inspect_cell(Vector2i(42, 30))
+	check(main.city.growth.population == 12 and main.city.growth.jobs == 0 and "L1" in main.selection_label.text and "Demand met" in main.scope_label.text, "pack bootstrap updates residents, building level, and demand explanation")
+	await growth_days(35)
+	check(main.city.growth.population == 48 and main.city.growth.jobs == 18 and "Residents 48" in main.population_label.text and "H 0" in main.demand_label.text, "shipped growth reaches equilibrium with matching HUD")
+	await key(KEY_S, true)
+	var saved: String = main.city.canonical()
+	main.queue_free()
+	await frames()
+	main = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	main.store = isolated
+	main.set_process(false)
+	await frames()
+	await key(KEY_L, true)
+	check(main.city.canonical() == saved and main.speed == 0 and main.city.growth.population == 48, "new scene load restores developed mixed town paused")
+	await key(KEY_2)
+	await drag_cells(Vector2i(48, 30), Vector2i(60, 30))
+	main._inspect_cell(Vector2i(60, 30))
+	check(main.city.power.short_homes == 5 and "network full" in main.power_label.text and "Waiting for road access and power" in main.scope_label.text, "new zone shortage has separate growth and capacity explanation")
+	await growth_days(10)
+	check(main.city.development[main.city.index(Vector2i(60, 30))] == 0, "short plot stays empty through growth rounds")
+	await key(KEY_3)
+	await click(screen_cell(Vector2i(48, 31)))
+	await growth_days(5)
+	main._inspect_cell(Vector2i(42, 30))
+	check("Loses a level in 1" in main.scope_label.text and "No road access" in main.access_label.text, "disconnection explains remaining decline grace")
+	await growth_days(5)
+	check(main.city.growth.population == 24, "disconnected developed district declines in packed game")
+	await key(KEY_1)
+	await click(screen_cell(Vector2i(48, 31)))
+	await key(KEY_P)
+	await click(screen_cell(Vector2i(63, 30)))
+	await growth_days(30)
+	check(main.city.growth.population == 48 and main.city.power.short_homes == 0, "reconnect and second station restore growth and supply")
+	# Schema-2 migration through shipped scene/storage, with source bytes retained.
+	var path: String = (get_script() as Script).resource_path.get_base_dir().path_join("fixtures/m2b-schema2.json")
+	var legacy: String = FileAccess.get_file_as_string(path)
+	FileOps.new().write_text(isolated.test_path, legacy)
+	main.dirty = false
+	await key(KEY_L, true)
+	check("Earlier save format 2" in main.status_label.text and main.city.growth.population == 0 and FileAccess.get_file_as_string(isolated.test_path) == legacy, "UI schema-2 load explains migration and leaves original unchanged")
+	await key(KEY_S, true)
+	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 2)) == legacy and isolated.load_city(main.SAVE_PATH).schema == 3, "UI schema-3 save preserves schema-2 original")

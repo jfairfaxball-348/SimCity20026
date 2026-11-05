@@ -1,13 +1,13 @@
 # Toolchain and local commands
 
-Verified on **4 November 2026**. This document describes executed local tooling; the broader platform comparison remains in [Platform decision](PLATFORM_DECISION.md).
+Verified through **5 November 2026**. This document describes executed local tooling; the broader platform comparison remains in [Platform decision](PLATFORM_DECISION.md).
 
 ## Exact pin and provenance
 
 - Godot **4.7.2 Standard**, Windows x64, output `4.7.2.stable.official.ed1daf0bf`.
 - Matching **4.7.2.stable** Windows export templates; GDScript and Compatibility rendering.
 - Machine used: Windows 11 Home x64 10.0.26300, Intel i7-11800H, 15.7 GiB visible RAM, Intel UHD + NVIDIA RTX 3050 Ti Laptop GPU. This lists installed hardware, not a measured minimum specification or proof of which GPU served every run.
-- M0/M1 and M2a commands were exercised with PowerShell **7.6.5**. M2b commands were exercised with **Windows PowerShell 5.1.26100.9818** (PowerShell 7 was not installed in that session). The helpers now capture native stderr as text under a local `Continue`, write UTF-8 logs, and write a BOM-free `BUILD.json`. They have not been re-run under PowerShell 7 since. No other shell/runtime combination is claimed tested.
+- M0/M1 and M2a commands were exercised with PowerShell **7.6.5**. M2b commands were exercised with **Windows PowerShell 5.1.26100.9818** (PowerShell 7 was not installed in that session). The helpers now capture native stderr as text under a local `Continue`, write UTF-8 logs, and write a BOM-free `BUILD.json`. M2c reran Test/Export/Verify/Package under PowerShell **7.6.5**; the 5.1-safe helpers passed. No other shell/runtime combination is claimed tested.
 - No third-party GDScript framework, .NET SDK, backend, Steam SDK, or package manager is required.
 
 [Official build release](https://github.com/godotengine/godot-builds/releases/tag/4.7.2-stable), [official SHA512 manifest](https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/SHA512-SUMS.txt). Both downloaded archives matched their pinned hashes before extraction/execution. The machine-readable pin is [tools/toolchain.json](../tools/toolchain.json).
@@ -44,7 +44,7 @@ Run from the repo root:
 - **Run:** launches the game through the pinned editor runtime.
 - **Export:** imports and makes an unsigned x64 Windows release EXE/PCK, adds notices/README, writes `BUILD.json` with SHA256 file hashes and the game version/save schema read from `project.godot` and `city_state.gd`.
 - **Verify:** Test + Export, input/layout/save checks against the exported PCK, then headless startup of the actual release EXE. It does not replace native UI checks.
-- **Package:** validates the existing export against its manifest and an explicit file allowlist, then creates `builds/citybuilder-<game version>-windows-x64.zip` (currently `0.3.0-m2b`) and a SHA256 sidecar. It does not rebuild or upload the game. Exercise the export before packaging.
+- **Package:** validates the existing export against its manifest and an explicit file allowlist, then creates `builds/citybuilder-<game version>-windows-x64.zip` (currently `0.4.0-m2c`) and a SHA256 sidecar. It does not rebuild or upload the game. Exercise the export before packaging.
 
 Setup and project scripts stop on failures. Do not bypass checksum/version errors by using another editor silently. Local archives/tools, `.godot` caches, builds/logs, and export credentials are ignored. Keep Godot `.uid` source sidecars in Git.
 
@@ -72,8 +72,8 @@ Keep EXE/PCK together. The console wrapper is optional for play but included for
 
 Notices were copied unmodified from the pinned source tag: [MIT licence](https://github.com/godotengine/godot/blob/4.7.2-stable/LICENSE.txt), [third-party/font notices](https://github.com/godotengine/godot/blob/4.7.2-stable/COPYRIGHT.txt). No blanket licence for the original game has been selected.
 
-The M2b game version is `0.3.0-m2b`; its save format is schema 2, simulation/content `m2b-1`. Schema-1 (M1/M2a) saves migrate in memory by changing only version fields. Before a schema-1 primary or backup is replaced, its bytes are preserved once as `manual.schema1.json`. The M1, M2a, and M2b fixtures are hash-checked by the source runner. No general cross-version migration beyond schema 1 → 2, and no cross-platform replay promise, exists. Check fixtures before changing these contracts. Byte-identical rebuilds are not asserted.
+The M2c game version is `0.4.0-m2c`; its save format is schema 3, simulation/content `m2c-1`. Schemas 1 and 2 migrate with new zero-filled development/service-loss arrays and all earlier authoritative fields intact. Before an older primary or backup is replaced, its bytes are preserved once as `manual.schema1.json` or `manual.schema2.json`. All four fixtures are hash-checked; the schema-3 fixture includes pending decline. No cross-platform replay or general migration beyond these versions is promised. Byte-identical rebuilds are not asserted.
 
-M2b verification passes 233 source checks and 252 exported-PCK checks. These include power capacity/allocation/migration tests, flag visibility, longest access and power reasons, three rejection messages at all four sizes and three text sizes, and a shipped-input supply/shortage/disconnection/recovery/reload flow. Native M2b evidence is in [the session record](sessions/2026-11-04-m2b.md). It drove the real EXE through window messages because desktop computer-use tools were unavailable. Headless pack checks still do not count as actual release-binary gameplay tests.
+M2c verification passes **298 source / 277 exported-PCK checks**, plus release-EXE startup. The suite covers bounded growth, bootstrap, grace/decline/recovery, strict migration, prior-state demand, replay, allocation, and four layout sizes at three text sizes. Native checks drove the exact release EXE with the computer-use skill's SendInput-backed desktop API and screenshots, including growth, shortage, save/restart/load, recovery, and largest text. See [M2c evidence](sessions/2026-11-05-m2c.md). Headless pack checks still do not count as release-binary gameplay tests. A native playtest must preserve and restore any pre-existing manual saves.
 
 CI is not configured or executed. Keep local verification reproducible; adopt a minimal pinned CI workflow when the initial source baseline and remote workflow are established. Store publication, signing, additional OS support, controller claims, and external distribution remain later tasks.

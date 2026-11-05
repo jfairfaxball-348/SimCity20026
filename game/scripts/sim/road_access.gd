@@ -24,7 +24,7 @@ func rebuild(city: RefCounted) -> void:
 			var neighbour: Vector2i = cell + direction
 			if not city.inside(neighbour): continue
 			var i: int = city.index(neighbour)
-			if city.occupancy[i] == city.HOME:
+			if city.is_zone(city.occupancy[i]):
 				served_homes[i] = 1
 			elif city.occupancy[i] == city.ROAD and connected_roads[i] == 0:
 				connected_roads[i] = 1
@@ -47,7 +47,7 @@ func _find_root(city: RefCounted) -> Vector2i:
 	return chosen
 
 func home_reason(city: RefCounted, cell: Vector2i) -> String:
-	if not city.inside(cell) or city.occupancy[city.index(cell)] != city.HOME:
+	if not city.inside(cell) or not city.is_zone(city.occupancy[city.index(cell)]):
 		return "not_home"
 	if root.x < 0: return "no_outside_link"
 	if cell == root: return "link_occupied"

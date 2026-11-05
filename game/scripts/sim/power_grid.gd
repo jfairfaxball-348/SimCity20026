@@ -112,7 +112,7 @@ func _allocate(city: RefCounted, count: int) -> void:
 	# Plots touching a sourced network are served by (nearest distance, plot index).
 	var order: Array[int] = []
 	for i in range(count):
-		if city.occupancy[i] != city.HOME: continue
+		if not city.is_zone(city.occupancy[i]): continue
 		var nearest: int = NONE
 		var touches: bool = false
 		for direction in DIRECTIONS:
@@ -164,7 +164,7 @@ func carries_power(i: int) -> bool:
 	return network_of[i] != NONE and network_stations[network_of[i]] > 0
 
 func home_reason(city: RefCounted, cell: Vector2i) -> String:
-	if not city.inside(cell) or city.occupancy[city.index(cell)] != city.HOME:
+	if not city.inside(cell) or not city.is_zone(city.occupancy[city.index(cell)]):
 		return "not_home"
 	match home_state[city.index(cell)]:
 		POWERED: return "powered"

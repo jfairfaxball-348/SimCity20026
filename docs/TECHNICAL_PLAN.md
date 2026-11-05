@@ -1,6 +1,6 @@
 # Technical plan
 
-Status, 4 November 2026: **M0/M1, M2a road access, and M2b power access implemented and locally tested**; growth, economy, projects, and later release work below remain proposals. See [Toolchain](TOOLCHAIN.md), [M2b evidence](sessions/2026-11-04-m2b.md), and [Decisions](DECISIONS.md) for the implemented contract and limitations.
+Status, 5 November 2026: **M0/M1 through M2c growth implemented and locally tested**; monthly economy, amenities, projects, and later release work remain proposals. See [Toolchain](TOOLCHAIN.md), [M2c evidence](sessions/2026-11-05-m2c.md), and [Decisions](DECISIONS.md) for the implemented contract and limitations.
 
 ## Repository shape
 
@@ -60,7 +60,7 @@ flowchart LR
 
 - Grid dimensions and bounds are explicit. Use integer cell coordinates and flat arrays indexed by `y * width + x` for terrain, land use, and relevant values. Start at 64x64, with 128x128 the release planning ceiling.
 - Terrain and occupancy are distinct. A road cannot coexist with a zone/building on the same cell unless a future rule explicitly permits it. Start with single-cell logical lots and facilities; larger footprints require their own validation tests before adoption.
-- Give buildings/content stable semantic IDs independent of scene paths and sprite-atlas coordinates. Store population, jobs, treasury, clock, content/schema versions, and deterministic random state explicitly.
+- Give buildings/content stable semantic IDs independent of scene paths and sprite-atlas coordinates. Persist development levels, service-loss counters, treasury, clock, content/schema versions, and deterministic random state. Population, jobs, demand, and network allocation are derived.
 - Money uses bounded integer smallest units. Growth decisions use integer/fixed-point values where practical; visual animation can use floats.
 - Commands include place road, zone, place facility, demolish, and change policy. Sort/deduplicate cells in a stroke. Validate terrain, bounds, conflicts, and total affordability before applying anything. A rejected stroke changes neither funds nor the map.
 - Repainting an identical land use is a no-op and costs nothing. Demolition never removes underlying terrain. Clear/removal and refund rules must be explicit; M1 may use no demolition refund.
@@ -81,7 +81,7 @@ Proposed order for each tick:
 5. Recalculate city totals and, at the month boundary, income/upkeep.
 6. Evaluate project progress and emit changes/diagnostic reasons for presentation.
 
-The six-system order is for M2 and later. M1 only advances the tick and fractional microseconds; commands apply synchronously at input boundaries and record tick/sequence. It processes at most eight ticks/frame and retains a maximum of one simulated hour of backlog. Time beyond that explicit extreme-stall cap is discarded. Tests cover 90-second frame partitioning, draining retained backlog, and overflow safety. Focus loss and dialogs suspend active time.
+The six-system order remains a later proposal. M2c increments each day separately and runs aggregate growth on multiples of five; commands apply synchronously at input boundaries and record tick/sequence. It processes at most eight ticks/frame and retains a maximum of one simulated hour of backlog. Time beyond that explicit extreme-stall cap is discarded. Tests cover 90-second frame partitioning, draining retained backlog, and overflow safety. Focus loss and dialogs suspend active time.
 
 Document boundary cases before coding each system. Avoid reading partially updated neighbours during a growth sweep. Iterate in a stable order, use an explicit seeded generator, and separate cosmetic randomness from simulation randomness. Replays are guaranteed only for a specified simulation/content/engine version unless cross-version compatibility is deliberately implemented and tested.
 
@@ -89,23 +89,21 @@ Document boundary cases before coding each system. Avoid reading partially updat
 
 **Implemented in M2a:** `sim/road_access.gd` derives one outside root from immutable terrain: east-edge midpoint on seeded maps, nearest boundary land with row-major tie-break on other valid saves. No boundary land means no link, with an explicit explanation. A road must occupy the root; orthogonal flood fill marks reachable roads and their side-adjacent home plots. Homes do not relay service. Other boundary roads are not roots.
 
-`City.rebuild_access()` runs at initialization, validated load, and after every successful occupancy-changing command (including home edits). Full bounded recomputation updates both arrays synchronously, so neither UI nor a subsequent command can see stale access. Rejected/no-op commands and previews do not rebuild or alter it; ticks do not touch topology. The iterative queue has fixed neighbour order and no RNG/scene dependency. Terrain fixture edits must explicitly rebuild. Reachability is derived and absent from snapshots.
+`City.rebuild_derived()` runs at initialization, validated load, and after every successful occupancy-changing command (including home edits). Full bounded recomputation updates both arrays synchronously, so neither UI nor a subsequent command can see stale access. Rejected/no-op commands and previews do not rebuild or alter it; ticks do not touch topology. The iterative queue has fixed neighbour order and no RNG/scene dependency. Terrain fixture edits must explicitly rebuild. Reachability is derived and absent from snapshots.
 
-The renderer shows an original gold flag inside the root tile and optional plus/minus access marks. A separate inspector explains each home state and states that growth is not implemented (M2a also said power; M2b implemented it). Home returns the camera to the link; R toggles marks. Text widths are established before first layout to avoid native autowrap inflation. Small loaded maps are centered rather than clamped with inverted bounds.
+The renderer shows an original gold flag inside the root tile and optional plus/minus access marks. A separate inspector explains each home state and reports development, demand, next growth check, and service-loss grace in M2c. Home returns the camera to the link; R toggles marks. Text widths are established before first layout to avoid native autowrap inflation. Small loaded maps are centered rather than clamped with inverted bounds.
 
-**Implemented in M2b:** `sim/power_grid.gd` labels power networks: road and power-station tiles joined by shared sides, in row-major order with iterative flood fills. Stations relay power but not road access, and power does not need the outside link. Each station adds 20 units; each home plot requests 1.
+**Implemented in M2b:** `sim/power_grid.gd` labels power networks: road and power-station tiles joined by shared sides, in row-major order with iterative flood fills. Stations relay power but not road access, and power does not need the outside link. Each station adds 20 units; every home/shop/workshop plot requests 1, regardless of development.
 
 A multi-source search gives every network tile its distance from the nearest station. Plots touching a sourced network are served nearest-first by (distance, row-major index). Each takes a unit from the touching network with room that has the smallest (distance, network order); the rest are short of capacity. Reasons distinguish powered, shortage, disconnected, no road/station beside the plot, and no station built.
 
-`City.rebuild_derived()` rebuilds access then power at initialization, validated load, and after every successful occupancy-changing command. Nothing is serialized, ticks never touch it, and no RNG is used. A headless 128×128 striped rebuild took about 71–78 ms locally, which is acceptable per command but not per frame.
+`City.rebuild_derived()` rebuilds access, power, then growth totals/eligibility at initialization, validated load, and after every successful occupancy-changing command. Network allocation is never serialized or changed by ticks. Growth rounds refresh only their totals/eligibility; no RNG is consumed. A headless 128×128 striped rebuild took about 71–78 ms locally, which is acceptable per command but not per frame.
 
-The renderer adds an original station glyph and bolt/× marks (E). The inspector keeps road access and power on separate lines within a fixed 320 px panel. There is no allocation memory, so a newly zoned nearer plot can displace a farther one; M2c must decide whether grown buildings need stable allocation (persistent state).
+The renderer adds an original station glyph and bolt/× marks (E). The inspector keeps road access and power on separate lines within a fixed 320 px panel. There is no allocation memory, so a newly zoned nearer plot can displace a farther one; D23 deliberately retains this policy for grown buildings, with gradual decline after lost service.
 
-Homes supply population, workshops supply jobs, and shops meet local demand. Growth requires access, sufficient power, and demand; amenities encourage it and workshop nuisance can discourage nearby homes. Use aggregate counts. An explicit small bootstrap demand must let an empty town start growing without a circular “no residents until jobs/no jobs until residents” deadlock.
+**Implemented in M2c:** `sim/growth.gd` derives population, jobs, demand, and a next-round plan from the completed city. Home/shop/workshop levels 0-2 are persistent. Each home level holds 4 residents; shop/workshop levels provide 2/4 jobs. Starter demand allows three home levels before jobs exist. Home target = min(2 x cells, 3 + floor(jobs/2)); both business targets = ceil(population/16). Demand is the positive remaining level count. Every fifth tick reserves up to eight additions per type, in row-major order, only for powered/access-served plots below level 2. It applies all changes together. Missing services lose one level on every second growth check; restoring both resets the saved loss counter immediately. Demand satisfaction alone never causes decline. Counts describe standing development until decline, not individual employment. See D22-D24 for exact bounds and save validation.
 
-Economic equations and tuning values are original project design work for M2. Put them in content/balance data with units, bounds, and explanations. Do not copy a classic game's constants or formula tables. Test a viable opening, a disconnected district, a power shortage, a high-cost overbuild, and a recoverable deficit. The default mode needs a clearly explained recovery route; the exact aid policy is an M2 balancing decision.
-
-M2b still stops before these economic and growth systems. The clock remains tick-only; growth will need the system order above (access and power before growth).
+Monthly income/upkeep, amenities, nuisance, and projects remain unimplemented. Specify their equations and order before M2d; preserve the growth checkpoint's accounting and continuation tests. No cash or RNG changes on M2c ticks.
 
 ## Presentation and controls
 
@@ -129,9 +127,9 @@ Write to a temporary file in the same directory, close and validate it, retain t
 
 Save schema versioning is separate from game versioning. During prototypes, document any intentional incompatibility. Before a public demo, establish fixture-based migration tests for every supported schema, preserve an original copy during migration, and set a stated compatibility policy.
 
-M2a game version `0.2.0-m2a` retained schema 1 and simulation/content `m1-1`. M2b (`0.3.0-m2b`) adds occupancy ID 3 and therefore moves to **schema 2, simulation/content `m2b-1`** (D20). Schema-1 saves are validated and migrated in memory by changing only the version fields; loading never writes.
+M2c game version `0.4.0-m2c` uses **schema 3, simulation/content `m2c-1`**. Occupancy IDs 0-3 retain their meanings; 4/5 are shop/workshop. New `development` and `service_loss` arrays are length-checked and constrained to 0-2 / 0-1; non-zones and empty development cannot carry loss. A serviced plot with a loss counter is rejected. Schemas 1 (`m1-1`) and 2 (`m2b-1`) validate under their own versions/IDs, then gain two zero arrays with all old authoritative values preserved. Loading never writes.
 
-Before a save replaces a schema-1 primary or rotates over a schema-1 backup, the exact bytes are preserved once as `manual.schema1.json`. Newer or inconsistent saves are refused unchanged. Fixtures `m1-schema1.json` and `m2a-schema1.json` (written by unchanged earlier code) and `m2b-schema2.json` are hash-checked, and their migration/round trips are asserted. Future building/growth state needs a new version, a schema-2 migration, and its own preserved sample.
+Before an older primary or backup is replaced, the exact bytes are preserved once as `manual.schema1.json` or `manual.schema2.json`. Failed preservation prevents replacement. All four historical/current fixtures are hash-checked; the M2c sample continues through pending decline. Future persistent rules need a new version and migration decision.
 
 ## Verification and performance
 

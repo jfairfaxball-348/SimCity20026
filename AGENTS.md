@@ -4,8 +4,8 @@ This is an original relaxed city-builder project. Start with `README.md`, `NEXT_
 
 ## Scope and status
 
-- The initial 4 November 2026 session was research only. The user subsequently authorised M0/M1, M2a, and M2b implementation; all are now implemented and locally tested. See the dated evidence records. Do not present M2c or later proposals as implemented.
-- When asked to continue, use the current assignment in `NEXT_SESSION.md` unless the user gives a different scope. The next small checkpoint is M2c growth. The earlier planning-only restriction does not prohibit later implementation.
+- The initial 4 November 2026 session was research only. The user subsequently authorised M0/M1, M2a, M2b, and M2c implementation; all are now implemented and locally tested. See the dated evidence records. Do not present M2d or later proposals as implemented.
+- When asked to continue, use the current assignment in `NEXT_SESSION.md` unless the user gives a different scope. The next small checkpoint is M2d monthly economy and amenity. The earlier planning-only restriction does not prohibit later implementation.
 - Desktop players and relaxed building/pixel art/approachable controls are confirmed. Engine and M1 layout defaults have been adopted; later simulation and commercial plans remain documented defaults or open decisions.
 - Inspect the current repo and Git state before editing; preserve unrelated work. Use `codex/` for new agent branches by default.
 

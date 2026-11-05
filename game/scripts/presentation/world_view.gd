@@ -81,13 +81,8 @@ func _draw_cell(cell: Vector2i) -> void:
 			_draw_road(cell, at, z)
 		City.POWER:
 			_draw_station(at, rect, z)
-		City.HOME:
-			draw_rect(rect.grow(-z), Color("577c62"))
-			draw_rect(rect.grow(-2 * z), Color("a3b389"), false, z)
-			# An unoccupied planning plot, intentionally not a grown house.
-			draw_rect(Rect2(at + Vector2(5, 5) * z, Vector2(6, 6) * z), Color("d4d3a8"), false, z)
-			for offset in [Vector2(2, 2), Vector2(12, 2), Vector2(2, 12), Vector2(12, 12)]:
-				draw_rect(Rect2(at + offset * z, Vector2(2, 2) * z), Color("e5dfbb"))
+		City.HOME, City.SHOP, City.WORKSHOP:
+			_draw_zone(i, at, rect, z)
 		_:
 			if variation < 13:
 				# Decorative shrubs, with no collision or simulation role.
@@ -99,7 +94,7 @@ func _draw_cell(cell: Vector2i) -> void:
 	if grid_visible:
 		draw_line(at, at + Vector2(16, 0) * z, Color(0.22, 0.33, 0.24, 0.13), z)
 		draw_line(at, at + Vector2(0, 16) * z, Color(0.22, 0.33, 0.24, 0.13), z)
-	if access_visible and city.occupancy[i] in [City.ROAD, City.HOME]:
+	if access_visible and (city.occupancy[i] == City.ROAD or City.is_zone(city.occupancy[i])):
 		var connected: bool = city.access.connected_roads[i] != 0 or city.access.served_homes[i] != 0
 		var mark: Vector2 = at + Vector2(11, 4) * z
 		draw_rect(Rect2(mark - Vector2(3, 3) * z, Vector2(7, 7) * z), Color("304842"))
@@ -113,8 +108,8 @@ func _draw_cell(cell: Vector2i) -> void:
 func _draw_power_mark(i: int, at: Vector2, z: float) -> void:
 	# Shape, not colour alone: a bolt means supplied, a cross means an unpowered plot.
 	var use: int = city.occupancy[i]
-	var powered: bool = city.power.home_state[i] == city.power.POWERED if use == City.HOME else city.power.carries_power(i)
-	if use not in [City.ROAD, City.HOME] or (use == City.ROAD and not powered):
+	var powered: bool = city.power.home_state[i] == city.power.POWERED if City.is_zone(use) else city.power.carries_power(i)
+	if (use != City.ROAD and not City.is_zone(use)) or (use == City.ROAD and not powered):
 		return
 	var mark: Vector2 = at + Vector2(4, 12) * z
 	draw_rect(Rect2(mark - Vector2(3, 3) * z, Vector2(7, 7) * z), Color("304842"))
@@ -124,6 +119,28 @@ func _draw_power_mark(i: int, at: Vector2, z: float) -> void:
 		var color := Color("f0be97")
 		draw_line(mark + Vector2(-2, -2) * z, mark + Vector2(2, 2) * z, color, z)
 		draw_line(mark + Vector2(-2, 2) * z, mark + Vector2(2, -2) * z, color, z)
+
+func _draw_zone(i: int, at: Vector2, rect: Rect2, z: float) -> void:
+	var kind: int = city.occupancy[i]
+	var level: int = city.development[i]
+	var color := Color("577c62") if kind == City.HOME else Color("557f94") if kind == City.SHOP else Color("9a7954")
+	draw_rect(rect.grow(-z), color)
+	draw_rect(rect.grow(-2 * z), Color("d4d3a8"), false, z)
+	# Empty zones have distinct symbols: roof, awning, sawtooth roof.
+	var roof_y: int = 6 if level < 2 else 3
+	if level > 0:
+		draw_rect(Rect2(at + Vector2(3, roof_y + 2) * z, Vector2(10, 11 - roof_y) * z), Color("e3d9b5"))
+		draw_rect(Rect2(at + Vector2(7, 10) * z, Vector2(2, 3) * z), Color("4b575a"))
+		if level == 2:
+			for x in [4, 10]: draw_rect(Rect2(at + Vector2(x, 7) * z, Vector2(2, 2) * z), Color("4b575a"))
+	var ink := Color("eeddb5") if level == 0 else Color("6e5552")
+	if kind == City.HOME:
+		draw_polyline(PackedVector2Array([at + Vector2(3, roof_y + 2) * z, at + Vector2(8, roof_y - 1) * z, at + Vector2(13, roof_y + 2) * z]), ink, z)
+	elif kind == City.SHOP:
+		draw_rect(Rect2(at + Vector2(3, roof_y) * z, Vector2(10, 2) * z), ink)
+		for x in [3, 7, 11]: draw_rect(Rect2(at + Vector2(x, roof_y + 2) * z, Vector2(2, 2) * z), ink)
+	else:
+		draw_polyline(PackedVector2Array([at + Vector2(3, roof_y + 2) * z, at + Vector2(7, roof_y - 1) * z, at + Vector2(7, roof_y + 2) * z, at + Vector2(12, roof_y - 1) * z, at + Vector2(12, roof_y + 2) * z]), ink, z)
 
 func _draw_bolt(center: Vector2, z: float, color: Color) -> void:
 	var points := PackedVector2Array([center + Vector2(1, -3) * z, center + Vector2(-1, 0) * z,

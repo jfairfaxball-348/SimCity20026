@@ -13,6 +13,7 @@ static func advance(city: City, elapsed_us: int, speed: int) -> int:
 	city.pending_us = mini(city.pending_us + accepted_us * speed, City.MAX_PENDING_US)
 	var steps: int = mini(city.pending_us / STEP_US, MAX_STEPS_PER_FRAME)
 	steps = mini(steps, City.MAX_TICK - city.tick)
-	city.tick += steps
+	for step in range(steps):
+		city.advance_day()
 	city.pending_us -= steps * STEP_US
 	return steps

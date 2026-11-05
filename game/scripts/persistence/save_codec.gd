@@ -15,14 +15,14 @@ static func decode(text: String) -> Dictionary:
 	var schema: int = int(data.schema_version)
 	if schema > City.SCHEMA:
 		return fail("This save was made by a newer version of the game (format %d). The file was not changed." % schema)
-	if schema != City.SCHEMA and schema != City.LEGACY_SCHEMA:
+	if schema not in [1, 2, City.SCHEMA]:
 		return fail("This save uses an unsupported format (%d). The file was not changed." % schema)
-	# Schema 1 (M1/M2a) is accepted only with its own version pair and IDs 0..2.
-	var version: String = City.SIMULATION if schema == City.SCHEMA else City.LEGACY_VERSION
-	var content: String = City.CONTENT if schema == City.SCHEMA else City.LEGACY_VERSION
+	# Each historical format has its own version pair and allowed occupancy IDs.
+	var version: String = {1: "m1-1", 2: "m2b-1", 3: City.SIMULATION}[schema]
+	var content: String = version
 	if data.get("simulation_version") != version or data.get("content_version") != content:
 		return fail("This save belongs to a different simulation/content version.")
-	var max_use: int = City.POWER if schema == City.SCHEMA else City.HOME
+	var max_use: int = {1: City.HOME, 2: City.POWER, 3: City.WORKSHOP}[schema]
 	if not integer(data.get("width"), 8, 128) or not integer(data.get("height"), 8, 128):
 		return fail("Invalid map dimensions.")
 	if not signed_integer_string(data.get("seed")) or not signed_integer_string(data.get("random_state")):
@@ -36,11 +36,24 @@ static func decode(text: String) -> Dictionary:
 		return fail("Missing map arrays.")
 	if data.terrain.size() != count or data.occupancy.size() != count:
 		return fail("Map array length does not match dimensions.")
+	if schema == City.SCHEMA:
+		for field in ["development", "service_loss"]:
+			if typeof(data.get(field)) != TYPE_ARRAY or data[field].size() != count:
+				return fail("Missing or invalid %s array." % field)
+	else:
+		# Older formats never stored development. Do not reinterpret hidden new state.
+		if data.has("development") or data.has("service_loss"):
+			return fail("Earlier-format save contains unsupported growth data.")
 	for i in range(count):
 		if not integer(data.terrain[i], City.LAND, City.WATER) or not integer(data.occupancy[i], City.EMPTY, max_use):
 			return fail("Unknown terrain or land-use identifier.")
 		if int(data.terrain[i]) == City.WATER and int(data.occupancy[i]) != City.EMPTY:
 			return fail("Save contains construction on water.")
+		if schema == City.SCHEMA:
+			if not integer(data.development[i], 0, Balance.MAX_LEVEL) or not integer(data.service_loss[i], 0, Balance.DECLINE_ROUNDS - 1):
+				return fail("Invalid development or service-loss value.")
+			if (not City.is_zone(int(data.occupancy[i])) and int(data.development[i]) != 0) or (int(data.development[i]) == 0 and int(data.service_loss[i]) != 0):
+				return fail("Development does not match its zone.")
 	var city: City = City.new()
 	city.width = int(data.width)
 	city.height = int(data.height)
@@ -49,12 +62,22 @@ static func decode(text: String) -> Dictionary:
 	city.rng.state = String(data.random_state).to_int()
 	city.terrain = PackedByteArray(data.terrain)
 	city.occupancy = PackedByteArray(data.occupancy)
+	city.development.resize(count)
+	city.development.fill(0)
+	city.service_loss.resize(count)
+	city.service_loss.fill(0)
+	if schema == City.SCHEMA:
+		city.development = PackedByteArray(data.development)
+		city.service_loss = PackedByteArray(data.service_loss)
 	city.cash = int(data.cash)
 	city.tick = int(data.tick)
 	city.pending_us = int(data.pending_us)
 	city.sequence = int(data.sequence)
-	# Migration from schema 1 changes only the version fields written by snapshot().
+	# Migration retains all earlier values and adds zero-filled growth arrays.
 	city.rebuild_derived()
+	for i in range(count):
+		if city.service_loss[i] != 0 and city.growth.serviced(city, i):
+			return fail("A serviced plot cannot retain a service-loss counter.")
 	return {"ok": true, "city": city, "message": "City restored.", "schema": schema,
 		"migrated_from": schema if schema != City.SCHEMA else 0}
 
