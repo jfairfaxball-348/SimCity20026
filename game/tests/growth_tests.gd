@@ -45,7 +45,8 @@ func run(tester: SceneTree) -> void:
 	t.check(city.growth.demand[City.HOME] == 0 and city.growth.demand[City.SHOP] == 0 and city.growth.demand[City.WORKSHOP] == 0, "equilibrium does not overconsume demand")
 	var levels: PackedByteArray = city.development.duplicate()
 	days(city, 100)
-	t.check(city.development == levels and city.cash == cash and city.sequence == sequence and city.rng.state == rng_state, "satisfied demand retains buildings; ticks never spend, issue commands, or consume RNG")
+	t.check(city.development == levels and city.cash > cash and city.sequence == sequence and city.rng.state == rng_state, "satisfied demand retains buildings; monthly income changes cash, but not commands or RNG")
+	cash = city.cash
 	before = city.canonical()
 	t.check(command(city, "home", [Vector2i(1, 3)]).ok and city.canonical() == before, "identical repaint preserves grown buildings for free")
 	t.check(not command(city, "shop", [Vector2i(1, 3), Vector2i(10, 3)]).ok and city.canonical() == before, "mixed conflicting zone stroke rejects atomically")
@@ -106,7 +107,7 @@ func test_fixture() -> void:
 	t.check(FileAccess.get_sha256(path) == "cbcd607b2f9996da22be16944b792f8617479118b1f4e567ab64604630af9dfc", "M2c fixture bytes preserved")
 	var text: String = FileAccess.get_file_as_string(path).strip_edges()
 	var decoded: Dictionary = Codec.decode(text)
-	t.check(decoded.ok and decoded.migrated_from == 0 and decoded.city.canonical() == text, "schema-3 fixture exact canonical round trip")
+	t.check(decoded.ok and decoded.migrated_from == 3 and decoded.city.canonical() == t.migrated_text(text), "schema-3 fixture migrates retaining every earlier value")
 	if not decoded.ok: return
 	var city: City = decoded.city
 	t.check(city.tick == 45 and city.pending_us == 400000 and city.growth.population == 48 and city.growth.jobs == 18 and city.service_loss.count(1) == 10, "schema-3 fixture retains recorded development and pending decline")
@@ -204,7 +205,7 @@ func test_migration_validation() -> void:
 	files.fault = "preserve_copy"
 	t.check(not store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(path) == legacy, "schema-2 preservation failure prevents replacing primary")
 	files.fault = ""
-	t.check(store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(Store.preserved_path(path, 2)) == legacy and store.load_city(path).schema == 3, "schema-2 primary preserved byte-for-byte before schema-3 save")
+	t.check(store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(Store.preserved_path(path, 2)) == legacy and store.load_city(path).schema == 4, "schema-2 primary preserved byte-for-byte before schema-3 save")
 	var recovery: String = base.path_join("growth_recovery_%d/manual.json" % Time.get_ticks_usec())
 	files.write_text(recovery, "{broken")
 	files.write_text(recovery + ".bak", legacy)

@@ -49,6 +49,9 @@ var preview_label: Label
 var status_label: Label
 var zoom_label: Label
 var settings: AcceptDialog
+var budget_dialog: AcceptDialog
+var budget_text: Label
+var budget_button: Button
 var help_dialog: AcceptDialog
 var load_dialog: ConfirmationDialog
 var quit_dialog: ConfirmationDialog
@@ -91,6 +94,7 @@ func _build_ui() -> void:
 	var row := HBoxContainer.new()
 	top.add_child(row)
 	var heading := VBoxContainer.new()
+	heading.add_theme_constant_override("separation", 0)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(heading)
 	population_label = _label("", 18)
@@ -100,7 +104,18 @@ func _build_ui() -> void:
 	demand_label.tooltip_text = "Demand is available level additions: H homes, S shops, W workshops. Growth is checked every five days."
 	cash_label = _label("", 21)
 	cash_label.custom_minimum_size.x = 178
-	row.add_child(cash_label)
+	var funds := VBoxContainer.new()
+	funds.add_theme_constant_override("separation", 4)
+	row.add_child(funds)
+	funds.add_child(cash_label)
+	budget_button = _button("Budget [B]", _open_budget)
+	budget_button.add_theme_font_size_override("font_size", 14)
+	for style_name in ["normal", "hover", "pressed", "focus"]:
+		var compact: StyleBox = theme.get_stylebox(style_name, "Button").duplicate()
+		compact.content_margin_top = 2
+		compact.content_margin_bottom = 2
+		budget_button.add_theme_stylebox_override(style_name, compact)
+	funds.add_child(budget_button)
 	day_label = _label("", 16)
 	day_label.custom_minimum_size.x = 145
 	row.add_child(day_label)
@@ -120,21 +135,27 @@ func _build_ui() -> void:
 	side.add_child(column)
 	column.add_child(_label("LAY OUT YOUR TOWN", 13, Style.MUTED))
 	var power_price: String = Balance.money(Balance.POWER_COST).trim_suffix(".00")
-	for entry in [["road", "1  Roads · $10"], ["home", "2  Homes · $25"], ["shop", "6  Shops · $25"], ["workshop", "7  Workshops · $25"], ["power", "P  Power station · " + power_price], ["clear", "3  Clear · free"]]:
+	for entry in [["road", "1  Roads · $10"], ["home", "2  Homes · $25"], ["shop", "6  Shops · $25"], ["workshop", "7  Workshops · $25"], ["power", "P  Power station · " + power_price], ["park", "8  Park · $100"], ["clear", "3  Clear · free"]]:
 		var kind: String = entry[0]
 		var button := _button(entry[1], func(): _select_tool(kind))
 		button.toggle_mode = true
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.custom_minimum_size.y = 30
 		match kind:
+			"park": button.tooltip_text = "One park; $10/month. Homes within 3 side-steps get growth priority, with services and demand. Overlap does not stack."
 			"clear": button.tooltip_text = "Clear is free, with no refund."
 			"power": button.tooltip_text = "One station per placement. It supplies %d zone plots through the roads it touches, including empty zones." % Balance.POWER_CAPACITY
 			_: button.tooltip_text = "Price per tile; identical repainting is free."
 		column.add_child(button)
 		tool_buttons[kind] = button
 	column.add_child(HSeparator.new())
-	var outside_button := _button("Outside link  [Home]", _center_camera)
-	column.add_child(outside_button)
+	var outside_button := _button("Link [Home]", _center_camera)
+	var navigation := HBoxContainer.new()
+	column.add_child(navigation)
+	outside_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	navigation.add_child(outside_button)
+	navigation.add_child(_button("−", func(): _zoom(-1)))
+	navigation.add_child(_button("+", func(): _zoom(1)))
 	var marks := HBoxContainer.new()
 	marks.add_theme_constant_override("separation", 6)
 	column.add_child(marks)
@@ -168,14 +189,9 @@ func _build_ui() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(spacer)
-	var zoom_row := HBoxContainer.new()
-	column.add_child(zoom_row)
-	zoom_row.add_child(_button("−", func(): _zoom(-1)))
 	zoom_label = _label("1x", 16)
-	zoom_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	zoom_row.add_child(zoom_label)
-	zoom_row.add_child(_button("+", func(): _zoom(1)))
+	zoom_label.visible = false
+	column.add_child(zoom_label)
 	var options := HBoxContainer.new()
 	column.add_child(options)
 	for button in [display_button, help_button]:
@@ -249,8 +265,19 @@ func _build_dialogs() -> void:
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_dialog.dialog_text = "1 Roads · 2 Homes · 6 Shops · 7 Workshops · P Power · 3 Clear\nDrag to build; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load. R / E toggle road / power marks.\n\nStart a road at the gold flag; join roads along shared sides.\nZone beside connected roads and add a station beside them.\nEach station powers 20 plots, even empty ones, nearest first.\n\nEvery 5 days, serviced plots with demand can gain a level.\nHomes bring residents; shops and workshops supply jobs.\nStarter demand supports 12 residents before jobs exist.\nH / S / W demand counts available level additions.\nTwo growth rounds without road access or power lose a level.\nReconnect or add a station; demand allows recovery.\n\nNo taxes or upkeep yet. Save manually; Load after restarting.\nOriginal geometric graphics; engine/font notices bundled."
+	help_dialog.dialog_text = "1 Roads · 2 Homes · 6 Shops · 7 Workshops\nP Station · 8 Park · 3 Clear · B Budget\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\n\nJoin roads from the gold flag; zone beside them.\nAdd a station: 20 plots, even empty ones, nearest first.\nEvery 5 days, serviced plots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nParks prioritize homes within 3 side-steps; no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled."
 	add_child(help_dialog)
+	budget_dialog = AcceptDialog.new()
+	budget_dialog.title = "Monthly budget"
+	add_child(budget_dialog)
+	var budget_scroll := ScrollContainer.new()
+	budget_scroll.custom_minimum_size = Vector2(700, 440)
+	budget_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	budget_dialog.add_child(budget_scroll)
+	budget_text = _label("", 16)
+	budget_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	budget_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	budget_scroll.add_child(budget_text)
 	load_dialog = ConfirmationDialog.new()
 	load_dialog.title = "Load saved city?"
 	load_dialog.dialog_text = "Replace your unsaved layout with the saved city?"
@@ -361,7 +388,7 @@ func _shortcut_input(event: InputEvent) -> void:
 	if _modal_open(): return
 	if event is InputEventKey and event.echo: return
 	var handled: bool = true
-	for kind in ["road", "home", "shop", "workshop", "power", "clear"]:
+	for kind in ["road", "home", "shop", "workshop", "power", "park", "clear"]:
 		if event.is_action_pressed("tool_" + kind):
 			_select_tool(kind)
 			get_viewport().set_input_as_handled()
@@ -387,6 +414,8 @@ func _shortcut_input(event: InputEvent) -> void:
 		_center_camera()
 	elif event.is_action_pressed("cancel_stroke"):
 		_cancel_stroke()
+	elif event.is_action_pressed("show_budget"):
+		_open_budget()
 	elif event.is_action_pressed("display_settings"):
 		_open_settings()
 	elif event.is_action_pressed("zoom_in"):
@@ -416,7 +445,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_extend_stroke(world.cell_at(_view_position(event.position)))
 
 func _modal_open() -> bool:
-	return settings != null and (settings.visible or help_dialog.visible or load_dialog.visible or quit_dialog.visible or recovery_dialog.visible)
+	return settings != null and (settings.visible or budget_dialog.visible or help_dialog.visible or load_dialog.visible or quit_dialog.visible or recovery_dialog.visible)
 
 func _is_world_position(point: Vector2) -> bool:
 	if not world_rect.has_point(point) or _modal_open(): return false
@@ -428,7 +457,7 @@ func _view_position(point: Vector2) -> Vector2:
 	return (point - world_rect.position) / world_scale
 
 func _extend_stroke(cell: Vector2i) -> void:
-	if tool == "power":
+	if tool in ["power", "park"]:
 		# One station per placement: the preview follows the pointer instead of painting.
 		stroke.clear()
 		stroke.append(cell)
@@ -463,7 +492,7 @@ func _inspect_cell(cell: Vector2i) -> void:
 	inspected_cell = cell
 	var i: int = city.index(cell)
 	power_label.text = _power_text(cell)
-	var land_use: String = "Water" if city.terrain[i] == City.WATER else ["Open ground", "Road", "Home", "Power station", "Shop", "Workshop"][city.occupancy[i]]
+	var land_use: String = "Water" if city.terrain[i] == City.WATER else ["Open ground", "Road", "Home", "Power station", "Shop", "Workshop", "Pocket park"][city.occupancy[i]]
 	if City.is_zone(city.occupancy[i]):
 		var per_level: int = Balance.RESIDENTS_PER_LEVEL if city.occupancy[i] == City.HOME else Balance.SHOP_JOBS_PER_LEVEL if city.occupancy[i] == City.SHOP else Balance.WORKSHOP_JOBS_PER_LEVEL
 		land_use += " L%d · %d %s" % [city.development[i], city.development[i] * per_level, "residents" if city.occupancy[i] == City.HOME else "jobs"]
@@ -472,6 +501,8 @@ func _inspect_cell(cell: Vector2i) -> void:
 		access_label.text = "No boundary land for an outside link. Road access is unavailable."
 	elif cell == city.access.root:
 		access_label.text = "Outside link active. Join roads along shared sides." if city.occupancy[i] == City.ROAD else "Outside link: clear this zone, then lay a road here." if City.is_zone(city.occupancy[i]) else "Outside link inactive. Lay a road on this flagged tile."
+	elif city.occupancy[i] == City.PARK:
+		access_label.text = "Covers homes within 3 side-steps. Overlap does not stack."
 	elif city.occupancy[i] == City.POWER:
 		access_label.text = "Power works without the outside link. Stations do not carry road access."
 	elif City.is_zone(city.occupancy[i]):
@@ -488,13 +519,17 @@ func _inspect_cell(cell: Vector2i) -> void:
 func _growth_text(cell: Vector2i) -> String:
 	if city.tick >= City.MAX_TICK: return "Day limit reached. Growth is stopped."
 	var next_day: int = city.tick + Balance.GROWTH_DAYS - city.tick % Balance.GROWTH_DAYS + 1
+	if city.inside(cell) and city.occupancy[city.index(cell)] == City.PARK:
+		return "Covered homes grow first within demand and round caps. No extra demand. Upkeep $10/month."
 	if not city.inside(cell) or not City.is_zone(city.occupancy[city.index(cell)]):
 		return "Next growth: day %d. Zones need road access, power and demand." % next_day
 	var i: int = city.index(cell)
 	var prefix: String = "Demand %d · next check day %d\n" % [city.growth.demand[city.occupancy[i]], next_day]
+	if city.occupancy[i] == City.HOME:
+		prefix += "Park priority. " if city.amenity.covered[i] != 0 else "No park priority. "
 	match city.growth.reason(city, i):
 		"growing": return prefix + "Ready to gain one level."
-		"queued": return prefix + "Waiting turn; earlier map tiles grow first."
+		"queued": return prefix + "Waiting turn; park homes first, then map order."
 		"demand": return prefix + "Demand met. More residents support jobs; jobs support homes."
 		"full": return prefix + "Fully developed (level 2)."
 		"declining": return prefix + "Loses a level in %d check(s) unless services return." % (Balance.DECLINE_ROUNDS - city.service_loss[i])
@@ -517,6 +552,8 @@ func _power_text(cell: Vector2i) -> String:
 		City.ROAD:
 			if grid.carries_power(i): return "Carries power. Network: %s." % _network_use(network)
 			return "No power station built yet." if grid.station_count == 0 else "No power station on this road network."
+		City.PARK:
+			return "Needs no services; carries no roads or power."
 		City.POWER:
 			return "Supplies %d units. Network: %s, %d station%s." % [Balance.POWER_CAPACITY, _network_use(network), grid.network_stations[network], "" if grid.network_stations[network] == 1 else "s"]
 	return "Power stations (P) supply plots through the roads they touch."
@@ -597,6 +634,9 @@ func _refresh_metrics() -> void:
 	cash_label.text = Balance.money(city.cash)
 	population_label.text = "Residents %d · Jobs %d" % [city.growth.population, city.growth.jobs]
 	demand_label.text = "Demand  H %d · S %d · W %d" % [city.growth.demand[City.HOME], city.growth.demand[City.SHOP], city.growth.demand[City.WORKSHOP]]
+	var forecast: Dictionary = City.Economy.totals(city.budget)
+	demand_label.text += "\nMonthly net %s%s" % [Balance.money(forecast.net), " · DEFICIT" if forecast.net < 0 else ""]
+	budget_button.tooltip_text = "Current forecast; changes with services and development. Next settlement: day %d." % (city.tick + 31 - city.tick % 30)
 	day_label.text = "Day %d\n%s" % [city.tick + 1, "Paused" if speed == 0 or focus_paused else "%dx speed" % speed]
 	var grid = city.power
 	grid_label.text = "Power %d / %d\n%s" % [grid.total_used, grid.total_capacity, "No stations" if grid.station_count == 0 else "%d plot%s short" % [grid.short_homes, "" if grid.short_homes == 1 else "s"] if grid.short_homes > 0 else "No shortage"]
@@ -685,3 +725,24 @@ func _notification(what: int) -> void:
 		_cancel_stroke()
 		if dirty: quit_dialog.popup_centered(Vector2i(520,180))
 		else: get_tree().quit()
+
+func _open_budget() -> void:
+	_cancel_stroke()
+	var next_day: int = city.tick + Balance.MONTH_DAYS - city.tick % Balance.MONTH_DAYS + 1
+	budget_text.add_theme_font_size_override("font_size", font_size)
+	budget_text.text = "CURRENT FORECAST · settles day %d after growth\n" % next_day
+	budget_text.text += _budget_breakdown(city.budget)
+	budget_text.text += "\nForecast uses today's services and development.\nNo tax from unserved buildings, even during decline grace.\n"
+	if city.last_budget.is_empty():
+		budget_text.text += "\nLAST SETTLEMENT · none recorded yet\n"
+	else:
+		var last: Dictionary = City.Economy.totals(city.last_budget)
+		budget_text.text += "\nLAST SETTLEMENT · day %d\n" % (int(city.last_budget.tick) + 1)
+		budget_text.text += _budget_breakdown(city.last_budget)
+		budget_text.text += "\nOpening %s → closing %s\nShortfall waived %s · surplus capped %s\n" % [Balance.money(city.last_budget.opening_cash), Balance.money(last.closing_cash), Balance.money(last.waiver), Balance.money(last.capped)]
+	budget_text.text += "\nRECOVERY · Clear surplus roads, stations or parks for free.\nRestore road access and power to restore taxes.\nAt zero, unpaid costs are waived: no debt or service cuts.\nWith everything cleared, the $100 monthly grant rebuilds cash."
+	budget_dialog.popup_centered(Vector2i(760, 560))
+
+func _budget_breakdown(data: Dictionary) -> String:
+	var result: Dictionary = City.Economy.totals(data)
+	return "Grant $100 + %d serviced residents × $2 + %d serviced jobs × $4 = %s\nUpkeep: %d roads × $1 + %d stations × $60 + %d parks × $10 = %s\nNet %s%s" % [data.residents, data.jobs, Balance.money(result.income), data.roads, data.stations, data.parks, Balance.money(result.expenses), Balance.money(result.net), " · DEFICIT: costs exceed income" if result.net < 0 else ""]

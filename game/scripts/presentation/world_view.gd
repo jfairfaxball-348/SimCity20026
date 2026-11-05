@@ -81,6 +81,13 @@ func _draw_cell(cell: Vector2i) -> void:
 			_draw_road(cell, at, z)
 		City.POWER:
 			_draw_station(at, rect, z)
+		City.PARK:
+			# Original pocket garden: pale path, rectangular bench, rounded tree crown.
+			draw_rect(rect.grow(-z), Color("4c795b"))
+			draw_line(at + Vector2(3, 14) * z, at + Vector2(10, 7) * z, Color("d7c49a"), 2 * z)
+			draw_rect(Rect2(at + Vector2(10, 11) * z, Vector2(4, 2) * z), Color("b58a60"))
+			draw_rect(Rect2(at + Vector2(5, 7) * z, Vector2(2, 4) * z), Color("735d44"))
+			draw_circle(at + Vector2(6, 5) * z, 4 * z, Color("a7c880"))
 		City.HOME, City.SHOP, City.WORKSHOP:
 			_draw_zone(i, at, rect, z)
 		_:

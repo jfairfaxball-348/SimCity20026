@@ -5,6 +5,8 @@ const Balance = preload("res://content/balance.gd")
 const Access = preload("res://scripts/sim/road_access.gd")
 const Power = preload("res://scripts/sim/power_grid.gd")
 const Growth = preload("res://scripts/sim/growth.gd")
+const Economy = preload("res://scripts/sim/economy.gd")
+const Amenity = preload("res://scripts/sim/amenity.gd")
 const LAND: int = 0
 const WATER: int = 1
 const EMPTY: int = 0
@@ -13,15 +15,16 @@ const HOME: int = 2
 const POWER: int = 3
 const SHOP: int = 4
 const WORKSHOP: int = 5
+const PARK: int = 6
 const MAX_TICK: int = 1_000_000_000
 const MAX_PENDING_US: int = 3_600_000_000
-const SCHEMA: int = 3
-const SIMULATION: String = "m2c-1"
-const CONTENT: String = "m2c-1"
+const SCHEMA: int = 4
+const SIMULATION: String = "m2d-1"
+const CONTENT: String = "m2d-1"
 ## Supported earlier format (M1/M2a): IDs 0..2 only, migrated in memory (D20).
 const LEGACY_SCHEMA: int = 1
 const LEGACY_VERSION: String = "m1-1"
-const TOOLS: Dictionary = {"road": ROAD, "home": HOME, "shop": SHOP, "workshop": WORKSHOP, "power": POWER, "clear": EMPTY}
+const TOOLS: Dictionary = {"road": ROAD, "home": HOME, "shop": SHOP, "workshop": WORKSHOP, "power": POWER, "park": PARK, "clear": EMPTY}
 
 var width: int = 64
 var height: int = 64
@@ -38,6 +41,9 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var access: Access = Access.new()
 var power: Power = Power.new()
 var growth: Growth = Growth.new()
+var amenity: Amenity = Amenity.new()
+var last_budget: Dictionary = {}
+var budget: Dictionary = {}
 
 func initialize(map_seed: int = 198624, map_width: int = 64, map_height: int = 64) -> void:
 	width = clampi(map_width, 8, 128)
@@ -48,6 +54,7 @@ func initialize(map_seed: int = 198624, map_width: int = 64, map_height: int = 6
 	tick = 0
 	pending_us = 0
 	sequence = 0
+	last_budget = {}
 	terrain.resize(width * height)
 	terrain.fill(LAND)
 	occupancy.resize(width * height)
@@ -69,7 +76,9 @@ func rebuild_derived() -> void:
 	# Access first: power placement rules read the outside-link root.
 	access.rebuild(self)
 	power.rebuild(self)
+	amenity.rebuild(self)
 	growth.refresh(self)
+	budget = Economy.inputs(self)
 
 static func is_zone(kind: int) -> bool:
 	return kind in [HOME, SHOP, WORKSHOP]
@@ -78,6 +87,10 @@ func advance_day() -> void:
 	tick += 1
 	if tick % Balance.GROWTH_DAYS == 0:
 		growth.advance_round(self)
+	if tick % Balance.MONTH_DAYS == 0:
+		Economy.settle(self)
+	if tick % Balance.GROWTH_DAYS == 0:
+		budget = Economy.inputs(self)
 
 func inside(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < width and cell.y < height
@@ -95,8 +108,8 @@ func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 		if not inside(cell):
 			return _failure("Keep the entire stroke inside the map.")
 		unique[index(cell)] = true
-	if kind == "power" and unique.size() > 1:
-		return _failure("Place one power station at a time.")
+	if kind in ["power", "park"] and unique.size() > 1:
+		return _failure("Place one facility at a time.")
 	var indices: Array = unique.keys()
 	indices.sort()
 	var changed: Array[int] = []
@@ -109,7 +122,7 @@ func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 			continue
 		if kind != "clear" and occupancy[i] != EMPTY:
 			return _failure("Clear the existing road, zone, or station first.")
-		if kind == "power" and access.root.x >= 0 and i == index(access.root):
+		if kind in ["power", "park"] and access.root.x >= 0 and i == index(access.root):
 			return _failure("Keep the outside-link flag free for its road.")
 		changed.append(i)
 	var charge: int = changed.size() * Balance.cost(kind)
@@ -152,6 +165,7 @@ func snapshot() -> Dictionary:
 		"seed": str(seed_value), "random_state": str(rng.state),
 		"terrain": Array(terrain), "occupancy": Array(occupancy),
 		"development": Array(development), "service_loss": Array(service_loss),
+		"last_budget": last_budget.duplicate(),
 		"cash": cash, "tick": tick, "pending_us": pending_us, "sequence": sequence}
 
 func canonical() -> String:

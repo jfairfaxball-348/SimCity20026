@@ -4,6 +4,7 @@ static func install() -> void:
 	var keys: Dictionary = {
 		"tool_road": [KEY_1], "tool_home": [KEY_2], "tool_clear": [KEY_3], "tool_power": [KEY_P],
 		"tool_shop": [KEY_6], "tool_workshop": [KEY_7],
+		"tool_park": [KEY_8], "show_budget": [KEY_B],
 		"pause_city": [KEY_SPACE], "normal_speed": [KEY_4], "fast_speed": [KEY_5],
 		"pan_left": [KEY_A, KEY_LEFT], "pan_right": [KEY_D, KEY_RIGHT],
 		"pan_up": [KEY_W, KEY_UP], "pan_down": [KEY_S, KEY_DOWN],

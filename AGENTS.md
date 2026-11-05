@@ -4,8 +4,8 @@ This is an original relaxed city-builder project. Start with `README.md`, `NEXT_
 
 ## Scope and status
 
-- The initial 4 November 2026 session was research only. The user subsequently authorised M0/M1, M2a, M2b, and M2c implementation; all are now implemented and locally tested. See the dated evidence records. Do not present M2d or later proposals as implemented.
-- When asked to continue, use the current assignment in `NEXT_SESSION.md` unless the user gives a different scope. The one U10 **Micropolis study is complete**; the unchanged M2d monthly economy and amenity assignment is next, in a separate implementation session. The study adopted no new simulation rules. The earlier planning-only restriction does not prohibit later authorised implementation.
+- The initial 4 November 2026 session was research only. The user subsequently authorised M0/M1, M2a, M2b, M2c, and M2d implementation; all are now implemented and locally tested. See the dated evidence records. Do not present M3 or later proposals as implemented.
+- When asked to continue, use the current assignment in `NEXT_SESSION.md` unless the user gives a different scope. The one U10 **Micropolis study is complete**; M2d is also complete. The next handoff scopes M3 in a separate session. The study adopted no new simulation rules. The earlier planning-only restriction does not prohibit later authorised implementation.
 - Desktop players and relaxed building/pixel art/approachable controls are confirmed. Engine and M1 layout defaults have been adopted; later simulation and commercial plans remain documented defaults or open decisions.
 - Inspect the current repo and Git state before editing; preserve unrelated work. Use `codex/` for new agent branches by default.
 
@@ -29,3 +29,5 @@ This is an original relaxed city-builder project. Start with `README.md`, `NEXT_
 ## Completion
 
 Keep the README status, decision log, and next-session handoff current. Distinguish proposed, implemented, tested, and released work. Local implementation does not by itself authorise purchases, external messaging, store publication, or a public release.
+
+**Standing owner instruction (5 November 2026):** after completing and verifying an authorised session, commit the scoped changes, push the work branch, merge into the live default branch using a fast-forward when possible, and fast-forward the local default checkout. Reconcile remote refs first and verify local/remote agreement afterward. This source-delivery authorisation persists across sessions; do not ask again. Never force-push or discard unrelated work to obtain a fast-forward. Public binary release remains separate.

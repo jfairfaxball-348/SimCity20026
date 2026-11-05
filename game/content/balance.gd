@@ -1,6 +1,6 @@
 extends RefCounted
 ## Provisional construction and power values, in cents and abstract power units.
-## Growth is aggregate; no monthly economy. Changes require a content version.
+## Aggregate monthly economy (D25-D26). Changes require a content version.
 const STARTING_CASH: int = 1_000_000
 const ROAD_COST: int = 1_000
 const HOME_COST: int = 2_500
@@ -17,6 +17,15 @@ const GROWTH_DAYS: int = 5
 const GROWTH_LIMIT: int = 8
 const DECLINE_ROUNDS: int = 2
 const MAX_CASH: int = 1_000_000_000_000
+const MONTH_DAYS: int = 30
+const MONTH_GRANT: int = 10_000
+const RESIDENT_TAX: int = 200
+const JOB_TAX: int = 400
+const ROAD_UPKEEP: int = 100
+const STATION_UPKEEP: int = 6_000
+const PARK_UPKEEP: int = 1_000
+const PARK_COST: int = 10_000
+const PARK_RADIUS: int = 3
 
 static func cost(kind: String) -> int:
 	match kind:
@@ -24,7 +33,8 @@ static func cost(kind: String) -> int:
 		"home": return HOME_COST
 		"shop", "workshop": return ZONE_COST
 		"power": return POWER_COST
+		"park": return PARK_COST
 	return 0
 
 static func money(cents: int) -> String:
-	return "$%d.%02d" % [cents / 100, cents % 100]
+	return ("−" if cents < 0 else "") + "$%d.%02d" % [absi(cents) / 100, absi(cents) % 100]

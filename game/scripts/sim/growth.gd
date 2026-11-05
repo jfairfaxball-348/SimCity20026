@@ -29,13 +29,17 @@ func refresh(city: RefCounted) -> void:
 	var remaining: PackedInt32Array = demand.duplicate()
 	for kind in [city.HOME, city.SHOP, city.WORKSHOP]:
 		remaining[kind] = mini(remaining[kind], Balance.GROWTH_LIMIT)
-	# Reserve once in row-major order. A new building cannot create demand in this round.
-	for i in range(count):
-		var kind: int = city.occupancy[i]
-		if not city.is_zone(kind) or city.development[i] >= Balance.MAX_LEVEL: continue
-		if remaining[kind] > 0 and serviced(city, i):
-			planned[i] = 1
-			remaining[kind] -= 1
+	# Covered homes first, then all other zones; row-major within each group.
+	# Reservation still uses only the prior state, with shared per-type budgets.
+	for priority in [true, false]:
+		for i in range(count):
+			var kind: int = city.occupancy[i]
+			if not city.is_zone(kind) or city.development[i] >= Balance.MAX_LEVEL: continue
+			var preferred: bool = kind == city.HOME and city.amenity.covered[i] != 0
+			if preferred != priority: continue
+			if remaining[kind] > 0 and serviced(city, i):
+				planned[i] = 1
+				remaining[kind] -= 1
 
 func advance_round(city: RefCounted) -> void:
 	var next_levels: PackedByteArray = city.development.duplicate()

@@ -1,6 +1,6 @@
 # Delivery and release plan
 
-Status, 5 November 2026: **M0/M1 through M2c implemented and locally tested; M2d and M3-M5 not started.** See the [M2c evidence](sessions/2026-11-05-m2c.md), [M2b evidence](sessions/2026-11-04-m2b.md), [M2a evidence](sessions/2026-11-04-m2a.md), and [foundation evidence](sessions/2026-11-04-m0-m1.md) for actual checks and limits; no public game release has occurred.
+Status, 5 November 2026: **M0/M1 through M2d implemented and locally tested; M3-M5 not started.** See the [M2d evidence](sessions/2026-11-05-m2d.md), [M2c evidence](sessions/2026-11-05-m2c.md), [M2b evidence](sessions/2026-11-04-m2b.md), [M2a evidence](sessions/2026-11-04-m2a.md), and [foundation evidence](sessions/2026-11-04-m0-m1.md) for actual checks and limits; no public game release has occurred.
 
 ## Milestones and gates
 
@@ -15,7 +15,7 @@ Each milestone should produce a runnable checkpoint, a short evidence record, an
 | M4: content-complete candidate | Tuned 128x128 limit if profiling supports it; bounded content/project set; settings/accessibility; save migration | No missing advertised systems; busy-city profile; content and asset provenance audit; closed beta feedback |
 | M5: release candidate / 1.0 | Regression fixes, store material, distribution notices, packaging, account/store work if authorised | Release checklist passes on supported targets; store reviews complete where required; rollback package and support route ready |
 
-The next agent's assignment is the **Micropolis study** authorised by U10, with **M2d monthly economy and amenity queued unchanged afterward**, in [NEXT_SESSION.md](../NEXT_SESSION.md). The study is read-only research and has not yet been performed; it implements no milestone. M2a-M2c supply road access, power, aggregate growth, and recovery. The M2 gate remains open for economy, amenity, and deficit recovery. The full native 1080p and Windows DPI matrix remains unverified despite passing automated layout checks; resolve it before claiming broader display support. If M3 feedback is weak, improve the existing experience before expanding M4's content. Keep optional ports, disasters, and advanced transport out of the critical path.
+The local **M2 functional gate is met**: empty-town growth, service-shortage recovery, exact deterministic monthly budgets, park priority and deficit recovery have source/packed/native evidence. This is not a human usability/enjoyment result. The one U10 study is complete; its source-reading permission remains exhausted. [NEXT_SESSION.md](../NEXT_SESSION.md) scopes one M3 sub-slice before further implementation. The full native 1080p/DPI matrix, fresh-machine/controller tests, performance targets and five-person observed test remain outstanding. If M3 feedback is weak, improve the existing experience before expanding M4. Keep optional ports, disasters, and advanced transport out of the critical path.
 
 ## Effort and spending assumptions
 

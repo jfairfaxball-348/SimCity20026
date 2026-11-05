@@ -1,6 +1,6 @@
 # Technical plan
 
-Status, 5 November 2026: **M0/M1 through M2c growth implemented and locally tested**; monthly economy, amenities, projects, and later release work remain proposals. See [Toolchain](TOOLCHAIN.md), [M2c evidence](sessions/2026-11-05-m2c.md), and [Decisions](DECISIONS.md) for the implemented contract and limitations.
+Status, 5 November 2026: **M0/M1 through M2d implemented and locally tested**; projects and later release work remain proposals. See [Toolchain](TOOLCHAIN.md), [M2d evidence](sessions/2026-11-05-m2d.md), and [Decisions](DECISIONS.md) for the implemented contract and limitations.
 
 ## Repository shape
 
@@ -60,7 +60,7 @@ flowchart LR
 
 - Grid dimensions and bounds are explicit. Use integer cell coordinates and flat arrays indexed by `y * width + x` for terrain, land use, and relevant values. Start at 64x64, with 128x128 the release planning ceiling.
 - Terrain and occupancy are distinct. A road cannot coexist with a zone/building on the same cell unless a future rule explicitly permits it. Start with single-cell logical lots and facilities; larger footprints require their own validation tests before adoption.
-- Give buildings/content stable semantic IDs independent of scene paths and sprite-atlas coordinates. Persist development levels, service-loss counters, treasury, clock, content/schema versions, and deterministic random state. Population, jobs, demand, and network allocation are derived.
+- Give buildings/content stable semantic IDs independent of scene paths and sprite-atlas coordinates. Persist development levels, service-loss counters, treasury, last-settlement inputs, clock, content/schema versions, and deterministic random state. Population, jobs, demand, and network allocation are derived.
 - Money uses bounded integer smallest units. Growth decisions use integer/fixed-point values where practical; visual animation can use floats.
 - Commands include place road, zone, place facility, demolish, and change policy. Sort/deduplicate cells in a stroke. Validate terrain, bounds, conflicts, and total affordability before applying anything. A rejected stroke changes neither funds nor the map.
 - Repainting an identical land use is a no-op and costs nothing. Demolition never removes underlying terrain. Clear/removal and refund rules must be explicit; M1 may use no demolition refund.
@@ -81,7 +81,7 @@ Proposed order for each tick:
 5. Recalculate city totals and, at the month boundary, income/upkeep.
 6. Evaluate project progress and emit changes/diagnostic reasons for presentation.
 
-The six-system order remains a later proposal. M2c increments each day separately and runs aggregate growth on multiples of five; commands apply synchronously at input boundaries and record tick/sequence. It processes at most eight ticks/frame and retains a maximum of one simulated hour of backlog. Time beyond that explicit extreme-stall cap is discarded. Tests cover 90-second frame partitioning, draining retained backlog, and overflow safety. Focus loss and dialogs suspend active time.
+The six-system order remains a later proposal. M2d increments each day separately, runs aggregate growth on multiples of five, then settles budgets on multiples of 30; commands apply synchronously at input boundaries and record tick/sequence. It processes at most eight ticks/frame and retains a maximum of one simulated hour of backlog. Time beyond that explicit extreme-stall cap is discarded. Tests cover 90-second frame partitioning, draining retained backlog, and overflow safety. Focus loss and dialogs suspend active time.
 
 Document boundary cases before coding each system. Avoid reading partially updated neighbours during a growth sweep. Iterate in a stable order, use an explicit seeded generator, and separate cosmetic randomness from simulation randomness. Replays are guaranteed only for a specified simulation/content/engine version unless cross-version compatibility is deliberately implemented and tested.
 
@@ -101,9 +101,9 @@ A multi-source search gives every network tile its distance from the nearest sta
 
 The renderer adds an original station glyph and bolt/× marks (E). The inspector keeps road access and power on separate lines within a fixed 320 px panel. There is no allocation memory, so a newly zoned nearer plot can displace a farther one; D23 deliberately retains this policy for grown buildings, with gradual decline after lost service.
 
-**Implemented in M2c:** `sim/growth.gd` derives population, jobs, demand, and a next-round plan from the completed city. Home/shop/workshop levels 0-2 are persistent. Each home level holds 4 residents; shop/workshop levels provide 2/4 jobs. Starter demand allows three home levels before jobs exist. Home target = min(2 x cells, 3 + floor(jobs/2)); both business targets = ceil(population/16). Demand is the positive remaining level count. Every fifth tick reserves up to eight additions per type, in row-major order, only for powered/access-served plots below level 2. It applies all changes together. Missing services lose one level on every second growth check; restoring both resets the saved loss counter immediately. Demand satisfaction alone never causes decline. Counts describe standing development until decline, not individual employment. See D22-D24 for exact bounds and save validation.
+**Implemented in M2c:** `sim/growth.gd` derives population, jobs, demand, and a next-round plan from the completed city. Home/shop/workshop levels 0-2 are persistent. Each home level holds 4 residents; shop/workshop levels provide 2/4 jobs. Starter demand allows three home levels before jobs exist. Home target = min(2 x cells, 3 + floor(jobs/2)); both business targets = ceil(population/16). Demand is the positive remaining level count. Every fifth tick reserves up to eight additions per type, with covered homes first then row-major ties (D26), only for powered/access-served plots below level 2. It applies all changes together. Missing services lose one level on every second growth check; restoring both resets the saved loss counter immediately. Demand satisfaction alone never causes decline. Counts describe standing development until decline, not individual employment. See D22-D24 for exact bounds and save validation.
 
-Monthly income/upkeep, amenities, nuisance, and projects remain unimplemented. Specify their equations and order before M2d; preserve the growth checkpoint's accounting and continuation tests. No cash or RNG changes on M2c ticks.
+**Implemented in M2d:** `sim/economy.gd` calculates integer monthly income/upkeep from post-growth serviced residents/jobs and all facility counts. `last_budget` retains actual settlement inputs; forecasts are derived. Cash has an explicit zero-floor waiver and maximum-cap report, without debt or service cuts. `sim/amenity.gd` rebuilds non-stacking Manhattan-radius-3 coverage with bounded local scans. Covered homes get priority within existing demand/caps, not extra demand. D25-D27 specify the exact rules. No RNG is consumed. Nuisance and projects remain unimplemented.
 
 ## Presentation and controls
 
@@ -127,9 +127,9 @@ Write to a temporary file in the same directory, close and validate it, retain t
 
 Save schema versioning is separate from game versioning. During prototypes, document any intentional incompatibility. Before a public demo, establish fixture-based migration tests for every supported schema, preserve an original copy during migration, and set a stated compatibility policy.
 
-M2c game version `0.4.0-m2c` uses **schema 3, simulation/content `m2c-1`**. Occupancy IDs 0-3 retain their meanings; 4/5 are shop/workshop. New `development` and `service_loss` arrays are length-checked and constrained to 0-2 / 0-1; non-zones and empty development cannot carry loss. A serviced plot with a loss counter is rejected. Schemas 1 (`m1-1`) and 2 (`m2b-1`) validate under their own versions/IDs, then gain two zero arrays with all old authoritative values preserved. Loading never writes.
+M2d game version `0.5.0-m2d` uses **schema 4, simulation/content `m2d-1`**. IDs 0–5 retain their meanings; 6 is a park. Development/loss arrays retain exact-length/bounds/consistency validation. A strictly validated `last_budget` dictionary stores the most recent settlement inputs; outputs are derived. Schema 3 retains development/loss; schemas 1/2 gain zero arrays; all older formats retain prior authoritative values, gain empty budget history and incur no retroactive settlement. Loading never writes.
 
-Before an older primary or backup is replaced, the exact bytes are preserved once as `manual.schema1.json` or `manual.schema2.json`. Failed preservation prevents replacement. All four historical/current fixtures are hash-checked; the M2c sample continues through pending decline. Future persistent rules need a new version and migration decision.
+Before an older primary or backup is replaced, exact bytes are preserved once as `manual.schema1.json`, `manual.schema2.json`, or `manual.schema3.json`. Failed preservation prevents replacement. Five fixtures are hash-checked, including pending decline and a fractional month boundary. Future persistent rules need explicit version and migration decisions.
 
 ## Verification and performance
 

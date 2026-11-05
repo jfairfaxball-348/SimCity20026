@@ -118,6 +118,7 @@ func run() -> void:
 				var bottom_child: Control = main.side.get_child(0).get_child(main.side.get_child(0).get_child_count()-1)
 				check(bottom_child.get_global_rect().end.y <= main.side.get_global_rect().end.y, "all sidebar controls visible with '%s' %s text %d" % [message,resolution,amount])
 			check(main.top.get_global_rect().end.x <= resolution.x, "toolbar with power total fits %s text %d" % [resolution,amount])
+			check(main.top.get_global_rect().end.y <= main.side.position.y, "toolbar does not overlap sidebar %s text %d" % [resolution,amount])
 			var marks: Control = main.access_button.get_parent()
 			check(main.access_button.get_global_rect().end.x <= marks.get_global_rect().end.x + 0.5 and main.power_button.get_global_rect().end.x <= main.side.get_global_rect().end.x, "both mark toggles fit the sidebar %s text %d" % [resolution,amount])
 			check(main.bottom.get_global_rect().end.y <= resolution.y, "footer fits %s text %d" % [resolution,amount])
@@ -128,7 +129,7 @@ func run() -> void:
 				main.access_label.text = LONGEST_ACCESS
 				main.power_label.text = LONGEST_POWER
 				main.selection_label.text = "TILE 127, 127 · Workshop L2 · 8 jobs"
-				main.scope_label.text = "Demand 32768 · next check day 1000000001\nLoses a level in 2 check(s) unless services return."
+				main.scope_label.text = "Demand 32768 · next check day 1000000001\nNo park priority. Loses a level in 2 check(s) unless services return."
 				await frames()
 				check(main.scope_label.get_global_rect().end.y <= main.inspector.get_global_rect().end.y and main.inspector.get_global_rect().end.y < main.bottom.position.y, "inspector text fits %s text %d cell %s" % [resolution,amount,cell])
 				check(main.power_label.get_global_rect().end.y <= main.legend_label.get_global_rect().position.y and main.inspector.size.y <= 320.5, "power reason does not overlap marks legend %s text %d cell %s" % [resolution,amount,cell])
@@ -136,6 +137,11 @@ func run() -> void:
 			await frames()
 			check(main.help_dialog.size.y <= resolution.y and main.help_dialog.get_ok_button().get_global_rect().end.y <= resolution.y, "growth help and OK fit %s text %d" % [resolution,amount])
 			main.help_dialog.hide()
+			main._open_budget()
+			await frames()
+			check(main.budget_dialog.size.y <= resolution.y and main.budget_dialog.get_ok_button().get_global_rect().end.y <= resolution.y, "budget scroll area and OK fit %s text %d" % [resolution,amount])
+			check(main._modal_open(), "budget suspends simulation %s text %d" % [resolution,amount])
+			main.budget_dialog.hide()
 		main._set_text_size(16)
 		main._center_camera()
 		var point: Vector2 = screen_cell(Vector2i(42,28))
@@ -312,8 +318,9 @@ func run() -> void:
 	check(FileAccess.get_file_as_string(isolated.test_path) == legacy, "UI load leaves the earlier save file unchanged")
 	await key(KEY_S,true)
 	var preserved: String = isolated.test_path.get_base_dir().path_join("manual.schema1.json")
-	check(FileAccess.get_file_as_string(preserved) == legacy and int(isolated.load_city(main.SAVE_PATH).get("schema", 0)) == 3, "UI save writes schema 3 and preserves the original bytes")
+	check(FileAccess.get_file_as_string(preserved) == legacy and int(isolated.load_city(main.SAVE_PATH).get("schema", 0)) == 4, "UI save writes schema 4 and preserves the original bytes")
 	await growth_flow(isolated)
+	await economy_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -393,4 +400,65 @@ func growth_flow(isolated: IsolatedStore) -> void:
 	await key(KEY_L, true)
 	check("Earlier save format 2" in main.status_label.text and main.city.growth.population == 0 and FileAccess.get_file_as_string(isolated.test_path) == legacy, "UI schema-2 load explains migration and leaves original unchanged")
 	await key(KEY_S, true)
-	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 2)) == legacy and isolated.load_city(main.SAVE_PATH).schema == 3, "UI schema-3 save preserves schema-2 original")
+	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 2)) == legacy and isolated.load_city(main.SAVE_PATH).schema == 4, "UI schema-4 save preserves schema-2 original")
+
+func economy_flow(isolated: IsolatedStore) -> void:
+	main.queue_free()
+	await frames()
+	main = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	main.store = isolated
+	main.set_process(false)
+	await frames()
+	await key(KEY_1)
+	await drag_cells(Vector2i(42, 31), Vector2i(63, 31))
+	await click(screen_cell(Vector2i(63, 32)))
+	await key(KEY_P)
+	await click(screen_cell(Vector2i(41, 31)))
+	await key(KEY_2)
+	await drag_cells(Vector2i(42, 30), Vector2i(47, 30))
+	await key(KEY_8)
+	check(main.tool == "park" and main.tool_buttons.park.button_pressed, "8 selects shipped park tool")
+	await drag_cells(Vector2i(48, 29), Vector2i(48, 28))
+	check(main.city.occupancy.count(City.PARK) == 1 and main.city.occupancy[main.city.index(Vector2i(48, 28))] == City.PARK, "park pointer drag places only endpoint facility")
+	main._inspect_cell(Vector2i(48, 28))
+	check("3 side-steps" in main.access_label.text and "Upkeep $10/month" in main.scope_label.text, "shipped park inspector explains coverage effect and upkeep")
+	await growth_days(5)
+	main._inspect_cell(Vector2i(47, 30))
+	check(main.city.development[main.city.index(Vector2i(47, 30))] == 1 and "Park priority" in main.scope_label.text, "shipped park changes which home receives starter growth")
+	await growth_days(25)
+	check(main.city.last_budget.tick == 30 and City.Economy.totals(main.city.last_budget).net == 3100 and main.city.cash == 905100, "shipped month: $124 income minus $93 upkeep gives $31")
+	await key(KEY_B)
+	check(main.budget_dialog.visible and "12 serviced residents" in main.budget_text.text and "LAST SETTLEMENT" in main.budget_text.text and "Shortfall waived $0.00" in main.budget_text.text, "B shows auditable forecast and actual ledger")
+	main.budget_dialog.hide()
+	await key(KEY_S, true)
+	var saved: String = main.city.canonical()
+	main.queue_free()
+	await frames()
+	main = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	main.store = isolated
+	main.set_process(false)
+	await frames()
+	await key(KEY_L, true)
+	check(main.city.canonical() == saved and main.city.amenity.covered[main.city.index(Vector2i(47,30))] == 1, "shipped restart/load preserves ledger and reconstructs coverage")
+	# Controlled zero-reserve overbuild, then real UI removal/recovery.
+	main.city.cash = 0
+	main.city.occupancy[main.city.index(Vector2i(49, 28))] = City.POWER
+	main.city.rebuild_derived()
+	await growth_days(30)
+	await key(KEY_B)
+	check(main.city.cash == 0 and "DEFICIT" in main.budget_text.text and "Shortfall waived $29.00" in main.budget_text.text, "shipped deficit explains exact waiver and retains services")
+	main.budget_dialog.hide()
+	await key(KEY_3)
+	await click(screen_cell(Vector2i(49, 28)))
+	await growth_days(30)
+	check(main.city.cash == 3100 and not "DEFICIT" in main.demand_label.text, "free UI removal recovers from zero cash next month")
+	var path: String = (get_script() as Script).resource_path.get_base_dir().path_join("fixtures/m2c-schema3.json")
+	var legacy: String = FileAccess.get_file_as_string(path)
+	FileOps.new().write_text(isolated.test_path, legacy)
+	main.dirty = false
+	await key(KEY_L, true)
+	check(main.city.last_budget.is_empty() and main.city.growth.population == 48 and "Earlier save format 3" in main.status_label.text, "shipped schema-3 migration retains development without fabricated history")
+	await key(KEY_S, true)
+	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 3)) == legacy, "shipped schema-3 bytes preserved before save")

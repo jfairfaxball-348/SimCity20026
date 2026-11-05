@@ -1,51 +1,37 @@
-# Next agent: M2d economy and amenity
+# Next session: scope the M3 playable slice
 
-Updated **5 November 2026** after the authorised Micropolis study. **The study is complete; M2d is next, in a separate implementation session.** The existing M2d assignment below is preserved verbatim. No game code or new simulation rule was added by the study.
+Updated **5 November 2026** after M2d. **M0/M1 through M2d are implemented and locally tested. The local M2 functional gate is met. M3 is unimplemented.** This is a development checkpoint, not a public release or evidence of human enjoyment.
 
-## Current checkpoint
+## Start here
 
-**M0/M1 through M2c are implemented and locally tested. M2d and later work are unimplemented.** Read [README](README.md), [AGENTS](AGENTS.md), [Decisions](docs/DECISIONS.md), [Toolchain](docs/TOOLCHAIN.md), and [M2c evidence](docs/sessions/2026-11-05-m2c.md) first. Earlier session records are historical.
+Read `README.md`, `AGENTS.md`, `docs/DECISIONS.md`, `docs/TOOLCHAIN.md`, and [M2d evidence](docs/sessions/2026-11-05-m2d.md). Inspect current Git and live remote refs before editing; preserve unrelated work. M2d was developed on **codex/m2d-economy**, based on **97b1f55737fde6cc015d65fdf2a110ae87e27e15**. Source delivery uses a pushed work branch and fast-forward integration into default branch `codex/m2a-road-access`; consult live Git history for the delivered commit. The owner now gives standing authorisation to commit, push, merge, and fast-forward completed work, recorded in AGENTS.md. Reconcile live state; do not assume the historical branch name describes current feature scope.
 
-The earlier M2c implementation work is complete: **M2c commit `826ecc32ba4bc10a6d772aafa7c33b011a158060` was committed, pushed, and fast-forward merged into default branch `codex/m2a-road-access`**. It passed 298 source checks, 277 exported-PCK checks, release-EXE startup, and the recorded native Windows growth/shortage/decline/recovery/save/restart/load checks. User saves were restored and the tested ZIP retained locally. The subsequent U10 study is complete with [original qualitative notes](docs/research/MICROPOLIS_STUDY.md), [provenance](docs/research/MICROPOLIS_PROVENANCE.md), and [study evidence](docs/sessions/2026-11-05-micropolis-study.md). The study used a pinned ignored checkout, executed no reference code, and changed documentation only. Earlier test counts remain M2c evidence; they were not rerun for this documentation change.
+Use isolated **Godot 4.7.2 Standard**, exact `4.7.2.stable.official.ed1daf0bf`, via `tools/`. The global wrapper remains 4.6.3. No new dependencies or external assets were introduced.
 
-- Engine: isolated Godot **4.7.2 Standard**, exact `4.7.2.stable.official.ed1daf0bf`, matching x64 templates, Compatibility renderer. Use `tools/`; the global wrapper is 4.6.3.
-- Game **0.4.0-m2c**, schema **3**, simulation/content **m2c-1**. Project/scene: `game/project.godot` / `game/scenes/main.tscn`; UI: `scripts/main.gd`; authoritative model: `sim/city_state.gd`; growth: `sim/growth.gd`; clock: `sim/simulation_clock.gd`; values: `content/balance.gd`.
-- M2c work branch `codex/m2c-growth`, based on `c18cf6f`, delivered as `826ecc3`; remote `https://github.com/jfairfaxball-348/SimCity20026.git`. Default branch is **`codex/m2a-road-access`**, a historical name. Reinspect remote HEAD, Git state, and current files before editing. The study used `codex/micropolis-study` from `443fc04`, with commit/push/default-branch integration authorised. Reconcile live refs for its delivered commit. Use a fresh `codex/` implementation branch for M2d when asked to continue. Public binary release is not authorised.
-- The connected GitHub owner account has repository write/admin access (verified 5 November). Earlier notes about a different read-only `gh` login do not describe that connector. Ordinary Git pushes also work.
-- Export `builds/windows/citybuilder.exe` + PCK; local ZIP `builds/citybuilder-0.4.0-m2c-windows-x64.zip`. Generated/ignored. No CI configured.
-- No income, upkeep, taxes, parks/amenities, nuisance, projects, audio, controller route, or autosaves. The full M2 gate remains open.
+- Game **0.5.0-m2d**, save **schema 4**, simulation/content **m2d-1**.
+- Scene/UI: `game/scenes/main.tscn`, `game/scripts/main.gd`; model: `scripts/sim/city_state.gd`; rules: `growth.gd`, `economy.gd`, `amenity.gd`; values: `content/balance.gd`.
+- Export: `builds/windows/citybuilder.exe` plus PCK. Tested package: `builds/citybuilder-0.5.0-m2d-windows-x64.zip`. Generated/ignored, not publicly distributed.
+- Final verification: **361 source / 324 packed checks**, release-EXE startup, native Windows accounting/park/deficit/restart/recovery at 1280x720 standard/largest text. Original user saves restored with matching hashes/file count. Evidence under ignored `builds/validation/m2d/` and the tracked session record.
 
-## Completed study and implementation boundary
+## Preserve the simulation contract
 
-The one U10 source-study session has ended. Read [MICROPOLIS_STUDY.md](docs/research/MICROPOLIS_STUDY.md) and [Decisions](docs/DECISIONS.md) for reference-design input. The study covers demand, land value, pollution, crime, traffic, power, services/budget, evaluation, disasters, scheduling, randomness, and licensing. It distinguishes static observations, interpretations, proposals, and unverified gaps. None of its recommendations changes D17-D24 or expands M2d.
+**Access/power (D17-D24).** One deterministic outside link, side-sharing roads only; all zones need an adjacent outside-connected road. Stations do not relay road access. Roads/stations relay power independently of outside access. Each station supplies 20 plots, including empty zones. Allocation remains `(station distance, row-major index)` with deterministic network ties and no saved priority; nearer plots may displace grown plots.
 
-**Implementation sessions must never open or read Micropolis source**, including the ignored checkout, online copies, or reproduced source elsewhere. Provenance source links are audit locators, not reading assignments. Work from the qualitative notes, Decisions, and this project's own files. The optional legacy repository was not studied; no additional reference study is queued or authorised here.
+**Growth (D22/D26).** Levels 0–2, 4 residents per home level, 2/4 jobs per shop/workshop level. Prior-state home target `min(2*cells, 3+floor(jobs/2))`; each business target `ceil(population/16)`. Every five ticks, at most eight additions per type, one per eligible plot, applied simultaneously. Covered homes reserve home demand first, then uncovered homes; row-major within each group. Businesses retain row-major order. Missing road access or power loses one level every second growth round; restoring both immediately resets the counter. Demand alone never evicts buildings. Standing population/jobs includes unserved development until decline; taxable totals do not.
 
-The source-study permission is exhausted. Keep the reference checkout ignored and out of builds/distribution. Do not copy or translate its code, tables, constants, formulas, identifiers, text, assets, or interface composition. The game remains original, unnamed, and not GPL-licensed. Do not add a root source licence. See the [rights boundary](docs/IP_AND_ASSETS.md#micropolis-study-and-implementation-boundary).
+**Economy (D25).** Every 30 ticks after growth: grant 10000 cents + 200 per serviced resident + 400 per serviced job; expenses 100 per road + 6000 per station + 1000 per park, even unused/disconnected. No tax from unserved development, even during grace. Cash clamps to `[0, MAX_CASH]`; record explicit shortfall waiver/capped surplus. No debt, hidden arrears, service cuts, or automatic destruction. Free clear works at zero, paid commands require full cash, identical repaint is free. An empty town recovers $100/month. First settlement displayed on day 31. A forecast uses current state; actual ledger uses settlement-time counts.
 
-The next assignment is the unchanged M2d section below. Its own rules must be specified before coding; the study does not settle economic values, park coverage, schema changes, or growth effects. Traffic, crime, pollution, land markets, evaluation, and disasters are not added to that assignment.
+**Park (D26).** ID 6, $100 placement, $10 upkeep, one tile per command, forbidden on outside link. Manhattan radius 3; no stacking, service requirement, power use, or network relay. Gives covered homes priority within existing demand/caps, no extra capacity/demand/tax multiplier/decline protection. Coverage is derived, rebuilt immediately on edits/load. Tree/path/bench is original code-drawn art.
 
-## Contracts to retain
+**Clock.** Ordered commands between ticks; one tick/day; growth then budget on shared boundaries; no RNG consumed. Eight ticks/frame, one-hour backlog, focus/dialog suspension, no offline catch-up. Budget dialog is modal. Normal 1x/fast 3x. Do not leave native tests running across a handoff or interruption if avoidable: M2d's recovery test remained running during interruption, and its longer observed duration is recorded explicitly.
 
-**Road access (D17).** One outside link: `(width-1,height/2)` on generated maps; nearest boundary land by Manhattan distance and row-major tie on custom terrain; no boundary land means no link. An ordinary paid road activates it. Only side-sharing roads relay access. All three zones need a connected road beside them; stations do not relay road access.
+## Saves, UI and verification
 
-**Power (D19/D23).** Single-tile $500 stations supply 20 units. All zone plots request 1, empty or developed. Roads/stations form side-sharing networks independent of outside access. Serve plots by `(station distance, row-major plot index)`; choose a touching network with room by `(distance, network order)`. No allocation memory: new nearer zones can displace grown ones. Growth never changes allocation. Legacy internal names `served_homes`, `home_state`, `home_reason` now cover all zone types.
+Schema 4 stores exact-length development/loss arrays and `last_budget` (latest tick, opening cash, taxable counts, facility counts). Outputs and all service/coverage/forecast state are derived. Empty ledger is valid for new/migrated towns; no fabricated historical accounting. Schema 1 (`m1-1`, IDs 0–2), 2 (`m2b-1`, IDs 0–3), 3 (`m2c-1`, IDs 0–5) validate under their own meanings. Versions 1/2 gain zero development; 3 retains development/loss; all retain cash/time/RNG, gain empty history, and settle at the next future month only. Before replacement, preserve older primary or backup bytes once as `manual.schema1/2/3.json`. Loading never writes; preservation failures abort replacement.
 
-**Growth (D22).** Levels 0-2; a home level holds 4 residents, shop/workshop levels provide 2/4 jobs. Totals count standing development until decline, not individual citizens or assigned employment. Prior-state targets: home `min(2*cells,3+floor(jobs/2))`, each business `ceil(population/16)`. Demand is positive remaining level count. Three starter home levels prevent deadlock; serviced mixed zoning can settle at 48 residents/18 jobs. Demand satisfaction alone never evicts development.
+Keep all **five** fixtures byte-identical; hashes and scenarios in `game/tests/fixtures/README.md`. Schema-3 fixture still tests pending decline; schema-4 fixture tests tick 59 plus fractional time, a park, and prior ledger. Maps 8–128 per dimension; JSON cap 512 KiB; seed/RNG signed-64 decimal strings. User save path `%APPDATA%/OriginalCityBuilder/saves/manual.json` and `.bak`. Preserve and restore all real profile files before/after native tests.
 
-Every fifth tick reserves at most eight additions per type, one per plot, row-major, skipping missing services and full plots. Apply all changes together from the same prior state. Developed plots lose one level every second consecutive growth check without both services. Persistent loss counter 0/1 resets on decline; restoring both services resets it immediately, even paused. Empty/non-zone cells have counter 0. Identical repaint preserves buildings free; clear removes levels/totals immediately without refund. Ticks never change cash, command sequence, or RNG.
-
-**Clock/order.** One day/tick, one second at 1x, 3x fast. Ordered commands run between clock advances and rebuild access, power, growth totals/eligibility. Each clock step increments tick, runs a round on multiples of five, then refreshes growth totals/eligibility. Retain eight ticks/frame, one-hour backlog, focus/dialog suspension, no offline catch-up. Display day = tick+1; first growth displays on day 6.
-
-**UI.** 1 road / 2 homes / 6 shops / 7 workshops / P station / 3 clear; 4/5 retain speed meanings. R/E marks, Home centering, Ctrl+S/L, F6. HUD residents/jobs/demand; inspector level/count, separate road/power, demand/next check, growth/queue/full/wait/decline reasons. Keep the 320 px inspector cap. Display/Help share a row to fit 720p. Largest-text Help fits tightly; shorten or scroll before adding lines. Camera/display/overlay preferences reset on restart.
-
-## Persistence and verification
-
-- Occupancy 0 empty / 1 road / 2 home / 3 station / 4 shop / 5 workshop. Saved `development` and `service_loss` arrays have exact cell count and bounds 0-2 / 0-1, with non-zone/empty/serviced-counter consistency checks. Networks, totals, and demand are derived.
-- Schema 1 (`m1-1`, IDs 0-2) and schema 2 (`m2b-1`, IDs 0-3) migrate with zero-filled new arrays, retaining all old fields/RNG. Load never writes. Before replacing an older primary or backup, preserve its bytes once as `manual.schema1.json` / `manual.schema2.json`; failed preservation aborts replacement. Newer/inconsistent data fails without replacing the live city.
-- Keep four fixtures byte-identical: `m1-schema1.json`, `m2a-schema1.json`, `m2b-schema2.json`, `m2c-schema3.json`. The M2c sample has 48 residents/18 jobs, tick 45, fractional time, and ten pending loss counters; its next round yields 24/6. See the fixture README and `growth_tests.gd`.
-- Save path `%APPDATA%/OriginalCityBuilder/saves/manual.json`; `.bak` is previous-good. Preserve real user saves before native testing, restore/verify afterward. M2c did so; ignored evidence is under `builds/validation/m2c/`.
-- Provisional costs: roads $10, all zones $25, stations $500; free clear/no refund; starting funds $10,000. No income/upkeep. JSON cap 512 KiB; maps 8-128 in each dimension; seed/RNG are signed 64-bit decimal strings.
+Controls: 1 roads / 2 homes / 6 shops / 7 workshops / P station / 8 park / 3 clear; B budget; 4/5 speed; Space pause; R/E marks; Home centre; Ctrl+S/L; F6. Inspector cap 320 px. Budget scrolls at largest text; Help is tight at 720p. Link/zoom share a row. Automated layouts cover four sizes x three text sizes and toolbar/sidebar separation. Native M2d evidence is one-machine 720p only; DPI, other hardware/OS, controllers, performance targets and enjoyment remain unverified. No CI configured.
 
 ```powershell
 .\tools\verify.ps1
@@ -53,19 +39,20 @@ Every fifth tick reserves at most eight additions per type, one per plot, row-ma
 .\tools\package.ps1
 ```
 
-M2c passes **298 source / 277 exported-PCK checks**, plus release-EXE startup. The external PCK driver uses the pinned **editor runtime**; release templates disable `--script`. Native M2c used the computer-use skill's SendInput-backed desktop API: build all zones, grow, shortage, save/restart/load, decline/recovery, largest text/help, and unsaved-change prompt at 1280x720. Automated layouts cover four sizes x three text sizes. Physical human input, DPI variants, other hardware/OS, controller, performance-target, and enjoyment evidence remains absent.
+Packed driver uses the pinned **editor runtime with release PCK**; release EXE does not support external `--script`. Native EXE interaction is separate evidence. Do not call import/startup a gameplay test. M2d detected three intentional faults (unserved taxes, reversed park priority, missing cash floor) and restored source before final verification/export. 128x128 / 250-day local run took about 2.54 s; this is not an 8 ms tick-target pass.
 
-The 128x128 scenario took about 1.27-1.40 seconds for 250 days / 50 rounds; this is not an 8 ms tick-target pass. Four deliberate growth mutations fail the suite; source was restored byte-identical before final verification/export. Helpers passed under PowerShell **7.6.5** in M2c, retaining the 5.1-safe changes from M2b.
+## Next assignment and stop point
 
-## Queued after the study: M2d economy and amenity (unchanged)
+In a new conversation opened in this repository, **“Run next session” starts this assignment**: scope one small M3 sub-slice before implementation. It does not start the full M3 implementation bundle.
 
-When explicitly asked to continue, implement the last bounded M2 slice and stop at that checkpoint:
+1. Review this M2 checkpoint, current local diff, and the M3/product-brief gates. Keep source delivery separate from any public binary release.
+2. Propose one bounded neighbourhood-project prototype and its observable player benefit, or identify a concrete M2 usability issue that should precede it. Record rules, acceptance tests, save implications, original asset provenance, and a narrow stop point.
+3. End with a concrete M3a handoff. The full M3 bundle (project, onboarding, art/audio, controller, autosaves, observed playtests) is not implicitly authorised by this planning assignment.
 
-1. Inspect Git/live remote, preserve fixtures/user saves, and rerun verification.
-2. Before coding, specify in Decisions: month boundary; exact integer income/tax/upkeep equations (including stations); treatment of unserved development; affordability/debt limits; visible and recoverable deficit rules; one park/amenity's cost, coverage, and growth effect; order relative to growth; save/schema/content migration; deterministic ties. Economic values are not settled defaults.
-3. Keep accounting aggregate/auditable; show expected income/expenses and causes of deficit. Preserve bounded work and simultaneous prior-state growth. Avoid citizens, traffic, disasters, projects, or extra content systems.
-4. Implement one small park/amenity with original geometric placeholders and provenance. Its effect must be explained in the inspector and distinguished by a meaningful test.
-5. Test exact monthly accounting, frame partition/reload across a month, a viable empty-town opening, disconnection, shortage, costly overbuild, and recovery from deficit without an irreversible trap. Retain atomic spending and older migrations.
-6. Exercise the exact Windows export through accounting, amenity, deficit recovery, and save/restart/load. Update README, Decisions, evidence, and handoff. Integrate source only within the active owner's instructions.
+Do not add traffic, crime, pollution, disasters, land markets, citizen agents, extra amenities, or tax policy controls by analogy. M2d's values and park benefit are provisional and have not been tested for enjoyment; changing them requires a decision and meaningful regression tests.
 
-**M2 gate:** a town grows from empty; shortages and deficits are understandable/recoverable; accounting and deterministic continuation pass, including the export. M3 projects, onboarding polish, production art/audio, controller route, autosaves, and observed enjoyment tests remain later work. No purchases, external messaging, store upload, or public release is implied.
+## Completed study boundary
+
+The one U10 source study is complete and its source-reading permission is exhausted. **Never open/read/run the reference checkout or online/reproduced reference source during implementation.** Only `docs/research/MICROPOLIS_STUDY.md` and `docs/DECISIONS.md` may supply reference-study input. The ignored checkout is evidence only; no build scripts/code may run or enter Git/distribution. The study adopted no simulation rules. M2d introduced independent rules through D25–D27 and opened no reference source. Keep the original unnamed game separate; no GPL/root licence or reference branding was added.
+
+No purchases, external messaging, store upload, public release, or additional platform support is implied.

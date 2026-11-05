@@ -15,14 +15,14 @@ static func decode(text: String) -> Dictionary:
 	var schema: int = int(data.schema_version)
 	if schema > City.SCHEMA:
 		return fail("This save was made by a newer version of the game (format %d). The file was not changed." % schema)
-	if schema not in [1, 2, City.SCHEMA]:
+	if schema not in [1, 2, 3, City.SCHEMA]:
 		return fail("This save uses an unsupported format (%d). The file was not changed." % schema)
 	# Each historical format has its own version pair and allowed occupancy IDs.
-	var version: String = {1: "m1-1", 2: "m2b-1", 3: City.SIMULATION}[schema]
+	var version: String = {1: "m1-1", 2: "m2b-1", 3: "m2c-1", 4: City.SIMULATION}[schema]
 	var content: String = version
 	if data.get("simulation_version") != version or data.get("content_version") != content:
 		return fail("This save belongs to a different simulation/content version.")
-	var max_use: int = {1: City.HOME, 2: City.POWER, 3: City.WORKSHOP}[schema]
+	var max_use: int = {1: City.HOME, 2: City.POWER, 3: City.WORKSHOP, 4: City.PARK}[schema]
 	if not integer(data.get("width"), 8, 128) or not integer(data.get("height"), 8, 128):
 		return fail("Invalid map dimensions.")
 	if not signed_integer_string(data.get("seed")) or not signed_integer_string(data.get("random_state")):
@@ -36,7 +36,7 @@ static func decode(text: String) -> Dictionary:
 		return fail("Missing map arrays.")
 	if data.terrain.size() != count or data.occupancy.size() != count:
 		return fail("Map array length does not match dimensions.")
-	if schema == City.SCHEMA:
+	if schema >= 3:
 		for field in ["development", "service_loss"]:
 			if typeof(data.get(field)) != TYPE_ARRAY or data[field].size() != count:
 				return fail("Missing or invalid %s array." % field)
@@ -49,11 +49,16 @@ static func decode(text: String) -> Dictionary:
 			return fail("Unknown terrain or land-use identifier.")
 		if int(data.terrain[i]) == City.WATER and int(data.occupancy[i]) != City.EMPTY:
 			return fail("Save contains construction on water.")
-		if schema == City.SCHEMA:
+		if schema >= 3:
 			if not integer(data.development[i], 0, Balance.MAX_LEVEL) or not integer(data.service_loss[i], 0, Balance.DECLINE_ROUNDS - 1):
 				return fail("Invalid development or service-loss value.")
 			if (not City.is_zone(int(data.occupancy[i])) and int(data.development[i]) != 0) or (int(data.development[i]) == 0 and int(data.service_loss[i]) != 0):
 				return fail("Development does not match its zone.")
+	if schema == City.SCHEMA:
+		if not valid_budget(data.get("last_budget"), int(data.tick), count):
+			return fail("Invalid monthly budget record.")
+	elif data.has("last_budget"):
+		return fail("Earlier-format save contains unsupported budget data.")
 	var city: City = City.new()
 	city.width = int(data.width)
 	city.height = int(data.height)
@@ -66,9 +71,12 @@ static func decode(text: String) -> Dictionary:
 	city.development.fill(0)
 	city.service_loss.resize(count)
 	city.service_loss.fill(0)
-	if schema == City.SCHEMA:
+	if schema >= 3:
 		city.development = PackedByteArray(data.development)
 		city.service_loss = PackedByteArray(data.service_loss)
+	city.last_budget = data.last_budget.duplicate() if schema == City.SCHEMA else {}
+	# Normalize parsed JSON numbers for exact snapshots.
+	for key in city.last_budget: city.last_budget[key] = int(city.last_budget[key])
 	city.cash = int(data.cash)
 	city.tick = int(data.tick)
 	city.pending_us = int(data.pending_us)
@@ -94,3 +102,17 @@ static func signed_integer_string(value: Variant) -> bool:
 
 static func fail(message: String) -> Dictionary:
 	return {"ok": false, "message": message}
+
+static func valid_budget(value: Variant, tick: int, count: int) -> bool:
+	if typeof(value) != TYPE_DICTIONARY: return false
+	if value.is_empty(): return true
+	var bounds: Dictionary = {"tick": tick, "opening_cash": Balance.MAX_CASH,
+		"residents": count * 8, "jobs": count * 8, "roads": count, "stations": count, "parks": count}
+	if value.size() != bounds.size(): return false
+	for key in bounds:
+		if not integer(value.get(key), 0, bounds[key]): return false
+	if int(value.tick) == 0 or int(value.tick) % Balance.MONTH_DAYS != 0: return false
+	if int(value.residents) % 4 != 0 or int(value.jobs) % 2 != 0: return false
+	# Historical counts must fit the saved map even though today's layout may differ.
+	var minimum_zones: int = (int(value.residents) + 7) / 8 + (int(value.jobs) + 7) / 8
+	return int(value.roads) + int(value.stations) + int(value.parks) + minimum_zones <= count

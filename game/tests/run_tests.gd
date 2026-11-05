@@ -16,7 +16,7 @@ class FaultFiles extends FileOps:
 		return super.write_text(path, "{" if fault == "truncate" else text)
 	func copy_file(from: String, to: String) -> Error:
 		if fault == "backup_copy": return ERR_CANT_CREATE
-		if fault == "preserve_copy" and (to.contains(".schema1.json") or to.contains(".schema2.json")): return ERR_CANT_CREATE
+		if fault == "preserve_copy" and (to.contains(".schema1.json") or to.contains(".schema2.json") or to.contains(".schema3.json")): return ERR_CANT_CREATE
 		return super.copy_file(from, to)
 	func replace_file(from: String, to: String) -> Error:
 		if fault == "backup_replace" and to.ends_with(".bak"): return ERR_CANT_CREATE
@@ -48,6 +48,7 @@ func run() -> void:
 	test_power()
 	test_migration()
 	preload("res://tests/growth_tests.gd").new().run(self)
+	preload("res://tests/economy_tests.gd").new().run(self)
 	test_clock()
 	test_codec()
 	test_storage()
@@ -55,7 +56,7 @@ func run() -> void:
 	await test_scene()
 	if "--prove-failure-exit" in OS.get_cmdline_user_args():
 		check(false, "Deliberate runner failure to verify exit code")
-	print(JSON.stringify({"suite": "M2c", "checks": checks, "failed": failures.size(), "failures": failures}))
+	print(JSON.stringify({"suite": "M2d", "checks": checks, "failed": failures.size(), "failures": failures}))
 	quit(0 if failures.is_empty() else 1)
 
 func test_commands() -> void:
@@ -253,7 +254,7 @@ func test_codec() -> void:
 		check(not Codec.decode(bad_text).ok, "reject malformed/incomplete data: " + bad_text)
 	check(not Codec.decode(" ".repeat(Codec.MAX_BYTES + 1)).ok, "oversize save rejected")
 	var mutations: Array = [
-		["schema_version",4], ["schema_version",1], ["schema_version",0], ["schema_version",true],
+		["schema_version",5], ["schema_version",1], ["schema_version",0], ["schema_version",true],
 		["simulation_version","future"], ["content_version","future"],
 		["width",129], ["height",7], ["width",64.5], ["cash",-1],
 		["cash",1.5], ["cash",true], ["tick",-1], ["sequence",-1],
@@ -269,7 +270,7 @@ func test_codec() -> void:
 	data.terrain[0] = 2
 	check(not Codec.decode(JSON.stringify(data)).ok, "unknown terrain identifier")
 	data = city.snapshot()
-	data.occupancy[0] = 6
+	data.occupancy[0] = 7
 	check(not Codec.decode(JSON.stringify(data)).ok, "unknown use identifier")
 	data = city.snapshot()
 	data.occupancy[0] = City.POWER
@@ -407,8 +408,9 @@ func migrated_text(legacy: String) -> String:
 	for field in ["width", "height", "cash", "tick", "sequence", "pending_us"]: data[field] = int(data[field])
 	data.terrain = Array(PackedByteArray(data.terrain))
 	data.occupancy = Array(PackedByteArray(data.occupancy))
-	data.development = zeros.duplicate()
-	data.service_loss = zeros.duplicate()
+	data.development = Array(PackedByteArray(data.get("development", zeros)))
+	data.service_loss = Array(PackedByteArray(data.get("service_loss", zeros)))
+	data.last_budget = {}
 	return JSON.stringify(data, "", true)
 
 func test_power() -> void:
@@ -455,7 +457,7 @@ func test_power() -> void:
 		cells.assign(attempt[1])
 		check(not command(city, attempt[0], cells).ok and city.canonical() == snapshot and city.power.home_state == states, "rejected %s %s keeps funds, map, and power" % [attempt[0], attempt[1]])
 	var pair: Array[Vector2i] = [Vector2i(2, 6), Vector2i(3, 6)]
-	check(String(city.preview("power", one(Vector2i(11, 4))).message).contains("outside-link") and String(city.preview("power", pair).message).contains("one power station"), "station rejections explain the link and one-at-a-time rules")
+	check(String(city.preview("power", one(Vector2i(11, 4))).message).contains("outside-link") and String(city.preview("power", pair).message).contains("one facility"), "station rejections explain the link and one-at-a-time rules")
 	other.terrain[other.index(Vector2i(5, 7))] = City.WATER
 	other.rebuild_derived()
 	snapshot = other.canonical()
@@ -528,7 +530,7 @@ func test_power() -> void:
 	check(decoded.ok and decoded.migrated_from == 0 and decoded.city.power.home_state == spill.power.home_state and decoded.city.power.network_used == spill.power.network_used, "reload reconstructs the power allocation")
 	var keys: Array = spill.snapshot().keys()
 	keys.sort()
-	check(keys == ["cash", "content_version", "development", "height", "occupancy", "pending_us", "random_state", "schema_version", "seed", "sequence", "service_loss", "simulation_version", "terrain", "tick", "width"], "power and access are absent from saves")
+	check(keys == ["cash", "content_version", "development", "height", "last_budget", "occupancy", "pending_us", "random_state", "schema_version", "seed", "sequence", "service_loss", "simulation_version", "terrain", "tick", "width"], "power and access are absent from saves")
 	for item: City in [spill, decoded.city]:
 		command(item, "power", one(Vector2i(15, 11)))
 		Clock.advance(item, 2_000_000, 3)
@@ -582,7 +584,7 @@ func test_migration() -> void:
 	check(same, "migrated M2a home reasons match the unchanged M2a results")
 	check(city.power.station_count == 0 and reason(city, Vector2i(7, 3)) == "no_source", "legacy city gains no fabricated power")
 	var restored: City = Codec.decode(city.canonical()).city
-	check(Codec.decode(city.canonical()).migrated_from == 0 and restored.canonical() == city.canonical(), "migrated city round-trips as schema 3")
+	check(Codec.decode(city.canonical()).migrated_from == 0 and restored.canonical() == city.canonical(), "migrated city round-trips as schema 4")
 	for item: City in [city, restored]:
 		command(item, "power", one(Vector2i(7, 1)))
 	check(reason(city, Vector2i(3, 2)) == "powered" and city.access.home_reason(city, Vector2i(3, 2)) == "disconnected_road" and reason(city, Vector2i(7, 3)) == "disconnected", "station powers the legacy isolated district while road access stays missing")
@@ -590,7 +592,7 @@ func test_migration() -> void:
 		command(item, "road", one(Vector2i(6, 2)))
 		Clock.advance(item, 1_000_000, 1)
 	check(reason(city, Vector2i(7, 3)) == "powered" and city.access.home_reason(city, Vector2i(3, 2)) == "connected" and city.cash == 971500 - Balance.POWER_COST - Balance.ROAD_COST, "rebuilt legacy bridge joins access and power")
-	check(city.canonical() == restored.canonical() and city.power.home_state == restored.power.home_state and city.rng.randi() == restored.rng.randi(), "legacy continuation matches after a schema-3 reload")
+	check(city.canonical() == restored.canonical() and city.power.home_state == restored.power.home_state and city.rng.randi() == restored.rng.randi(), "legacy continuation matches after a schema-4 reload")
 
 	# Store-level migration: loading writes nothing; first save preserves the original bytes.
 	var files := FaultFiles.new()
@@ -605,11 +607,11 @@ func test_migration() -> void:
 	files.fault = "preserve_copy"
 	check(not store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(path) == legacy and not files.exists(preserved), "failed preservation leaves the earlier save untouched")
 	files.fault = ""
-	check(store.save_city(loaded.city, path).ok and int(store.load_city(path).schema) == 3, "migrated city saves as schema 3")
+	check(store.save_city(loaded.city, path).ok and int(store.load_city(path).schema) == 4, "migrated city saves as schema 4")
 	check(preserved.get_file() == "manual.schema1.json" and FileAccess.get_file_as_string(preserved) == legacy, "original earlier-format bytes kept beside the save")
 	check(FileAccess.get_file_as_string(path + ".bak") == legacy, "previous-good backup holds the earlier save")
 	command(loaded.city, "power", one(Vector2i(7, 1)))
-	check(store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(preserved) == legacy and int(store.load_city(path + ".bak").schema) == 3, "later saves rotate schema 3 and never overwrite the preserved original")
+	check(store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(preserved) == legacy and int(store.load_city(path + ".bak").schema) == 4, "later saves rotate schema 4 and never overwrite the preserved original")
 
 	# Recovery from an earlier-format backup when the primary is corrupt.
 	var recover_path: String = base.path_join("recover_%d/manual.json" % Time.get_ticks_usec())
@@ -622,11 +624,11 @@ func test_migration() -> void:
 	files.fault = "preserve_copy"
 	check(not store.save_city(from_backup.city, recover_path).ok and FileAccess.get_file_as_string(recover_path + ".bak") == legacy, "failed preservation never rotates over an earlier-format backup")
 	files.fault = ""
-	check(store.save_city(from_backup.city, recover_path).ok and FileAccess.get_file_as_string(Store.preserved_path(recover_path, 1)) == legacy and int(store.load_city(recover_path + ".bak").schema) == 3, "earlier-format backup is preserved before rotation replaces it")
+	check(store.save_city(from_backup.city, recover_path).ok and FileAccess.get_file_as_string(Store.preserved_path(recover_path, 1)) == legacy and int(store.load_city(recover_path + ".bak").schema) == 4, "earlier-format backup is preserved before rotation replaces it")
 
 	# Unsupported or inconsistent saves are refused without changing their files.
 	var future: Dictionary = loaded.city.snapshot()
-	future.schema_version = 4
+	future.schema_version = 5
 	var future_path: String = path.get_base_dir().path_join("future.json")
 	files.write_text(future_path, JSON.stringify(future))
 	var future_text: String = FileAccess.get_file_as_string(future_path)
