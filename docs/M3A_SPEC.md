@@ -1,6 +1,6 @@
 # M3a: one neighbourhood project prototype
 
-Scoped 5 November 2026. **Proposed, not implemented or tested.** This is the output of the M3 scoping assignment. A subsequent owner request to run the next session authorises this bounded implementation; this planning session stops at documentation and source delivery.
+Scoped and subsequently implemented 5 November 2026 under the next-session owner request. **Implemented and locally tested; the full M3 gate remains open.** See [session evidence](sessions/2026-11-05-m3a.md). The rules below were specified before implementation.
 
 ## Player benefit and hypothesis
 
@@ -10,7 +10,7 @@ The prototype tests whether a local goal and a visible result make the existing 
 
 M2d evidence records tight Help space at 720p but no demonstrated blocking usability defect. Accommodating the new control without crowding is part of M3a; general onboarding and UI redesign remain separate.
 
-## Exact proposed rules
+## Adopted rules
 
 - One project type, one completion per town. Available from a new town or migrated save; optional throughout. No automatic acceptance or completion on load, growth, placement or opening a dialog.
 - The player chooses an existing pocket park. A qualifying home is a distinct HOME plot at level 1 or 2 with both current outside-road access and allocated power, at Manhattan distance at most 3 from that chosen park. Count plots, not residents or levels; a level-2 home counts once. Shops, workshops and empty/unserved homes do not count. Terrain between cells does not affect distance. Other parks do not expand the selected park's radius.
@@ -32,7 +32,7 @@ The completion button uses the selected cell, never a moving hover target. Model
 
 ## Save and implementation boundary
 
-Proposed version: **0.6.0-m3a**, schema **5**, simulation/content **m3a-1**. Current shipped-local build remains 0.5.0-m2d/schema 4 until implementation is verified.
+Implemented version: **0.6.0-m3a**, schema **5**, simulation/content **m3a-1**. Earlier local build 0.5.0-m2d uses schema 4.
 
 Persist one strict `project` record with exactly `completed` (Boolean) and `park_index` (integer). Initial/migrated record is `{completed: false, park_index: -1}`. Incomplete requires index -1. Completed permits -1 (cleared) or an in-range index whose occupancy is PARK. Reject wrong types, extra/missing keys, out-of-range indices, or non-park anchors; validate integers with existing bounded-number rules. Do not require qualifying homes in a completed save. No saved progress counts, selected dialog row or additional derived data.
 
@@ -57,7 +57,7 @@ Run pinned `tools/verify.ps1`, native release-EXE interaction separately, then `
 
 ## Original assets and stop point
 
-The goal text, checklist and flower geometry are to be created independently in this project. Extend `licenses/ASSETS.md` for the new bounded code-drawn decoration and UI/text; retain engine/font notices. No downloaded art, generated bitmap, purchased asset, reference-source reading or new licence is needed. No assets were created in this planning session.
+The goal text, checklist and flower geometry are to be created independently in this project. Extend `licenses/ASSETS.md` for the new bounded code-drawn decoration and UI/text; retain engine/font notices. No downloaded art, generated bitmap, purchased asset, reference-source reading or new licence is needed. The scoping session created no assets; implementation added the code-drawn cluster and original UI text to the asset ledger.
 
 Stop after this single project, tests, native export evidence, documentation/handoff and authorised commit/push/default-branch integration. Record UX issues for the following session rather than implementing the full M3 bundle. No general onboarding, final art/audio, controller path, autosaves, extra amenities/projects or balance tuning. M3 is still incomplete after M3a.
 

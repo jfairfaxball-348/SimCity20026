@@ -1,12 +1,12 @@
 # Untitled city builder
 
-**M0/M1 through M2d implemented and tested locally, 4–5 November 2026.** Version **0.5.0-m2d** adds monthly income/upkeep, an auditable budget, recoverable deficits, and a pocket park. The local M2 functional gate is met; M3 and public release remain future work.
+**M0/M1 through M2d and the bounded M3a project are implemented and tested locally, 4–5 November 2026.** Version **0.6.0-m3a** adds one optional neighbourhood project, cosmetic flowers, and schema-5 saves. M3 as a whole and public release remain future work.
 
 The user confirmed desktop players, a possible Steam release, relaxed building, charming pixel art, and approachable controls. The code, map generation, geometric graphics, and interface were created independently. The repository name is a workspace identifier, not a cleared product title.
 
 ## Play or develop
 
-The Windows export is `builds/windows/citybuilder.exe`; keep its `citybuilder.pck` beside it. The tested local package is `builds/citybuilder-0.5.0-m2d-windows-x64.zip`. Tools, caches, and builds are ignored and absent from a fresh clone.
+The Windows export is `builds/windows/citybuilder.exe`; keep its `citybuilder.pck` beside it. The tested local package is `builds/citybuilder-0.6.0-m3a-windows-x64.zip`. Tools, caches, and builds are ignored and absent from a fresh clone.
 
 From the repository root in PowerShell:
 
@@ -30,7 +30,7 @@ Use **Godot 4.7.2 Standard**, `4.7.2.stable.official.ed1daf0bf`, typed GDScript,
 - Camera pan/zoom/centering, grid toggle, three text sizes, four window sizes, pause/1x/3x, construction while paused, and suspension during dialogs/focus loss.
 - Validated manual saves, previous-good backup, explicit recovery, unsaved-change prompts, deterministic continuation, and migration from earlier saves with preserved originals.
 
-There are **no projects, audio, controller route, or autosaves yet**. Prices are provisional: roads $10, zones $25, power stations $500, parks $100; clear is free with no refund; initial funds $10,000.
+There is one optional project; **audio, a controller route, general onboarding, and autosaves remain future work**. Prices are provisional: roads $10, zones $25, power stations $500, parks $100; clear is free with no refund; initial funds $10,000.
 
 ## Start a growing town
 
@@ -46,7 +46,7 @@ Satisfied demand stops new growth without evicting buildings. Every second growt
 | --- | --- |
 | 1 / 2 / 6 / 7 | Roads / homes / shops / workshops |
 | P / 8 / 3 | Power station / pocket park / clear |
-| B | Monthly budget and last settlement |
+| B / J | Monthly budget / neighbourhood project |
 | Left drag; right click or Escape | Preview and commit a stroke; cancel |
 | WASD / arrows / middle drag | Pan |
 | Wheel / + / -; Home | Zoom; return to outside link |
@@ -62,27 +62,33 @@ A negative monthly net is a deficit. Clear surplus facilities for free or restor
 
 A **pocket park (8)** costs $100 and $10/month. Homes within three side-steps (Manhattan distance) receive priority when reserving growth demand. Overlap does not stack. Parks need no services and relay neither roads nor power. They change which homes develop first under contention; they add no demand, capacity, tax multiplier, or protection from decline. The inspector explains coverage and priority.
 
+## A welcoming square
+
+Open **Project [J]**, choose a pocket park, and grow three distinct home plots within three side-steps of it. Each home needs road access and power; either development level counts once. Press **Complete square** when ready to add flowers. This is optional, free, and available while paused, with no deadline. The flowers are cosmetic: the existing park priority and upkeep stay unchanged.
+
+Completion is once per town. Service loss or decline does not undo it. Clearing the decorated park removes its flowers but keeps completion; replacing the park does not restart the project. **Show park** centres the view. At largest text, scroll the project dialog to reach its actions. Help also scrolls.
+
 ## Saves
 
 Saves use `%APPDATA%/OriginalCityBuilder/saves/manual.json`, with `.bak` as the previous valid save. Restarting begins a fresh paused map; use Load to restore your city. Camera/display/overlay preferences are not persisted.
 
-**Schema 4**, simulation/content **m2d-1**, stores development, service-loss counters, and the latest settlement inputs. Schemas 1/2 migrate with zero development; schema 3 retains its development and pending decline. Every older version gains an empty budget history, with no retroactive collection. Loading never writes. Before replacing an older primary or backup, its exact bytes are preserved once as `manual.schema1.json`, `manual.schema2.json`, or `manual.schema3.json`; failed preservation stops the save. Older builds cannot read schema 4: roll back using the preserved original. Networks, population/jobs, demand, park coverage, and budget forecasts are derived.
+**Schema 5**, simulation/content **m3a-1**, stores development, service-loss counters, the latest settlement inputs, and one project record (completed status and park location, or no location after clearing). Schemas 1/2 migrate with zero development; schema 3 retains development and pending decline; schema 4 also retains its budget history. All earlier saves gain an incomplete project, with no automatic completion or retroactive collection. Loading never writes. Before replacing an older primary or backup, its exact bytes are preserved once as `manual.schema1/2/3/4.json`; failed preservation stops the save. Older builds cannot read schema 5: roll back using the preserved original. Networks, population/jobs, demand, park coverage, project eligibility and budget forecasts are derived.
 
 ## Evidence and limits
 
-M2d passed **361 source checks**, **324 exported-PCK checks** under the pinned editor runtime, and release-EXE headless startup. Checks cover exact post-growth monthly accounting, unserved taxes, park contention and distance, cash limits, deficit recovery, fractional reload/frame partition across months, atomic spending, older migrations, corrupted saves, and storage failures. Five save fixtures are hash-checked. Three deliberate economy/priority faults were detected and reverted. A 128x128 scenario completed 250 days with valid bounded development and saves; this is not a performance-target pass.
+M3a passed **418 source checks**, **360 exported-PCK checks** under the pinned editor runtime, and release-EXE headless startup. Tests cover project eligibility, service loss/displacement, atomic/repeated completion, demolition, three-month simulation equivalence, strict save validation, older migrations and preservation failures. Five historical fixtures remain byte-identical; a sixth captures completed-project continuation across a month.
 
-The exact Windows release executable was exercised through park placement, growth/accounting, budget scrolling at largest text, save/exit/restart/load with byte-identical resave, zero-cash overbuild, free demolition, and recovered monthly grants. Two controlled scenarios were prepared through model commands; this was automated desktop input, not a human playtest. Original user saves were restored byte-for-byte. See [M2d evidence](docs/sessions/2026-11-05-m2d.md) for scenario details, artifact hashes, the interruption during the recovery run, and limits.
+The Windows release was exercised from an empty town through roads, station, three homes, park, growth, project completion, largest-text scrolling, save/exit/restart/load with byte-identical resave, and park removal with retained completion. The final Help shortcut fix was re-exported, checked automatically and inspected natively. User saves were restored byte-for-byte. This is automated desktop testing, not a human playtest. See [M3a evidence](docs/sessions/2026-11-05-m3a.md) for the two native runs and artifact identities; [M2d evidence](docs/sessions/2026-11-05-m2d.md) retains prior economy/deficit coverage.
 
-Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text sizes 16/18/20. Native M2d evidence covers 720p at standard/largest text only. Physical human keyboard/mouse use, Windows DPI variations, controllers, other machines/OSs, performance targets, and enjoyment remain unverified. No CI is configured.
+Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text sizes 16/18/20. Native M3a checks cover 720p at standard/largest text on one machine. Human usability/enjoyment, Windows DPI variants, controllers, other hardware/OSs and performance targets remain unverified. No CI is configured.
 
 ## Continue here
 
-**M2d is complete at the local checkpoint.** Review [Next session](NEXT_SESSION.md) before further work; M3a scoping is complete and the next session implements only the [specified single-project prototype](docs/M3A_SPEC.md). No M3 code is implemented yet. The completed source-study permission remains exhausted. Implementation sessions must never open reference source; their only reference-study inputs are the [qualitative notes](docs/research/MICROPOLIS_STUDY.md) and [Decisions](docs/DECISIONS.md). The game remains original, unnamed, and not GPL-licensed.
+**M3a is complete at the local checkpoint; M3 is not complete.** [Next session](NEXT_SESSION.md) scopes a small guided-opening follow-up before implementation. The source-study permission remains exhausted: never open reference source; only the permitted qualitative notes and Decisions may supply study input. The game remains original, unnamed, and not GPL-licensed.
 
 | Document | Purpose |
 | --- | --- |
-| [Next session](NEXT_SESSION.md) | M2d checkpoint, bounded M3a implementation, and study boundary |
+| [Next session](NEXT_SESSION.md) | M3a checkpoint, next scoping assignment, and study boundary |
 | [Decisions](docs/DECISIONS.md) | Requirements and exact adopted rules |
 | [Toolchain](docs/TOOLCHAIN.md) | Setup, verification, export, packaging |
 | [Technical plan](docs/TECHNICAL_PLAN.md) | Architecture and future systems |
@@ -91,4 +97,4 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 | [IP and assets](docs/IP_AND_ASSETS.md) | Provenance and rights boundaries |
 | [Asset ledger](licenses/ASSETS.md) | Original placeholders and notices |
 
-**M2 local functional gate met; M3 remains unimplemented.** M2d was delivered at `f2093cb`; the documentation-only M3a scope uses `codex/m3a-scope`. Source delivery uses a pushed work branch and fast-forward integration into default branch `codex/m2a-road-access`. Commit/push/merge/fast-forward is now the standing completion workflow. No public release, title, source licence, price, release date, or additional supported platform was selected.
+**M2 local functional gate met; M3a locally verified; the full M3 gate remains open.** Work uses `codex/m3a-project`, based on `4631b3e`, with standing commit/push/fast-forward delivery into default branch `codex/m2a-road-access`. No public release, title, source licence, price, release date or additional supported platform was selected.

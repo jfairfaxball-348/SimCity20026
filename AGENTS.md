@@ -4,8 +4,8 @@ This is an original relaxed city-builder project. Start with `README.md`, `NEXT_
 
 ## Scope and status
 
-- The initial 4 November 2026 session was research only. The user subsequently authorised M0/M1, M2a, M2b, M2c, and M2d implementation; all are now implemented and locally tested. See the dated evidence records. Do not present M3 or later proposals as implemented.
-- When asked to continue, use the current assignment in `NEXT_SESSION.md` unless the user gives a different scope. The one U10 **Micropolis study is complete**; M2d is also complete. M3a scoping is complete; the next handoff assigns only the single-project prototype in `docs/M3A_SPEC.md`. M3a remains unimplemented; the rest of M3 stays outside that separate session. The study adopted no new simulation rules. The earlier planning-only restriction does not prohibit later authorised implementation.
+- The initial 4 November 2026 session was research only. The user subsequently authorised M0/M1, M2a, M2b, M2c, M2d, and the bounded M3a project implementation; all are now implemented and locally tested. See the dated evidence records. Do not present the remaining M3 bundle or later proposals as implemented.
+- When asked to continue, use the current assignment in `NEXT_SESSION.md` unless the user gives a different scope. The one U10 **Micropolis study is complete**, M2d is complete, and M3a is locally verified. The next assignment scopes a bounded guided opening; it does not implement the full M3 bundle. The study adopted no simulation rules. Earlier planning-only restrictions do not prohibit subsequent authorised implementation.
 - Desktop players and relaxed building/pixel art/approachable controls are confirmed. Engine and M1 layout defaults have been adopted; later simulation and commercial plans remain documented defaults or open decisions.
 - Inspect the current repo and Git state before editing; preserve unrelated work. Use `codex/` for new agent branches by default.
 

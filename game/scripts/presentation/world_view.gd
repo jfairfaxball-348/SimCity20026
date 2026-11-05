@@ -88,6 +88,12 @@ func _draw_cell(cell: Vector2i) -> void:
 			draw_rect(Rect2(at + Vector2(10, 11) * z, Vector2(4, 2) * z), Color("b58a60"))
 			draw_rect(Rect2(at + Vector2(5, 7) * z, Vector2(2, 4) * z), Color("735d44"))
 			draw_circle(at + Vector2(6, 5) * z, 4 * z, Color("a7c880"))
+			if city.project.completed and int(city.project.park_index) == i:
+				# Original three-flower cluster beside the path; no simulation effect.
+				for flower in [Vector2(11, 4), Vector2(13, 7), Vector2(9, 14)]:
+					draw_line(at + flower * z, at + (flower + Vector2(0, 2)) * z, Color("dce8ab"), z)
+					draw_rect(Rect2(at + (flower - Vector2.ONE) * z, Vector2(3, 3) * z), Color("edb6a3"))
+					draw_rect(Rect2(at + flower * z, Vector2.ONE * z), Color("fff0bb"))
 		City.HOME, City.SHOP, City.WORKSHOP:
 			_draw_zone(i, at, rect, z)
 		_:

@@ -18,9 +18,9 @@ const WORKSHOP: int = 5
 const PARK: int = 6
 const MAX_TICK: int = 1_000_000_000
 const MAX_PENDING_US: int = 3_600_000_000
-const SCHEMA: int = 4
-const SIMULATION: String = "m2d-1"
-const CONTENT: String = "m2d-1"
+const SCHEMA: int = 5
+const SIMULATION: String = "m3a-1"
+const CONTENT: String = "m3a-1"
 ## Supported earlier format (M1/M2a): IDs 0..2 only, migrated in memory (D20).
 const LEGACY_SCHEMA: int = 1
 const LEGACY_VERSION: String = "m1-1"
@@ -42,6 +42,7 @@ var access: Access = Access.new()
 var power: Power = Power.new()
 var growth: Growth = Growth.new()
 var amenity: Amenity = Amenity.new()
+var project: Dictionary = {"completed": false, "park_index": -1}
 var last_budget: Dictionary = {}
 var budget: Dictionary = {}
 
@@ -55,6 +56,7 @@ func initialize(map_seed: int = 198624, map_width: int = 64, map_height: int = 6
 	pending_us = 0
 	sequence = 0
 	last_budget = {}
+	project = {"completed": false, "park_index": -1}
 	terrain.resize(width * height)
 	terrain.fill(LAND)
 	occupancy.resize(width * height)
@@ -142,6 +144,7 @@ func apply_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 		return result
 	# All validation has finished. Only this boundary mutates construction state.
 	for i in changed:
+		if int(i) == int(project.park_index): project.park_index = -1
 		occupancy[int(i)] = int(result.target)
 		development[int(i)] = 0
 		service_loss[int(i)] = 0
@@ -165,7 +168,7 @@ func snapshot() -> Dictionary:
 		"seed": str(seed_value), "random_state": str(rng.state),
 		"terrain": Array(terrain), "occupancy": Array(occupancy),
 		"development": Array(development), "service_loss": Array(service_loss),
-		"last_budget": last_budget.duplicate(),
+		"last_budget": last_budget.duplicate(), "project": project.duplicate(),
 		"cash": cash, "tick": tick, "pending_us": pending_us, "sequence": sequence}
 
 func canonical() -> String:
@@ -173,3 +176,28 @@ func canonical() -> String:
 
 func _failure(message: String, cost: int = 0) -> Dictionary:
 	return {"ok": false, "message": message, "cost": cost, "changed": []}
+
+## D28: count distinct developed homes for this park, never pooled coverage.
+func project_homes(park_index: int) -> int:
+	if park_index < 0 or park_index >= occupancy.size() or occupancy[park_index] != PARK: return 0
+	var center := Vector2i(park_index % width, park_index / width)
+	var count: int = 0
+	for dy in range(-Balance.PARK_RADIUS, Balance.PARK_RADIUS + 1):
+		var reach: int = Balance.PARK_RADIUS - absi(dy)
+		for dx in range(-reach, reach + 1):
+			var cell := center + Vector2i(dx, dy)
+			if not inside(cell): continue
+			var i: int = index(cell)
+			if occupancy[i] == HOME and development[i] > 0 and growth.serviced(self, i): count += 1
+	return count
+
+func complete_project(cell: Vector2i) -> Dictionary:
+	if project.completed: return _failure("This town has already completed its project.")
+	if not inside(cell) or occupancy[index(cell)] != PARK: return _failure("Choose an existing pocket park.")
+	if project_homes(index(cell)) < 3: return _failure("This park needs three developed homes with road access and power within 3 side-steps.")
+	if sequence >= MAX_TICK: return _failure("This prototype has reached its command limit.")
+	project = {"completed": true, "park_index": index(cell)}
+	sequence += 1
+	return {"ok": true, "cost": 0, "changed": [index(cell)],
+		"message": "A welcoming square completed. Flowers celebrate it; the park benefit is unchanged.",
+		"record": {"tick": tick, "sequence": sequence, "kind": "complete_project", "indices": [index(cell)], "cost": 0}}

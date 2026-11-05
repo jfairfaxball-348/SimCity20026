@@ -52,6 +52,13 @@ var settings: AcceptDialog
 var budget_dialog: AcceptDialog
 var budget_text: Label
 var budget_button: Button
+var project_dialog: AcceptDialog
+var project_choice: OptionButton
+var project_text: Label
+var project_complete: Button
+var project_show: Button
+var project_button: Button
+var help_text: Label
 var help_dialog: AcceptDialog
 var load_dialog: ConfirmationDialog
 var quit_dialog: ConfirmationDialog
@@ -115,7 +122,12 @@ func _build_ui() -> void:
 		compact.content_margin_top = 2
 		compact.content_margin_bottom = 2
 		budget_button.add_theme_stylebox_override(style_name, compact)
-	funds.add_child(budget_button)
+	var town_actions := HBoxContainer.new()
+	funds.add_child(town_actions)
+	town_actions.add_child(budget_button)
+	project_button = _button("Project [J]", _open_project)
+	project_button.add_theme_font_size_override("font_size", 14)
+	town_actions.add_child(project_button)
 	day_label = _label("", 16)
 	day_label.custom_minimum_size.x = 145
 	row.add_child(day_label)
@@ -173,7 +185,7 @@ func _build_ui() -> void:
 	display_button.tooltip_text = "Window size and text size (F6)"
 	var help_button := _button("Help", _open_help)
 	help_button.tooltip_text = "Controls and growth rules"
-	for button: Button in [outside_button, access_button, power_button, display_button, help_button] + tool_buttons.values():
+	for button: Button in [outside_button, access_button, power_button, display_button, help_button, project_button] + tool_buttons.values():
 		for style_name in ["normal", "hover", "pressed", "focus"]:
 			var compact: StyleBox = theme.get_stylebox(style_name, "Button").duplicate()
 			compact.content_margin_top = 4
@@ -265,8 +277,16 @@ func _build_dialogs() -> void:
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_dialog.dialog_text = "1 Roads · 2 Homes · 6 Shops · 7 Workshops\nP Station · 8 Park · 3 Clear · B Budget\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\n\nJoin roads from the gold flag; zone beside them.\nAdd a station: 20 plots, even empty ones, nearest first.\nEvery 5 days, serviced plots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nParks prioritize homes within 3 side-steps; no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled."
+	help_text = _label("1 Roads · 2 Homes · 6 Shops · 7 Workshops\nP Station · 8 Park · 3 Clear · B Budget\nJ Project: a square with three serviced home plots.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\n\nJoin roads from the gold flag; zone beside them.\nAdd a station: 20 plots, even empty ones, nearest first.\nEvery 5 days, serviced plots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nParks prioritize homes within 3 side-steps; no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
 	add_child(help_dialog)
+	var help_scroll := ScrollContainer.new()
+	help_scroll.custom_minimum_size = Vector2(640, 440)
+	help_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	help_dialog.add_child(help_scroll)
+	help_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	help_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	help_scroll.add_child(help_text)
+	_build_project_dialog()
 	budget_dialog = AcceptDialog.new()
 	budget_dialog.title = "Monthly budget"
 	add_child(budget_dialog)
@@ -414,6 +434,8 @@ func _shortcut_input(event: InputEvent) -> void:
 		_center_camera()
 	elif event.is_action_pressed("cancel_stroke"):
 		_cancel_stroke()
+	elif event.is_action_pressed("show_project"):
+		_open_project()
 	elif event.is_action_pressed("show_budget"):
 		_open_budget()
 	elif event.is_action_pressed("display_settings"):
@@ -445,7 +467,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_extend_stroke(world.cell_at(_view_position(event.position)))
 
 func _modal_open() -> bool:
-	return settings != null and (settings.visible or budget_dialog.visible or help_dialog.visible or load_dialog.visible or quit_dialog.visible or recovery_dialog.visible)
+	return settings != null and (settings.visible or project_dialog.visible or budget_dialog.visible or help_dialog.visible or load_dialog.visible or quit_dialog.visible or recovery_dialog.visible)
 
 func _is_world_position(point: Vector2) -> bool:
 	if not world_rect.has_point(point) or _modal_open(): return false
@@ -520,6 +542,8 @@ func _growth_text(cell: Vector2i) -> String:
 	if city.tick >= City.MAX_TICK: return "Day limit reached. Growth is stopped."
 	var next_day: int = city.tick + Balance.GROWTH_DAYS - city.tick % Balance.GROWTH_DAYS + 1
 	if city.inside(cell) and city.occupancy[city.index(cell)] == City.PARK:
+		if city.project.completed and int(city.project.park_index) == city.index(cell):
+			return "Project completed. Flowers only; park priority unchanged. Upkeep $10/month."
 		return "Covered homes grow first within demand and round caps. No extra demand. Upkeep $10/month."
 	if not city.inside(cell) or not City.is_zone(city.occupancy[city.index(cell)]):
 		return "Next growth: day %d. Zones need road access, power and demand." % next_day
@@ -710,6 +734,7 @@ func _open_settings() -> void:
 
 func _open_help() -> void:
 	_cancel_stroke()
+	help_text.add_theme_font_size_override("font_size", font_size)
 	help_dialog.popup_centered(Vector2i(680,560))
 
 func _notification(what: int) -> void:
@@ -746,3 +771,80 @@ func _open_budget() -> void:
 func _budget_breakdown(data: Dictionary) -> String:
 	var result: Dictionary = City.Economy.totals(data)
 	return "Grant $100 + %d serviced residents × $2 + %d serviced jobs × $4 = %s\nUpkeep: %d roads × $1 + %d stations × $60 + %d parks × $10 = %s\nNet %s%s" % [data.residents, data.jobs, Balance.money(result.income), data.roads, data.stations, data.parks, Balance.money(result.expenses), Balance.money(result.net), " · DEFICIT: costs exceed income" if result.net < 0 else ""]
+
+func _build_project_dialog() -> void:
+	project_dialog = AcceptDialog.new()
+	project_dialog.title = "A welcoming square"
+	project_dialog.get_ok_button().text = "Close"
+	add_child(project_dialog)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(640, 400)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	project_dialog.add_child(scroll)
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 16)
+	scroll.add_child(column)
+	project_choice = OptionButton.new()
+	project_choice.item_selected.connect(func(_index: int): _refresh_project())
+	column.add_child(project_choice)
+	project_text = _label("", 16)
+	project_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	project_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(project_text)
+	project_complete = _button("Complete square", _complete_project)
+	column.add_child(project_complete)
+	project_show = _button("Show park", _show_project_park)
+	column.add_child(project_show)
+
+func _open_project() -> void:
+	_cancel_stroke()
+	project_choice.clear()
+	for i in range(city.occupancy.size()):
+		if city.occupancy[i] == City.PARK:
+			project_choice.add_item("Park (%d, %d)" % [i % city.width, i / city.width], i)
+	if project_choice.item_count > 0: project_choice.select(0)
+	_refresh_project()
+	project_dialog.popup_centered(Vector2i(700, 520))
+
+func _project_index() -> int:
+	if city.project.completed: return int(city.project.park_index)
+	return project_choice.get_selected_id() if project_choice.item_count > 0 else -1
+
+func _refresh_project() -> void:
+	var i: int = _project_index()
+	var valid: bool = i >= 0 and i < city.occupancy.size() and city.occupancy[i] == City.PARK
+	project_choice.visible = not city.project.completed and project_choice.item_count > 0
+	project_show.visible = valid
+	project_complete.visible = not city.project.completed
+	project_complete.disabled = not valid or city.project_homes(i) < 3
+	project_text.add_theme_font_size_override("font_size", font_size)
+	if city.project.completed:
+		project_text.text = "Completed: a welcoming square.\nFlowers celebrate your town; the park benefit is unchanged.\n"
+		if not valid: project_text.text += "The decorated park was cleared. Your completion is kept; rebuilding does not repeat the project.\n"
+	else:
+		project_text.text = "Optional goal: three developed HOME PLOTS within 3 side-steps of one park, each with road access and power. Each plot counts once, at either level.\n\n"
+		project_text.text += "%d / 3 qualifying home plots.\n" % city.project_homes(i) if valid else "No parks yet. Place a pocket park with 8.\n"
+		project_text.text += "\nComplete the square to add flowers. Decoration only: no extra growth, income or service. No deadline or penalty.\n"
+	project_text.text += "\nA park costs $100 to place and $10/month. It already prioritizes nearby homes within existing demand; completion does not change that benefit."
+
+func _complete_project() -> void:
+	var i: int = _project_index()
+	var cell := Vector2i(i % city.width, i / city.width) if i >= 0 else Vector2i(-1, -1)
+	var result: Dictionary = city.complete_project(cell)
+	if result.ok:
+		dirty = true
+		world.queue_redraw()
+	_status(result.message)
+	_refresh_project()
+
+func _show_project_park() -> void:
+	var i: int = _project_index()
+	if i < 0 or i >= city.occupancy.size() or city.occupancy[i] != City.PARK: return
+	var cell := Vector2i(i % city.width, i / city.width)
+	world.zoom = 1
+	world.origin = Vector2(cell) * World.TILE + Vector2.ONE * World.TILE / 2 - Vector2(400, 140)
+	world.clamp_camera()
+	world.queue_redraw()
+	_inspect_cell(cell)
+	project_dialog.hide()

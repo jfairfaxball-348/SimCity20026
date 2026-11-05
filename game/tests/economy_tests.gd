@@ -55,7 +55,7 @@ func run(tester: SceneTree) -> void:
 	t.check(FileAccess.get_sha256(fixture) == "59bdaa0de040c6a6ab8afb8ce48779312e4731a55c28e3a88005d0d415d445be", "schema-4 boundary fixture bytes preserved")
 	var text: String = FileAccess.get_file_as_string(fixture).strip_edges()
 	var decoded: Dictionary = Codec.decode(text)
-	t.check(decoded.ok and decoded.migrated_from == 0 and decoded.city.canonical() == text, "schema-4 boundary fixture exact round trip")
+	t.check(decoded.ok and decoded.migrated_from == 4 and decoded.city.canonical() == t.migrated_text(text), "schema-4 boundary fixture exact round trip")
 	if decoded.ok:
 		var saved: City = decoded.city
 		var before_cash: int = saved.cash
@@ -152,7 +152,7 @@ func test_continuation() -> void:
 	files.fault = "preserve_copy"
 	t.check(not store.save_city(migrated, path).ok and FileAccess.get_file_as_string(path) == legacy, "schema-3 preservation failure retains primary")
 	files.fault = ""
-	t.check(store.save_city(migrated, path).ok and FileAccess.get_file_as_string(Store.preserved_path(path, 3)) == legacy and store.load_city(path).schema == 4, "schema-3 original preserved byte-identically before schema-4 replacement")
+	t.check(store.save_city(migrated, path).ok and FileAccess.get_file_as_string(Store.preserved_path(path, 3)) == legacy and store.load_city(path).schema == City.SCHEMA, "schema-3 original preserved byte-identically before schema-4 replacement")
 	var backup_path: String = path + "_recovery.json"
 	files.write_text(backup_path, "{broken")
 	files.write_text(backup_path + ".bak", legacy)

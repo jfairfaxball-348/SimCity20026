@@ -205,7 +205,7 @@ func test_migration_validation() -> void:
 	files.fault = "preserve_copy"
 	t.check(not store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(path) == legacy, "schema-2 preservation failure prevents replacing primary")
 	files.fault = ""
-	t.check(store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(Store.preserved_path(path, 2)) == legacy and store.load_city(path).schema == 4, "schema-2 primary preserved byte-for-byte before schema-3 save")
+	t.check(store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(Store.preserved_path(path, 2)) == legacy and store.load_city(path).schema == City.SCHEMA, "schema-2 primary preserved byte-for-byte before schema-3 save")
 	var recovery: String = base.path_join("growth_recovery_%d/manual.json" % Time.get_ticks_usec())
 	files.write_text(recovery, "{broken")
 	files.write_text(recovery + ".bak", legacy)

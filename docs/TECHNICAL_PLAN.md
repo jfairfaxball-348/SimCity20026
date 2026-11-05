@@ -1,6 +1,6 @@
 # Technical plan
 
-Status, 5 November 2026: **M0/M1 through M2d implemented and locally tested**; projects and later release work remain proposals. See [Toolchain](TOOLCHAIN.md), [M2d evidence](sessions/2026-11-05-m2d.md), and [Decisions](DECISIONS.md) for the implemented contract and limitations.
+Status, 5 November 2026: **M0/M1 through M2d implemented and locally tested**; M3a adds one optional project; broader M3 and release work remain proposals. See [Toolchain](TOOLCHAIN.md), [M2d evidence](sessions/2026-11-05-m2d.md), and [Decisions](DECISIONS.md) for the implemented contract and limitations.
 
 ## Repository shape
 
@@ -103,7 +103,7 @@ The renderer adds an original station glyph and bolt/× marks (E). The inspector
 
 **Implemented in M2c:** `sim/growth.gd` derives population, jobs, demand, and a next-round plan from the completed city. Home/shop/workshop levels 0-2 are persistent. Each home level holds 4 residents; shop/workshop levels provide 2/4 jobs. Starter demand allows three home levels before jobs exist. Home target = min(2 x cells, 3 + floor(jobs/2)); both business targets = ceil(population/16). Demand is the positive remaining level count. Every fifth tick reserves up to eight additions per type, with covered homes first then row-major ties (D26), only for powered/access-served plots below level 2. It applies all changes together. Missing services lose one level on every second growth check; restoring both resets the saved loss counter immediately. Demand satisfaction alone never causes decline. Counts describe standing development until decline, not individual employment. See D22-D24 for exact bounds and save validation.
 
-**Implemented in M2d:** `sim/economy.gd` calculates integer monthly income/upkeep from post-growth serviced residents/jobs and all facility counts. `last_budget` retains actual settlement inputs; forecasts are derived. Cash has an explicit zero-floor waiver and maximum-cap report, without debt or service cuts. `sim/amenity.gd` rebuilds non-stacking Manhattan-radius-3 coverage with bounded local scans. Covered homes get priority within existing demand/caps, not extra demand. D25-D27 specify the exact rules. No RNG is consumed. Nuisance and projects remain unimplemented.
+**Implemented in M2d:** `sim/economy.gd` calculates integer monthly income/upkeep from post-growth serviced residents/jobs and all facility counts. `last_budget` retains actual settlement inputs; forecasts are derived. Cash has an explicit zero-floor waiver and maximum-cap report, without debt or service cuts. `sim/amenity.gd` rebuilds non-stacking Manhattan-radius-3 coverage with bounded local scans. Covered homes get priority within existing demand/caps, not extra demand. D25-D27 specify the exact rules. No RNG is consumed. Nuisance remains unimplemented. M3a adds derived eligibility and explicit one-time project completion; it adds no tick stage or economic/growth effect. Schema 5 stores only completed status and its park anchor, retaining historical completion after the anchor is cleared.
 
 ## Presentation and controls
 

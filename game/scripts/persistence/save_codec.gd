@@ -15,14 +15,14 @@ static func decode(text: String) -> Dictionary:
 	var schema: int = int(data.schema_version)
 	if schema > City.SCHEMA:
 		return fail("This save was made by a newer version of the game (format %d). The file was not changed." % schema)
-	if schema not in [1, 2, 3, City.SCHEMA]:
+	if schema not in [1, 2, 3, 4, City.SCHEMA]:
 		return fail("This save uses an unsupported format (%d). The file was not changed." % schema)
 	# Each historical format has its own version pair and allowed occupancy IDs.
-	var version: String = {1: "m1-1", 2: "m2b-1", 3: "m2c-1", 4: City.SIMULATION}[schema]
+	var version: String = {1: "m1-1", 2: "m2b-1", 3: "m2c-1", 4: "m2d-1", 5: City.SIMULATION}[schema]
 	var content: String = version
 	if data.get("simulation_version") != version or data.get("content_version") != content:
 		return fail("This save belongs to a different simulation/content version.")
-	var max_use: int = {1: City.HOME, 2: City.POWER, 3: City.WORKSHOP, 4: City.PARK}[schema]
+	var max_use: int = {1: City.HOME, 2: City.POWER, 3: City.WORKSHOP, 4: City.PARK, 5: City.PARK}[schema]
 	if not integer(data.get("width"), 8, 128) or not integer(data.get("height"), 8, 128):
 		return fail("Invalid map dimensions.")
 	if not signed_integer_string(data.get("seed")) or not signed_integer_string(data.get("random_state")):
@@ -54,12 +54,18 @@ static func decode(text: String) -> Dictionary:
 				return fail("Invalid development or service-loss value.")
 			if (not City.is_zone(int(data.occupancy[i])) and int(data.development[i]) != 0) or (int(data.development[i]) == 0 and int(data.service_loss[i]) != 0):
 				return fail("Development does not match its zone.")
-	if schema == City.SCHEMA:
+	if schema >= 4:
 		if not valid_budget(data.get("last_budget"), int(data.tick), count):
 			return fail("Invalid monthly budget record.")
 	elif data.has("last_budget"):
 		return fail("Earlier-format save contains unsupported budget data.")
+	if schema == City.SCHEMA:
+		if not valid_project(data.get("project"), data.occupancy): return fail("Invalid neighbourhood project record.")
+	elif data.has("project"):
+		return fail("Earlier-format save contains unsupported project data.")
 	var city: City = City.new()
+	if schema == City.SCHEMA:
+		city.project = {"completed": data.project.completed, "park_index": int(data.project.park_index)}
 	city.width = int(data.width)
 	city.height = int(data.height)
 	city.seed_value = String(data.seed).to_int()
@@ -74,7 +80,7 @@ static func decode(text: String) -> Dictionary:
 	if schema >= 3:
 		city.development = PackedByteArray(data.development)
 		city.service_loss = PackedByteArray(data.service_loss)
-	city.last_budget = data.last_budget.duplicate() if schema == City.SCHEMA else {}
+	city.last_budget = data.last_budget.duplicate() if schema >= 4 else {}
 	# Normalize parsed JSON numbers for exact snapshots.
 	for key in city.last_budget: city.last_budget[key] = int(city.last_budget[key])
 	city.cash = int(data.cash)
@@ -116,3 +122,10 @@ static func valid_budget(value: Variant, tick: int, count: int) -> bool:
 	# Historical counts must fit the saved map even though today's layout may differ.
 	var minimum_zones: int = (int(value.residents) + 7) / 8 + (int(value.jobs) + 7) / 8
 	return int(value.roads) + int(value.stations) + int(value.parks) + minimum_zones <= count
+
+static func valid_project(value: Variant, occupancy: Array) -> bool:
+	if typeof(value) != TYPE_DICTIONARY or value.size() != 2: return false
+	if typeof(value.get("completed")) != TYPE_BOOL or not integer(value.get("park_index"), -1, occupancy.size() - 1): return false
+	var i: int = int(value.park_index)
+	if not value.completed: return i == -1
+	return i == -1 or int(occupancy[i]) == City.PARK

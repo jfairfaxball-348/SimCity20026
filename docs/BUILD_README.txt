@@ -1,11 +1,14 @@
-UNTITLED CITY BUILDER - M2d ECONOMY AND PARK (0.5.0-m2d)
+UNTITLED CITY BUILDER - M3a NEIGHBOURHOOD PROJECT (0.6.0-m3a)
 
 Run citybuilder.exe. Keep citybuilder.pck beside it.
-Local development checkpoint; monthly economy and a pocket park; no projects yet.
+Local development checkpoint; monthly economy, a pocket park, and one optional project.
 
 1 Roads ($10) / 2 Homes / 6 Shops / 7 Workshops ($25 per plot)
 P Power station ($500, 20 plots) / 8 Park ($100) / 3 Clear (free)
 B Budget: expected income/upkeep and latest actual settlement.
+J Project: choose a park with three developed, serviced home plots within
+3 side-steps. Complete it once to add cosmetic flowers; no new growth or
+income benefit. Clear the park freely; completion remains, flowers do not.
 Left drag: preview a stroke; release to build. Right click/Escape: cancel.
 Invalid strokes never partially apply. Identical repainting is free.
 WASD/arrows/middle drag: pan. Wheel/+/-: zoom. Home: outside link.
@@ -44,9 +47,11 @@ Saves: %APPDATA%/OriginalCityBuilder/saves/manual.json
 The previous valid save is manual.json.bak; failed loads leave the city intact.
 Formats 1 and 2 load with empty development; format 3 retains development. Loading changes no files.
 Saving preserves older primary/backup bytes once as manual.schema1.json or
-manual.schema2.json / manual.schema3.json before replacement.
-Schema 4 stores the last budget; older saves start without budget history.
-No retroactive charges. Older builds cannot read format 4;
+manual.schema2.json / manual.schema3.json / manual.schema4.json before replacement.
+Schema 5 stores project completion and its park anchor; formats 1-4 start
+incomplete. Format 4 retains its last budget; earlier formats start without
+budget history.
+No retroactive charges. Older builds cannot read format 5;
 use the preserved older-format copy to roll back.
 
 Windows x64, tested on the development machine. Other hardware, Windows DPI

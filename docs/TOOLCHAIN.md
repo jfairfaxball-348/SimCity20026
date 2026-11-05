@@ -44,7 +44,7 @@ Run from the repo root:
 - **Run:** launches the game through the pinned editor runtime.
 - **Export:** imports and makes an unsigned x64 Windows release EXE/PCK, adds notices/README, writes `BUILD.json` with SHA256 file hashes and the game version/save schema read from `project.godot` and `city_state.gd`.
 - **Verify:** Test + Export, input/layout/save checks against the exported PCK, then headless startup of the actual release EXE. It does not replace native UI checks.
-- **Package:** validates the existing export against its manifest and an explicit file allowlist, then creates `builds/citybuilder-<game version>-windows-x64.zip` (currently `0.5.0-m2d`) and a SHA256 sidecar. It does not rebuild or upload the game. Exercise the export before packaging.
+- **Package:** validates the existing export against its manifest and an explicit file allowlist, then creates `builds/citybuilder-<game version>-windows-x64.zip` (currently `0.6.0-m3a`) and a SHA256 sidecar. It does not rebuild or upload the game. Exercise the export before packaging.
 
 Setup and project scripts stop on failures. Do not bypass checksum/version errors by using another editor silently. Local archives/tools, `.godot` caches, builds/logs, and export credentials are ignored. Keep Godot `.uid` source sidecars in Git.
 
@@ -77,3 +77,7 @@ The M2d game version is `0.5.0-m2d`; save schema 4, simulation/content `m2d-1`. 
 M2d verification passes **361 source / 324 exported-PCK checks**, plus release-EXE startup. Native SendInput-based Windows checks exercised park placement, growth, monthly ledger, largest-text budget scrolling, save/restart/load, and zero-cash overbuild/free-clear/recovery at 1280x720. See [M2d evidence](sessions/2026-11-05-m2d.md), including the interruption during native recovery. Two original save files were restored with matching hashes/count. Headless pack checks remain separate from release-binary gameplay. No additional shell, OS, DPI, hardware, controller, or performance target is certified by these results.
 
 CI is not configured or executed. Keep local verification reproducible; adopt a minimal pinned CI workflow when the initial source baseline and remote workflow are established. Store publication, signing, additional OS support, controller claims, and external distribution remain later tasks.
+
+## M3a checkpoint, 5 November 2026
+
+Game 0.6.0-m3a, schema 5 / m3a-1. Final verification passed 418 source / 360 packed checks and actual EXE headless startup. Native Windows tests exercised project construction/completion, largest-text actions, save/restart/byte-identical resave, demolition/reload and final scrollable Help. Both original profile files were restored with matching hashes and count. [M3a evidence](sessions/2026-11-05-m3a.md) separates the initial native completion run from the final Help-only rebuild and subsequent native checks. The final distribution README and its manifest entry were refreshed without changing EXE/PCK bytes before packaging. Earlier M2d records above remain historical evidence.

@@ -2,7 +2,7 @@
 
 Status: proposed design, 4 November 2026. User-confirmed priorities are recorded in [Decisions](DECISIONS.md).
 
-Implementation checkpoint: M0/M1 provides map editing, clock controls, and saves; M2a adds road access and home-zone explanations; M2b adds power stations, power networks, and shortage explanations. M2c adds homes/shops/workshops, aggregate residents/jobs/demand, growth, and service-loss recovery. M2d adds monthly income/upkeep, an auditable budget, deficit recovery, and pocket-park growth priority. Projects, final art/audio, and the complete experience below remain future work; see [README](../README.md) for current capabilities.
+Implementation checkpoint: M0/M1 provides map editing, clock controls, and saves; M2a adds road access and home-zone explanations; M2b adds power stations, power networks, and shortage explanations. M2c adds homes/shops/workshops, aggregate residents/jobs/demand, growth, and service-loss recovery. M2d adds monthly income/upkeep, an auditable budget, deficit recovery, and pocket-park growth priority. M3a adds one optional square project and cosmetic decoration. General onboarding, final art/audio, and the complete experience below remain future work; see [README](../README.md) for current capabilities.
 
 ## The experience
 
@@ -25,7 +25,7 @@ Observe a local need → plan an affordable change → place roads, zones, or an
 
 The proposed signature feature is **neighbourhood projects**. A maturing neighbourhood offers a modest civic goal, such as establishing a garden square near occupied homes. Completing it adds a visible improvement and a small local amenity benefit. Start with one project in the playable slice. Larger theme sets, procedural stories, and complex district governance are outside the first release.
 
-This is a hypothesis to test. Players must understand it and care about the result before more projects are produced. The [M3a scope](M3A_SPEC.md) tests one smaller version first: the existing pocket park supplies the amenity benefit, while explicit project completion adds only an original decoration and acknowledgement. M3a is proposed, not implemented; a new mechanical reward is outside that prototype.
+This is a hypothesis to test. Players must understand it and care about the result before more projects are produced. The [M3a scope](M3A_SPEC.md) tests one smaller version first: the existing pocket park supplies the amenity benefit, while explicit project completion adds only an original decoration and acknowledgement. M3a is implemented and locally tested; a new mechanical reward is outside that prototype.
 
 ## Comparable products and positioning
 
