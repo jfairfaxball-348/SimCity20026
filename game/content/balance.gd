@@ -72,6 +72,17 @@ const CUSTOMER_COUNT_LIMIT: int = 2
 ## D30 footprints: zones are square lots; power stations are larger squares.
 const LOT_SIZE: int = 3
 const STATION_SIZE: int = 4
+## D38: police and fire stations. Each is a 3x3 civic building that works with road
+## access and one power unit, and covers zone lots within SERVICE_RADIUS side-steps
+## (footprint to footprint). Level 4 needs police and fire cover; without both a lot
+## is capped at SERVICE_GATED_LEVEL.
+const CIVIC_SIZE: int = 3
+const POLICE_COST: int = 40_000
+const FIRE_COST: int = 40_000
+const POLICE_UPKEEP: int = 3_000
+const FIRE_UPKEEP: int = 3_000
+const SERVICE_RADIUS: int = 12
+const SERVICE_GATED_LEVEL: int = 3
 
 ## D37: residents (residential) or jobs (commercial/industrial) a lot holds at a level.
 static func capacity(kind: int, level: int) -> int:
@@ -97,6 +108,8 @@ static func cost(kind: String) -> int:
 		"shop", "workshop": return ZONE_COST
 		"power": return POWER_COST
 		"park": return PARK_COST
+		"police": return POLICE_COST
+		"fire": return FIRE_COST
 	return 0
 
 ## D32: demand-target multiplier in percent (140 at 0%, 100 at 10%, 40 at 25%).

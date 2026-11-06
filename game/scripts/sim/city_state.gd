@@ -8,6 +8,7 @@ const Growth = preload("res://scripts/sim/growth.gd")
 const Economy = preload("res://scripts/sim/economy.gd")
 const Amenity = preload("res://scripts/sim/amenity.gd")
 const Desirability = preload("res://scripts/sim/desirability.gd")
+const Services = preload("res://scripts/sim/services.gd")
 const LAND: int = 0
 const WATER: int = 1
 const EMPTY: int = 0
@@ -17,15 +18,18 @@ const POWER: int = 3
 const SHOP: int = 4
 const WORKSHOP: int = 5
 const PARK: int = 6
+## D38 civic services.
+const POLICE: int = 7
+const FIRE: int = 8
 const MAX_TICK: int = 1_000_000_000
 const MAX_PENDING_US: int = 3_600_000_000
-const SCHEMA: int = 10
-const SIMULATION: String = "r2b-1"
-const CONTENT: String = "r2b-1"
+const SCHEMA: int = 11
+const SIMULATION: String = "r2c-1"
+const CONTENT: String = "r2c-1"
 ## Supported earlier format (M1/M2a): IDs 0..2 only, migrated in memory (D20).
 const LEGACY_SCHEMA: int = 1
 const LEGACY_VERSION: String = "m1-1"
-const TOOLS: Dictionary = {"road": ROAD, "home": HOME, "shop": SHOP, "workshop": WORKSHOP, "power": POWER, "park": PARK, "clear": EMPTY}
+const TOOLS: Dictionary = {"road": ROAD, "home": HOME, "shop": SHOP, "workshop": WORKSHOP, "power": POWER, "park": PARK, "police": POLICE, "fire": FIRE, "clear": EMPTY}
 const NO_LOT: int = -1
 
 var width: int = 64
@@ -49,11 +53,14 @@ var footprint_owner: PackedInt32Array = PackedInt32Array()
 ## Derived row-major anchor lists.
 var lot_anchors: PackedInt32Array = PackedInt32Array()
 var station_anchors: PackedInt32Array = PackedInt32Array()
+## D38: police and fire station anchors, row-major.
+var civic_anchors: PackedInt32Array = PackedInt32Array()
 var access: Access = Access.new()
 var power: Power = Power.new()
 var growth: Growth = Growth.new()
 var amenity: Amenity = Amenity.new()
 var desirability: Desirability = Desirability.new()
+var services: Services = Services.new()
 var project: Dictionary = {"completed": false, "park_index": -1}
 var last_budget: Dictionary = {}
 var budget: Dictionary = {}
@@ -95,6 +102,7 @@ func rebuild_derived() -> void:
 	access.rebuild(self)
 	power.rebuild(self)
 	amenity.rebuild(self)
+	services.rebuild(self)
 	desirability.rebuild_terrain(self)
 	growth.refresh(self)
 	budget = Economy.inputs(self)
@@ -105,21 +113,32 @@ func rebuild_footprints() -> void:
 	footprint_owner.fill(NO_LOT)
 	lot_anchors.resize(0)
 	station_anchors.resize(0)
+	civic_anchors.resize(0)
 	for i in range(count):
 		if footprint_anchor[i] == 0: continue
 		var size: int = footprint_size(occupancy[i])
 		for cell in footprint_cells(i, size):
 			footprint_owner[cell] = i
 		if occupancy[i] == POWER: station_anchors.append(i)
+		elif is_civic(occupancy[i]): civic_anchors.append(i)
 		else: lot_anchors.append(i)
 
 static func is_zone(kind: int) -> bool:
 	return kind in [HOME, SHOP, WORKSHOP]
 
+## D38: police and fire stations.
+static func is_civic(kind: int) -> bool:
+	return kind == POLICE or kind == FIRE
+
+## Footprints that need road access and a power unit: zone lots and civic stations.
+static func is_served(kind: int) -> bool:
+	return is_zone(kind) or is_civic(kind)
+
 ## D30: zones occupy LOT_SIZE squares, stations STATION_SIZE squares, the rest one tile.
 static func footprint_size(kind: int) -> int:
 	if is_zone(kind): return Balance.LOT_SIZE
 	if kind == POWER: return Balance.STATION_SIZE
+	if is_civic(kind): return Balance.CIVIC_SIZE
 	return 1
 
 static func is_footprint_kind(kind: int) -> bool:
@@ -166,6 +185,16 @@ func distance_to_footprint(cell: Vector2i, anchor: int, size: int = -1) -> int:
 	var dy: int = maxi(0, maxi(y0 - cell.y, cell.y - (y0 + size - 1)))
 	return dx + dy
 
+## Manhattan gap between two footprints (0 when they overlap, 1 when they touch).
+func footprint_gap(a: int, size_a: int, b: int, size_b: int) -> int:
+	var ax: int = a % width
+	var ay: int = a / width
+	var bx: int = b % width
+	var by: int = b / width
+	var dx: int = maxi(0, maxi(ax - (bx + size_b - 1), bx - (ax + size_a - 1)))
+	var dy: int = maxi(0, maxi(ay - (by + size_b - 1), by - (ay + size_a - 1)))
+	return dx + dy
+
 func advance_day() -> void:
 	tick += 1
 	if tick % Balance.GROWTH_DAYS == 0:
@@ -196,7 +225,7 @@ func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 		if not inside(cell):
 			return _failure("Keep the entire stroke inside the map.")
 		unique[index(cell)] = true
-	if kind in ["power", "park"] and unique.size() > 1:
+	if kind in ["power", "park", "police", "fire"] and unique.size() > 1:
 		return _failure("Place one facility at a time.")
 	var indices: Array = unique.keys()
 	indices.sort()
@@ -206,7 +235,7 @@ func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	if is_footprint_kind(target):
 		var size: int = footprint_size(target)
 		var claimed: Dictionary = {}
-		var noun: String = "power plant" if target == POWER else "lot"
+		var noun: String = "power plant" if target == POWER else "police station" if target == POLICE else "fire station" if target == FIRE else "lot"
 		for raw_index in indices:
 			var a: int = int(raw_index)
 			var origin: Vector2i = cell_of(a)
@@ -218,7 +247,7 @@ func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 				if terrain[i] == WATER:
 					return _failure("Water cannot be built on or cleared.")
 				if occupancy[i] != EMPTY:
-					return _failure("Clear the existing road, zone, or power plant first.")
+					return _failure(_occupied_message(i))
 				if access.root.x >= 0 and i == index(access.root):
 					return _failure("Keep the outside-link flag free for its road.")
 				if claimed.has(i):
@@ -243,7 +272,7 @@ func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 			if occupancy[i] == target:
 				continue
 			if kind != "clear" and occupancy[i] != EMPTY:
-				return _failure("Clear the existing road, zone, or power plant first.")
+				return _failure(_occupied_message(i))
 			if kind == "park" and access.root.x >= 0 and i == index(access.root):
 				return _failure("Keep the outside-link flag free for its road.")
 			changed.append(i)
@@ -283,7 +312,9 @@ func apply_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	result["record"] = {"tick": tick, "sequence": sequence, "kind": kind,
 		"indices": recorded, "cost": result.cost}
 	var built: int = result.anchors.size()
-	if kind == "power":
+	if kind == "police" or kind == "fire":
+		result.message = "%s built · %s · with road access and power it covers lots within %d steps." % ["Police station" if kind == "police" else "Fire station", Balance.money(int(result.cost)), Balance.SERVICE_RADIUS]
+	elif kind == "power":
 		result.message = "Power plant built · %s · supplies up to %d lots on its network." % [Balance.money(int(result.cost)), Balance.POWER_CAPACITY / Balance.HOME_POWER_DEMAND]
 	elif is_footprint_kind(int(result.target)):
 		result.message = "%d lot%s · %s" % [built, "" if built == 1 else "s", Balance.money(int(result.cost))]
@@ -317,6 +348,10 @@ func snapshot() -> Dictionary:
 
 func canonical() -> String:
 	return JSON.stringify(snapshot(), "", true)
+
+func _occupied_message(i: int) -> String:
+	if is_civic(occupancy[i]): return "Clear the existing %s station first." % ("police" if occupancy[i] == POLICE else "fire")
+	return "Clear the existing road, zone, or power plant first."
 
 func _failure(message: String, cost: int = 0) -> Dictionary:
 	return {"ok": false, "message": message, "cost": cost, "changed": [], "anchors": []}

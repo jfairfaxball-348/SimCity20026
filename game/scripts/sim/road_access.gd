@@ -28,7 +28,8 @@ func rebuild(city: RefCounted) -> void:
 				connected_roads[i] = 1
 				queue.append(neighbour)
 	# D30: a lot (marked at its anchor) is served by any connected road beside it.
-	for anchor in city.lot_anchors:
+	# D38: police and fire stations use the same rule.
+	for anchor in city.lot_anchors + city.civic_anchors:
 		for n in city.perimeter(anchor):
 			if connected_roads[n] != 0:
 				served_homes[anchor] = 1
@@ -52,7 +53,7 @@ func _find_root(city: RefCounted) -> Vector2i:
 
 ## Reason for the lot covering this cell (any of its tiles may be given).
 func home_reason(city: RefCounted, cell: Vector2i) -> String:
-	if not city.inside(cell) or not city.is_zone(city.occupancy[city.index(cell)]):
+	if not city.inside(cell) or not city.is_served(city.occupancy[city.index(cell)]):
 		return "not_home"
 	var anchor: int = city.anchor_at(cell)
 	if anchor < 0: return "not_home"

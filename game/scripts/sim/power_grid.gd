@@ -111,8 +111,9 @@ func _measure_distances(city: RefCounted, count: int) -> void:
 func _allocate(city: RefCounted, count: int) -> void:
 	# D30: lots (state kept at their anchors) touching a sourced network through
 	# any perimeter tile are served by (nearest distance, anchor index).
+	# D38: police and fire stations draw one unit each in the same order.
 	var order: Array[int] = []
-	for i in city.lot_anchors:
+	for i in city.lot_anchors + city.civic_anchors:
 		var nearest: int = NONE
 		var touches: bool = false
 		for n in city.perimeter(i):
@@ -163,7 +164,7 @@ func carries_power(i: int) -> bool:
 
 ## Reason for the lot covering this cell (any of its tiles may be given).
 func home_reason(city: RefCounted, cell: Vector2i) -> String:
-	if not city.inside(cell) or not city.is_zone(city.occupancy[city.index(cell)]):
+	if not city.inside(cell) or not city.is_served(city.occupancy[city.index(cell)]):
 		return "not_home"
 	var anchor: int = city.anchor_at(cell)
 	if anchor < 0: return "not_home"

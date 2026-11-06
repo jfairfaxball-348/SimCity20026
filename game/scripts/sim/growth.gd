@@ -122,6 +122,9 @@ func reason(city: RefCounted, i: int) -> String:
 	if surplus[city.occupancy[i]] > 0: return "surplus" if city.development[i] > 0 else "demand"
 	if city.development[i] >= Balance.MAX_LEVEL: return "full"
 	var cap: int = city.desirability.cap(city, i)
-	if city.development[i] >= cap: return "held" if cap <= Balance.HELD_LEVEL else "gated"
+	if city.development[i] >= cap:
+		if cap <= Balance.HELD_LEVEL: return "held"
+		# D38: the service gate binds when land value (or workforce) would allow more.
+		return "uncovered" if city.desirability.value_cap(city, i) > cap else "gated"
 	if demand[city.occupancy[i]] == 0: return "demand"
 	return "growing" if planned[i] != 0 else "queued"

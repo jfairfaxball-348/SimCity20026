@@ -20,16 +20,25 @@ func develop(city: City, levels: Dictionary) -> void:
 	for anchor in levels: city.development[int(anchor)] = int(levels[anchor])
 	city.rebuild_derived()
 
-func street() -> City:
-	var c: City = t.land(24, 12)
+## The standard street. With covered, the map is two rows taller and a police station
+## at (10,10) and a fire station at (13,10) sit on a side road (x 23, row 13), so every
+## lot from x 4 to 21 is within the D38 reach of both.
+func street(covered: bool = false) -> City:
+	var c: City = t.land(24, 14 if covered else 12)
 	c.apply_command("road", t.row(6, 4, 23))
 	c.apply_command("power", [Vector2i(0, 5)])
+	if covered: cover(c)
 	return c
+
+func cover(c: City) -> void:
+	c.apply_command("road", t.join(t.column(23, 7, 13), t.row(13, 10, 22)))
+	c.apply_command("police", [Vector2i(10, 10)])
+	c.apply_command("fire", [Vector2i(13, 10)])
 
 ## The fixture's park town: six residential lots, three parks, three commercial and
 ## three industrial lots on the standard street.
-func park_town() -> City:
-	var c: City = street()
+func park_town(covered: bool = true) -> City:
+	var c: City = street(covered)
 	c.apply_command("home", t.lots_row(3, 4, 6))
 	for x in [5, 11, 17]: c.apply_command("park", [Vector2i(x, 1)])
 	c.apply_command("shop", t.lots_row(7, 4, 3))
@@ -58,7 +67,7 @@ func test_capacities() -> void:
 	t.check(c.power.total_used == 3, "each lot still uses one power unit at every level")
 
 func test_gates() -> void:
-	var c: City = street()
+	var c: City = street(true)
 	for x in range(4, 7): c.terrain[c.index(Vector2i(x, 0))] = City.WATER
 	c.rebuild_derived()
 	c.apply_command("home", [Vector2i(4, 3), Vector2i(10, 3), Vector2i(16, 3)])
@@ -72,7 +81,7 @@ func test_gates() -> void:
 	develop(c, {plain: 2, water_home: 3, park_home: 4})
 	t.check(c.growth.reason(c, plain) == "gated" and c.growth.reason(c, water_home) == "gated" and c.growth.reason(c, park_home) == "full", "gated and full reasons at the caps")
 	t.check(c.desirability.wealth(c, plain) == "modest" and c.desirability.wealth(c, water_home) == "comfortable" and c.desirability.wealth(c, park_home) == "well-off" and c.desirability.wealth(c, at(c, 4, 7)) == "", "wealth bands follow land value on developed residential lots only")
-	var shops: City = street()
+	var shops: City = street(true)
 	shops.apply_command("home", [Vector2i(4, 3), Vector2i(16, 3)])
 	shops.apply_command("shop", [Vector2i(4, 7), Vector2i(16, 7)])
 	shops.apply_command("park", [Vector2i(17, 10)])
@@ -86,7 +95,7 @@ func test_gates() -> void:
 	t.check(shops.desirability.lot_score[trade_park] == 4 and shops.desirability.cap(shops, trade_park) == 4, "commercial value 4 reaches level 4")
 
 func test_workforce() -> void:
-	var c: City = street()
+	var c: City = street(true)
 	c.apply_command("home", t.lots_row(3, 4, 6))
 	c.apply_command("workshop", [Vector2i(19, 7)])
 	var industry: int = at(c, 19, 7)
@@ -109,7 +118,7 @@ func test_workforce() -> void:
 	t.check(small.growth.demand[City.WORKSHOP] > 0 and "grow the town past 100 residents" in String(room.get("text", "")) and not "land value" in String(room.get("text", "")), "the summary tells gated industry to grow the workforce, not land value")
 
 func test_drops_and_leaving() -> void:
-	var c: City = street()
+	var c: City = street(true)
 	c.apply_command("home", [Vector2i(16, 3)])
 	c.apply_command("park", [Vector2i(17, 1)])
 	var home: int = at(c, 16, 3)
@@ -124,7 +133,7 @@ func test_drops_and_leaving() -> void:
 	t.check(c.development[home] == 2 and c.growth.dropping[home] == 0 and c.growth.reason(c, home) == "gated", "it settles at level 2, gated")
 	c.apply_command("park", [Vector2i(17, 1)])
 	t.check(c.desirability.cap(c, home) == 4, "a new park lifts the gate again")
-	var l: City = street()
+	var l: City = street(true)
 	l.apply_command("home", t.lots_row(3, 4, 6))
 	for x in [5, 11, 17]: l.apply_command("park", [Vector2i(x, 1)])
 	var homes: Array[int] = []
@@ -145,6 +154,10 @@ func test_park_town() -> void:
 	days(c, 150)
 	t.check(c.development == levels and c.growth.population == 104, "it then settles: no change over 150 more days")
 	t.check(c.development.count(4) == 2 and c.development[at(c, 19, 7)] == 3, "two residential lots reach level 4 and the industrial lot nearest the link level 3")
+	# D38: the same town without police and fire stops at level 3.
+	var bare: City = park_town(false)
+	days(bare, 200)
+	t.check(bare.development.count(4) == 0 and bare.development[at(bare, 4, 3)] == 3 and bare.growth.reason(bare, at(bare, 4, 3)) == "uncovered", "without police and fire the park town stops at level 3, explained as uncovered")
 	var b: City = park_town()
 	var m: City = Codec.decode(b.canonical()).city
 	days(b, 60)
@@ -155,13 +168,11 @@ func test_saves() -> void:
 	t.check(FileAccess.get_sha256(FIXTURE) == FIXTURE_SHA, "schema-10 fixture hash")
 	var text: String = FileAccess.get_file_as_string(FIXTURE).strip_edges()
 	var loaded: Dictionary = Codec.decode(text)
-	t.check(loaded.ok and loaded.migrated_from == 0 and loaded.city.canonical() == text, "schema-10 fixture exact round trip")
+	# D38: schema 10 now migrates; services_tests checks the drop of its uncovered level-4 lots.
+	t.check(loaded.ok and loaded.migrated_from == 10 and loaded.city.canonical() == t.migrated_text(text), "schema-10 fixture migrates with every value kept")
 	if loaded.ok:
 		var c: City = loaded.city
 		t.check(c.development[at(c, 4, 3)] == 4 and c.development[at(c, 19, 7)] == 3 and c.growth.reason(c, at(c, 7, 3)) == "gated" and c.growth.reason(c, at(c, 13, 3)) == "held", "schema-10 fixture holds level-4, level-3, gated and held lots")
-		var opening: int = c.cash
-		c.advance_day()
-		t.check(c.tick == 90 and c.cash == opening + 37400 and c.growth.population == 104 and c.pending_us == 234567, "schema-10 fixture settles exactly $374 with 104 residents")
 	var data: Dictionary = JSON.parse_string(text)
 	data.development[at(loaded.city, 4, 3)] = 5
 	t.check(not Codec.decode(JSON.stringify(data)).ok, "schema 10 rejects level 5")
@@ -175,7 +186,7 @@ func test_saves() -> void:
 	ledger.last_budget.residents = int(ledger.width) * int(ledger.height) * 40 + 1
 	t.check(not Codec.decode(JSON.stringify(ledger)).ok, "and reject more")
 	var every: bool = true
-	for fixture in ["m1-schema1", "m2a-schema1", "m2b-schema2", "m2c-schema3", "m2d-schema4", "m3a-schema5", "m2e-schema6", "m2f-schema7", "m2g-schema8", "r2a-schema9"]:
+	for fixture in ["m1-schema1", "m2a-schema1", "m2b-schema2", "m2c-schema3", "m2d-schema4", "m3a-schema5", "m2e-schema6", "m2f-schema7", "m2g-schema8", "r2a-schema9", "r2b-schema10"]:
 		var result: Dictionary = Codec.decode(FileAccess.get_file_as_string("res://tests/fixtures/%s.json" % fixture))
-		every = every and result.ok and int(result.migrated_from) > 0 and result.city.canonical().contains("\"schema_version\":10")
-	t.check(every, "every earlier fixture loads and resaves as schema 10")
+		every = every and result.ok and int(result.migrated_from) > 0 and result.city.canonical().contains("\"schema_version\":11")
+	t.check(every, "every earlier fixture loads and resaves as schema 11")

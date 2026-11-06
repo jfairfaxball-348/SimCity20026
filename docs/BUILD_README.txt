@@ -1,4 +1,4 @@
-UNTITLED CITY BUILDER - R2b DENSITY STAGES (0.14.0-r2b)
+UNTITLED CITY BUILDER - R2c POLICE AND FIRE (0.15.0-r2c)
 
 Run citybuilder.exe. Keep citybuilder.pck beside it. A First steps card at
 the bottom left of the map shows one next step at a time (Show centres on
@@ -6,11 +6,12 @@ it; Hide closes it for the session; F1 or Help > Show first steps returns).
 Local development checkpoint; 3x3 residential, commercial and industrial
 lots, 4x4 power plants, a calendar from 1 Jan 1950, a monthly
 economy with an adjustable tax rate, a demand meter, neighbourhood
-land value for every zone with a map overlay, a town summary, a pocket park, and one
-optional project.
+land value for every zone with a map overlay, police and fire stations, a town
+summary, a pocket park, and one optional project.
 
 1 Roads ($10 per tile) / 2 Residential / 6 Commercial / 7 Industrial
-($25 per 3x3 lot). P Power plant (4x4, $500, 20 lots) / 8 Park ($100) / 3 Clear (free)
+($25 per 3x3 lot). P Power plant (4x4, $500, 20 lots) / 8 Park ($100)
+9 Police station / 0 Fire station (3x3, $400 each) / 3 Clear (free)
 Zone tools centre a 3x3 lot on the pointer; drag to lay a straight row or
 column of lots. Clear any tile of a lot or power plant to remove all of it.
 B Budget: expected income/upkeep, latest actual settlement, and the tax
@@ -25,6 +26,8 @@ Left drag: preview a stroke; release to build. Right click/Escape: cancel.
 Invalid strokes never partially apply. Identical repainting is free.
 WASD/arrows/middle drag: pan. Wheel/+/-: zoom. Home: outside link.
 R: road marks (+/-). E: power marks (bolt/x). V: land value overlay.
+C: services overlay (square = police cover, triangle = fire cover,
+cross = a station without road access or power).
 Hover a tile to inspect.
 Space: pause/resume. 4: normal speed. 5: fast speed.
 Ctrl+S: save. Ctrl+L: load. F6: display and text settings.
@@ -44,7 +47,10 @@ A residential lot holds 4 / 8 / 20 / 40 residents at levels 1-4; commercial
 lots provide 2 / 4 / 10 / 20 jobs and industrial lots 4 / 8 / 16 / 28.
 Levels 3 and 4 are gated: residential lots need land value 1 / 2,
 commercial lots 3 / 4 (trade plus a park), and industry needs 100 / 250
-residents in town. Plain streets stop at level 2. A lot whose value falls
+residents in town. Plain streets stop at level 2. Level 4 also needs police
+and fire cover: a police or fire station works with a connected road beside
+it and one power unit, and covers lots within 12 side-steps of it (terrain
+does not matter; overlap does not stack). Without both, lots stop at level 3. A lot whose value falls
 drops one level per check until it fits; nothing is demolished. Two yellow
 pips on a lot mark level 4, one pip level 3. The inspector also shows a
 residential lot's wealth (modest, comfortable, well-off) from land value;
@@ -75,7 +81,8 @@ rates raise demand (140% at 0%); higher rates lower it (40% at 25%), and
 above 10% up to four surplus levels of each type leave per growth check.
 Leaving never removes a lot; lower the rate and the town regrows.
 Every 30 days after growth: $100 grant + taxes at the current rate, minus
-$1 per road tile, $60 per power plant, $10 per park. Unserved
+$1 per road tile, $60 per power plant, $10 per park, $30 per police or fire
+station. Unserved
 buildings pay no tax. All facilities pay upkeep, even disconnected ones.
 A negative net is a deficit. Reduce it by clearing surplus facilities free
 or restoring services. Cash never falls below zero; unpaid costs are visibly
@@ -86,20 +93,22 @@ derived from elapsed days and never saved. Time starts paused. Construction work
 dialogs suspend time. Save manually; after restarting, press Load.
 Saves: %APPDATA%/OriginalCityBuilder/saves/manual.json
 The previous valid save is manual.json.bak; failed loads leave the city intact.
-Format 10 (0.14.0-r2b; levels 0-4; the guide and calendar save nothing) stores the same fields as formats 7
-and 8: the tax rate and lot and power plant anchors; land value and freight are derived, never saved.
-Format 9, 8 and 7 saves load unchanged; format 6 saves load at the standard 10% rate. Earlier formats (1-5) load with
+Format 11 (0.15.0-r2c; police and fire stations and their upkeep counts; the guide and
+calendar save nothing) stores the tax rate and lot, power plant and station anchors; land value,
+freight and police/fire cover are derived, never saved. Format 10 saves load with every lot
+kept (level-4 lots without police and fire cover then drop to 3 one level per check);
+formats 9, 8 and 7 load unchanged; format 6 saves load at the standard 10% rate. Earlier formats (1-5) load with
 their old single-tile zones and power stations cleared; roads, parks, funds, time,
 budget history and project completion are kept. Loading changes no files.
 Saving preserves older primary/backup bytes once as manual.schema1.json to
-manual.schema9.json before replacement. No retroactive charges. Older builds
-cannot read format 10; use the preserved older-format copy to roll back.
+manual.schema10.json before replacement. No retroactive charges. Older builds
+cannot read format 11; use the preserved older-format copy to roll back.
 
 Windows x64, tested on the development machine. Other hardware, Windows DPI
 variants, other operating systems, and controllers remain unverified.
 This export is unsigned and is not a public game release.
 
 Map art: Kenney Roguelike Modern City (CC0, www.kenney.nl) plus original
-placeholders for water, the power-plant sign, empty-lot outlines and
-flowers; original geometric art remains available. Engine/font notices: GODOT_LICENSE.txt,
+placeholders for water, the power-plant sign, the police shield and fire flame
+signs, empty-lot outlines and flowers; original geometric art remains available. Engine/font notices: GODOT_LICENSE.txt,
 GODOT_COPYRIGHT.txt, ASSETS.md. Keep these with the game.

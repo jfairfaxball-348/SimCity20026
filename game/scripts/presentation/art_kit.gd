@@ -168,6 +168,21 @@ func _modern_building(canvas: CanvasItem, kind: int, at: Vector2, size: int, roo
 			tile(canvas, index, at + Vector2(x, y) * TILE * z, z)
 	canvas.draw_rect(Rect2(at, Vector2(size * TILE, roof_rows * TILE) * z).grow(-0.5 * z), roof[1], false, z)
 
+## D38: police and fire stations from pack building tiles: Modern City uses its
+## industrial-grey walls with a plain roof row; Tiny City reuses its 3x3 commercial
+## block. The caller adds the ORIGINAL shield or flame sign.
+func draw_civic(canvas: CanvasItem, kind: int, at: Vector2, size: int, z: float) -> void:
+	if spec.has("lots"):
+		var rows: Array = spec.lots[City.SHOP][1]
+		for y in range(rows.size()):
+			for x in range(rows[y].size()): tile(canvas, int(rows[y][x]), at + Vector2(x, y) * TILE * z, z)
+	else:
+		_modern_building(canvas, City.POWER if kind == City.POLICE else City.HOME, at, size, 1, z)
+		var front: Array = spec.front[City.SHOP if kind == City.POLICE else City.WORKSHOP]
+		for x in range(size): tile(canvas, int(front[x]), at + Vector2(x, size - 1) * TILE * z, z)
+	# Original thin band so the two stations also differ in tone: slate or brick.
+	canvas.draw_rect(Rect2(at + Vector2(0, size * TILE - 2) * z, Vector2(size * TILE, 2) * z), Color("3d4a5c") if kind == City.POLICE else Color("8f4a3f"))
+
 func draw_station(canvas: CanvasItem, at: Vector2, size: int, z: float) -> void:
 	if spec.has("station"):
 		var rows: Array = spec.station

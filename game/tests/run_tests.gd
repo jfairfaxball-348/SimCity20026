@@ -58,6 +58,7 @@ func run() -> void:
 	preload("res://tests/calendar_tests.gd").new().run(self)
 	preload("res://tests/landvalue_tests.gd").new().run(self)
 	preload("res://tests/density_tests.gd").new().run(self)
+	preload("res://tests/services_tests.gd").new().run(self)
 	test_clock()
 	test_codec()
 	test_storage()
@@ -65,7 +66,7 @@ func run() -> void:
 	await test_scene()
 	if "--prove-failure-exit" in OS.get_cmdline_user_args():
 		check(false, "Deliberate runner failure to verify exit code")
-	print(JSON.stringify({"suite": "R2b", "checks": checks, "failed": failures.size(), "failures": failures}))
+	print(JSON.stringify({"suite": "R2c", "checks": checks, "failed": failures.size(), "failures": failures}))
 	quit(0 if failures.is_empty() else 1)
 
 func test_commands() -> void:
@@ -556,6 +557,10 @@ func migrated_text(legacy: String) -> String:
 		data.tax_rate = Balance.TAX_STANDARD
 	else:
 		data.tax_rate = int(data.tax_rate)
+	# D38: earlier ledgers gain zero police and fire stations.
+	if schema < 11 and not data.last_budget.is_empty():
+		data.last_budget.police = 0
+		data.last_budget.fire = 0
 	if schema >= 5: data.project = {"completed": data.project.completed, "park_index": int(data.project.park_index)}
 	else: data.project = {"completed": false, "park_index": -1}
 	return JSON.stringify(data, "", true)

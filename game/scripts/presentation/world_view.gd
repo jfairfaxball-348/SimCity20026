@@ -15,6 +15,8 @@ var access_visible: bool = true
 var power_visible: bool = true
 ## D33/D36: land value overlay (off by default, never saved).
 var desirability_visible: bool = false
+## D38: police and fire coverage overlay (off by default, never saved).
+var services_visible: bool = false
 ## D29: the First steps target, outlined with corner brackets while the card is shown.
 var guide_target: Vector2i = Vector2i(-1, -1)
 var guide_size: int = 1
@@ -76,6 +78,8 @@ func _draw() -> void:
 		_draw_footprint(int(anchor))
 	if desirability_visible:
 		_draw_desirability(first, last, ordered)
+	if services_visible:
+		_draw_services(first, last, ordered)
 	_draw_outside_link()
 	if city.inside(guide_target): _draw_guide_bracket()
 	var cells: Array[Vector2i] = preview_cells.duplicate()
@@ -111,7 +115,7 @@ func _draw_cell(cell: Vector2i) -> void:
 	match city.occupancy[i]:
 		City.ROAD:
 			_draw_road(cell, at, z)
-		City.POWER, City.HOME, City.SHOP, City.WORKSHOP:
+		City.POWER, City.HOME, City.SHOP, City.WORKSHOP, City.POLICE, City.FIRE:
 			pass # drawn once per footprint in _draw_footprint
 		City.PARK:
 			# Original pocket garden: pale path, rectangular bench, rounded tree crown.
@@ -191,6 +195,74 @@ func _draw_desirability(first: Vector2i, last: Vector2i, anchors: Array) -> void
 			draw_circle(top + puff[0] * z, (puff[1] + 0.8) * z, Color("3d4446"))
 			draw_circle(top + puff[0] * z, puff[1] * z, Color("d9dcd6"))
 
+## D38 overlay: a small square on tiles within reach of a working police station, a
+## small triangle within reach of a working fire station, and a cross over stations
+## that do not work. A light tint marks full cover; meaning never relies on colour.
+func _draw_services(first: Vector2i, last: Vector2i, anchors: Array) -> void:
+	var z: float = float(zoom)
+	var services = city.services
+	for y in range(maxi(0, first.y), mini(city.height, last.y + 1)):
+		for x in range(maxi(0, first.x), mini(city.width, last.x + 1)):
+			var i: int = city.index(Vector2i(x, y))
+			var police: bool = services.police_tile[i] != 0
+			var fire: bool = services.fire_tile[i] != 0
+			if not police and not fire: continue
+			var at: Vector2 = tile_rect(Vector2i(x, y)).position
+			if police and fire: draw_rect(Rect2(at, Vector2.ONE * TILE * z), Color(0.75, 0.86, 1.0, 0.18))
+			if police:
+				draw_rect(Rect2(at + Vector2(2, 2) * z, Vector2(6, 6) * z), Color("24324a"))
+				draw_rect(Rect2(at + Vector2(3, 3) * z, Vector2(4, 4) * z), Color("c9dcf5"))
+			if fire:
+				var tri := PackedVector2Array([at + Vector2(8, 14) * z, at + Vector2(14, 14) * z, at + Vector2(11, 8) * z])
+				draw_colored_polygon(tri, Color("4a2620"))
+				draw_colored_polygon(PackedVector2Array([at + Vector2(9.5, 13) * z, at + Vector2(12.5, 13) * z, at + Vector2(11, 10) * z]), Color("f7c9a4"))
+	for anchor in anchors:
+		var a: int = int(anchor)
+		if not City.is_civic(city.occupancy[a]) or services.working[a] != 0: continue
+		var rect := Rect2(tile_rect(city.cell_of(a)).position, Vector2.ONE * TILE * City.footprint_size(city.occupancy[a]) * z)
+		for pass_color in [[Color("2a2a2a"), 4 * z], [Color("f0be97"), 2 * z]]:
+			draw_line(rect.position + Vector2(6, 6) * z, rect.end - Vector2(6, 6) * z, pass_color[0], pass_color[1])
+			draw_line(Vector2(rect.end.x, rect.position.y) + Vector2(-6, 6) * z, Vector2(rect.position.x, rect.end.y) + Vector2(6, -6) * z, pass_color[0], pass_color[1])
+
+## D38: original civic buildings for the original renderer. Police: a slate hall with a
+## flat roof, a column porch and blue-grey windows. Fire: a brick hall with two large
+## bay doors and a narrow hose tower.
+func _draw_civic(kind: int, at: Vector2, rect: Rect2, z: float) -> void:
+	var p := func(x: float, y: float) -> Vector2: return at + Vector2(x, y) * z
+	var dark := Color("4b575a")
+	draw_rect(rect.grow(-z), Color("6f7d72"))
+	draw_rect(rect.grow(-2 * z), Color("c9c7a2"), false, z)
+	if kind == City.POLICE:
+		draw_rect(Rect2(p.call(5, 12), Vector2(38, 30) * z), Color("8c98a6"))
+		draw_rect(Rect2(p.call(4, 9), Vector2(40, 4) * z), Color("3d4a5c"))
+		for x in [9, 17, 31, 39]: draw_rect(Rect2(p.call(x - 1, 30), Vector2(2, 12) * z), Color("e3e0cf"))
+		draw_rect(Rect2(p.call(7, 28), Vector2(34, 2) * z), Color("e3e0cf"))
+		for x in [9, 33]: draw_rect(Rect2(p.call(x, 17), Vector2(6, 6) * z), Color("c9dcf5"))
+		draw_rect(Rect2(p.call(21, 34), Vector2(6, 8) * z), dark)
+	else:
+		draw_rect(Rect2(p.call(4, 14), Vector2(30, 28) * z), Color("a8574a"))
+		draw_rect(Rect2(p.call(3, 11), Vector2(32, 4) * z), Color("6e3a32"))
+		for x in [7, 20]:
+			draw_rect(Rect2(p.call(x, 26), Vector2(11, 16) * z), Color("e3d9b5"))
+			for y in [30, 34, 38]: draw_line(p.call(x, y), p.call(x + 11, y), Color("9a917a"), z)
+		draw_rect(Rect2(p.call(36, 4), Vector2(8, 38) * z), Color("8f4a3f"))
+		draw_rect(Rect2(p.call(35, 2), Vector2(10, 3) * z), Color("6e3a32"))
+		for y in [9, 17]: draw_rect(Rect2(p.call(38, y), Vector2(4, 4) * z), dark)
+
+## D38: original signs drawn in every art mode so the two stations differ by shape:
+## a shield for police, a flame for fire, on a dark plate.
+func _draw_civic_sign(kind: int, at: Vector2, z: float) -> void:
+	var c: Vector2 = at + Vector2(24, 20) * z
+	draw_rect(Rect2(c - Vector2(7, 7) * z, Vector2(14, 14) * z), Color("2f3b40"))
+	if kind == City.POLICE:
+		var shield := PackedVector2Array([c + Vector2(-4, -4) * z, c + Vector2(4, -4) * z, c + Vector2(4, 1) * z, c + Vector2(0, 5) * z, c + Vector2(-4, 1) * z])
+		draw_colored_polygon(shield, Color("c9dcf5"))
+		draw_rect(Rect2(c + Vector2(-1, -2) * z, Vector2(2, 3) * z), Color("3d4a5c"))
+	else:
+		var flame := PackedVector2Array([c + Vector2(0, -5) * z, c + Vector2(4, 1) * z, c + Vector2(2, 5) * z, c + Vector2(-2, 5) * z, c + Vector2(-4, 1) * z])
+		draw_colored_polygon(flame, Color("f2a65a"))
+		draw_colored_polygon(PackedVector2Array([c + Vector2(0, -1) * z, c + Vector2(2, 3) * z, c + Vector2(-2, 3) * z]), Color("f6d76b"))
+
 ## D29 marker: four static L-shaped corners around the target footprint, distinct in
 ## shape from hover and stroke previews. No animation.
 func _draw_guide_bracket() -> void:
@@ -212,6 +284,12 @@ func _draw_footprint(anchor: int) -> void:
 	var at: Vector2 = tile_rect(Vector2i(anchor % city.width, anchor / city.width)).position
 	var z: float = float(zoom)
 	var rect := Rect2(at, Vector2.ONE * TILE * size * z)
+	if City.is_civic(kind):
+		if art != null: art.draw_civic(self, kind, at, size, z)
+		else: _draw_civic(kind, at, rect, z)
+		_draw_civic_sign(kind, at, z)
+		_draw_marks(anchor, at, z)
+		return
 	if art != null:
 		if kind == City.POWER:
 			art.draw_station(self, at, size, z)
@@ -235,8 +313,8 @@ func _draw_footprint(anchor: int) -> void:
 func _draw_power_mark(i: int, at: Vector2, z: float) -> void:
 	# Shape, not colour alone: a bolt means supplied, a cross means an unpowered plot.
 	var use: int = city.occupancy[i]
-	var powered: bool = city.power.home_state[i] == city.power.POWERED if City.is_zone(use) else city.power.carries_power(i)
-	if (use != City.ROAD and not City.is_zone(use)) or (use == City.ROAD and not powered):
+	var powered: bool = city.power.home_state[i] == city.power.POWERED if City.is_served(use) else city.power.carries_power(i)
+	if (use != City.ROAD and not City.is_served(use)) or (use == City.ROAD and not powered):
 		return
 	var mark: Vector2 = at + Vector2(4, 12) * z
 	draw_rect(Rect2(mark - Vector2(3, 3) * z, Vector2(7, 7) * z), Color("304842"))

@@ -401,6 +401,7 @@ func run() -> void:
 	await calendar_flow(isolated)
 	await landvalue_flow(isolated)
 	await density_flow(isolated)
+	await services_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -554,7 +555,7 @@ func project_flow(isolated: IsolatedStore) -> void:
 	main._process(2.0)
 	check(main.city.canonical() == before, "open project actually suspends elapsed simulation time")
 	main._set_speed(0)
-	check("J Project" in main.help_text.text and "3x3 lots" in main.help_text.text, "Help documents the project shortcut and lot sizes")
+	check("J Project" in main.help_text.text and "are 3x3" in main.help_text.text, "Help documents the project shortcut and lot sizes")
 	check(main.project_dialog.visible and "No parks yet" in main.project_text.text and main.project_complete.disabled, "Project button opens no-park explanation")
 	await key(KEY_ESCAPE)
 	check(not main.project_dialog.visible and main.city.canonical() == before, "project cancellation changes no state")
@@ -941,7 +942,7 @@ func calendar_flow(isolated: IsolatedStore) -> void:
 " + main.demand_meter.tooltip_text + "
 " + main.status_label.text
 	var old_words: bool = false
-	for word in ["Home", "Shop", "Workshop", "workshop", "station", "H homes", "H/S/W"]:
+	for word in ["Home", "Shop", "Workshop", "workshop", "power station", "Power station", "H homes", "H/S/W"]:
 		if word in words.replace("[Home]", "").replace("Home returns", ""): old_words = true
 	check(not old_words and "2  Residential" in main.tool_buttons.home.text and "6  Commercial" in main.tool_buttons.shop.text and "7  Industrial" in main.tool_buttons.workshop.text and "P  Power plant" in main.tool_buttons.power.text, "tools, tooltips, Help, meter and start-up status use Residential / Commercial / Industrial and power plant")
 	project_command("road", [Vector2i(63, 32), Vector2i(62, 32), Vector2i(61, 32)])
@@ -1012,6 +1013,9 @@ func density_flow(isolated: IsolatedStore) -> void:
 	project_command("park", [Vector2i(43, 27)])
 	project_command("shop", [Vector2i(54, 29)])
 	project_command("workshop", [Vector2i(57, 29)])
+	# D38: level 4 needs police and fire cover.
+	project_command("police", [Vector2i(42, 33)])
+	project_command("fire", [Vector2i(45, 33)])
 	var tower: int = main.city.index(Vector2i(42, 29))
 	var plain: int = main.city.index(Vector2i(48, 29))
 	main.city.development[tower] = 4
@@ -1041,6 +1045,108 @@ func density_flow(isolated: IsolatedStore) -> void:
 	await frames()
 	await growth_days(5)
 	check(main.city.development[plain] == 2 and main.city.development[tower] == 4, "the gated lot stays at level 2 and the tower stays at level 4")
+
+## D38 / R2c: police and fire stations through the shipped UI: keys, pointer placement,
+## overlay, inspector, Budget, summary and a lot that reaches level 4 only with cover.
+func services_flow(isolated: IsolatedStore) -> void:
+	await fresh_scene(isolated)
+	var roads: Array[Vector2i] = []
+	for x in range(42, 64): roads.append(Vector2i(x, 32))
+	project_command("road", roads)
+	project_command("power", [Vector2i(38, 31)])
+	project_command("home", [Vector2i(48, 29)])
+	project_command("park", [Vector2i(49, 27)])
+	project_command("workshop", [Vector2i(54, 29)])
+	var home: int = main.city.index(Vector2i(48, 29))
+	main.city.development[home] = 3
+	# Jobs keep residential demand above the lot's levels.
+	main.city.development[main.city.index(Vector2i(54, 29))] = 2
+	main.city.rebuild_derived()
+	main._refresh_metrics()
+	await frames()
+	main._inspect_cell(Vector2i(49, 30))
+	check("L4 needs police and fire cover (missing police and fire)." in main.scope_label.text, "the inspector explains the level-4 cover gate")
+	await growth_days(10)
+	check(main.city.development[home] == 3, "without cover the lot stays at level 3")
+	await view_from(Vector2(42, 32) * 16 - Vector2(200, 160))
+	await key(KEY_9)
+	check(main.tool == "police" and main.tool_buttons.police.button_pressed, "9 selects the police station tool")
+	main.world.hover = Vector2i(43, 34)
+	main._update_preview()
+	check("$400.00 · covers 12 steps" in main.preview_label.text, "the preview shows the price and reach")
+	var cash: int = main.city.cash
+	await click(screen_cell(Vector2i(43, 34)))
+	var police: int = main.city.index(Vector2i(42, 33))
+	check(main.city.occupancy[police] == City.POLICE and main.city.civic_anchors.size() == 1 and main.city.cash == cash - 40000 and "Police station built" in main.status_label.text, "a police station placed by pointer at its centre")
+	await key(KEY_0)
+	check(main.tool == "fire", "0 selects the fire station tool")
+	await click(screen_cell(Vector2i(46, 34)))
+	var fire: int = main.city.index(Vector2i(45, 33))
+	check(main.city.occupancy[fire] == City.FIRE and main.city.services.working[fire] == 1 and main.city.services.covered(home), "a fire station placed by pointer works and the lot is covered")
+	main._inspect_cell(Vector2i(46, 34))
+	check("Fire station" in main.selection_label.text and "Working: Fire cover for 2 lots within 12 steps." in main.scope_label.text and "Road access connected" in main.access_label.text and "Powered" in main.power_label.text, "the inspector shows a working fire station")
+	await growth_days(5)
+	check(main.city.development[home] == 4, "with police and fire cover the lot reaches level 4")
+	await key(KEY_C)
+	check(main.world.services_visible and "Services overlay on" in main.status_label.text, "C turns on the services overlay")
+	main._inspect_cell(Vector2i(49, 30))
+	check("Services (C): police and fire cover" in main.legend_label.text, "with the overlay on, the lot's legend lists its cover")
+	main._inspect_cell(Vector2i(45, 40))
+	check("square police · triangle fire" in main.legend_label.text, "the overlay legend names its marks")
+	await key(KEY_C)
+	check(not main.world.services_visible, "C turns the overlay off")
+	main._open_budget()
+	await frames()
+	check("1 police × $30 + 1 fire × $30" in main.budget_text.text, "Budget lists police and fire upkeep")
+	main.budget_dialog.hide()
+	await key(KEY_3)
+	await click(screen_cell(Vector2i(46, 34)))
+	check(main.city.civic_anchors.size() == 1 and main.city.growth.reason(main.city, home) == "dropping", "clearing the fire station marks the level-4 lot to drop")
+	main._inspect_cell(Vector2i(49, 30))
+	check("Drops to L3 next check: needs police and fire cover." in main.scope_label.text, "the inspector explains the drop")
+	await growth_days(5)
+	check(main.city.development[home] == 3, "the lot drops to level 3 without demolition")
+	main._open_summary()
+	await frames()
+	var found: bool = false
+	for item in main.summary_items:
+		if String(item.kind) == "uncovered" and "1 lot needs police and fire cover" in String(item.text): found = true
+	check(found, "the town summary lists the lot that needs cover")
+	main.summary_dialog.hide()
+	project_command("fire", [Vector2i(52, 23)])
+	main._inspect_cell(Vector2i(53, 24))
+	check("Not working: needs road access and power." in main.scope_label.text, "an unconnected station explains what it needs")
+	main._open_summary()
+	await frames()
+	found = false
+	for item in main.summary_items:
+		if String(item.kind) == "idle_station" and int(item.example) == main.city.index(Vector2i(52, 23)): found = true
+	check(found, "the summary lists the idle station with Show")
+	main.summary_dialog.hide()
+	for amount in [16, 18, 20]:
+		main._set_text_size(amount)
+		main._inspect_cell(Vector2i(53, 24))
+		main.selection_label.text = "TILE 127, 127 · Police station"
+		main.scope_label.text = "Not working: needs road access and power. Upkeep $30/month."
+		await frames()
+		check(main.scope_label.get_global_rect().end.y <= main.inspector.get_global_rect().end.y and main.inspector.size.y <= 320.5, "the idle-station text fits the inspector at text %d" % amount)
+		main._inspect_cell(Vector2i(49, 30))
+		main.scope_label.text = "Demand −32768 (taxes) · next check 30 Dec 2779727\nL4 needs police and fire cover (missing police and fire)."
+		main.legend_label.text = "Services (C): no police or fire cover"
+		await frames()
+		check(main.scope_label.get_global_rect().end.y <= main.inspector.get_global_rect().end.y and main.inspector.size.y <= 320.5, "the longest cover texts fit the inspector at text %d" % amount)
+	main._set_text_size(16)
+	await key(KEY_S, true)
+	var saved: String = FileAccess.get_file_as_string(isolated.test_path)
+	check(int(JSON.parse_string(saved).schema_version) == 11 and not "services_visible" in saved and not "police_tile" in saved, "saves are schema 11 and never store coverage")
+	var r2b_path: String = (get_script() as Script).resource_path.get_base_dir().path_join("fixtures/r2b-schema10.json")
+	var r2b: String = FileAccess.get_file_as_string(r2b_path)
+	await fresh_scene(isolated)
+	isolated.files.write_text(isolated.test_path, r2b)
+	await key(KEY_L, true)
+	check("Earlier format 10" in main.status_label.text and "every lot kept" in main.status_label.text and main.city.development[main.city.index(Vector2i(4, 3))] == 4, "UI schema-10 load keeps every lot")
+	await key(KEY_S, true)
+	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 10)) == r2b and int(isolated.load_city(main.SAVE_PATH).schema) == City.SCHEMA, "UI save preserves schema-10 bytes and writes schema 11")
 
 func project_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	return main.city.apply_command(kind, cells)

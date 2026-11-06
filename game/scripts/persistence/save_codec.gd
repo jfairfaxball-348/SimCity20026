@@ -15,14 +15,14 @@ static func decode(text: String) -> Dictionary:
 	var schema: int = int(data.schema_version)
 	if schema > City.SCHEMA:
 		return fail("This save was made by a newer version of the game (format %d). The file was not changed." % schema)
-	if schema not in [1, 2, 3, 4, 5, 6, 7, 8, 9, City.SCHEMA]:
+	if schema not in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, City.SCHEMA]:
 		return fail("This save uses an unsupported format (%d). The file was not changed." % schema)
 	# Each historical format has its own version pair and allowed occupancy IDs.
-	var version: String = {1: "m1-1", 2: "m2b-1", 3: "m2c-1", 4: "m2d-1", 5: "m3a-1", 6: "m2e-1", 7: "m2f-1", 8: "m2g-1", 9: "r2a-1", 10: City.SIMULATION}[schema]
+	var version: String = {1: "m1-1", 2: "m2b-1", 3: "m2c-1", 4: "m2d-1", 5: "m3a-1", 6: "m2e-1", 7: "m2f-1", 8: "m2g-1", 9: "r2a-1", 10: "r2b-1", 11: City.SIMULATION}[schema]
 	var content: String = version
 	if data.get("simulation_version") != version or data.get("content_version") != content:
 		return fail("This save belongs to a different simulation/content version.")
-	var max_use: int = {1: City.HOME, 2: City.POWER, 3: City.WORKSHOP, 4: City.PARK, 5: City.PARK, 6: City.PARK, 7: City.PARK, 8: City.PARK, 9: City.PARK, 10: City.PARK}[schema]
+	var max_use: int = {1: City.HOME, 2: City.POWER, 3: City.WORKSHOP, 4: City.PARK, 5: City.PARK, 6: City.PARK, 7: City.PARK, 8: City.PARK, 9: City.PARK, 10: City.PARK, 11: City.FIRE}[schema]
 	if not integer(data.get("width"), 8, 128) or not integer(data.get("height"), 8, 128):
 		return fail("Invalid map dimensions.")
 	if not signed_integer_string(data.get("seed")) or not signed_integer_string(data.get("random_state")):
@@ -66,7 +66,7 @@ static func decode(text: String) -> Dictionary:
 			if (not City.is_zone(int(data.occupancy[i])) and int(data.development[i]) != 0) or (int(data.development[i]) == 0 and int(data.service_loss[i]) != 0):
 				return fail("Development does not match its zone.")
 	if schema >= 6 and not valid_footprints(data):
-		return fail("Lots or power plants in this save do not form whole, separate footprints.")
+		return fail("Lots or buildings in this save do not form whole, separate footprints.")
 	if schema >= 4:
 		if not valid_budget(data.get("last_budget"), int(data.tick), count, schema):
 			return fail("Invalid monthly budget record.")
@@ -112,6 +112,10 @@ static func decode(text: String) -> Dictionary:
 	for key in city.last_budget: city.last_budget[key] = int(city.last_budget[key])
 	# D32: earlier settlements were all collected at the standard rate.
 	if schema < 7 and not city.last_budget.is_empty(): city.last_budget["tax_rate"] = Balance.TAX_STANDARD
+	# D38: earlier towns had no police or fire stations.
+	if schema < 11 and not city.last_budget.is_empty():
+		city.last_budget["police"] = 0
+		city.last_budget["fire"] = 0
 	city.tax_rate = int(data.tax_rate) if schema >= 7 else Balance.TAX_STANDARD
 	city.cash = int(data.cash)
 	city.tick = int(data.tick)
@@ -144,6 +148,9 @@ static func valid_budget(value: Variant, tick: int, count: int, schema: int = Ci
 	var bounds: Dictionary = {"tick": tick, "opening_cash": Balance.MAX_CASH,
 		"residents": count * (Balance.RESIDENTS_BY_LEVEL[Balance.MAX_LEVEL] if schema >= 10 else 8), "jobs": count * (Balance.WORKSHOP_JOBS_BY_LEVEL[Balance.MAX_LEVEL] if schema >= 10 else 8), "roads": count, "stations": count, "parks": count}
 	if schema >= 7: bounds["tax_rate"] = Balance.TAX_MAX
+	if schema >= 11:
+		bounds["police"] = count
+		bounds["fire"] = count
 	if value.size() != bounds.size(): return false
 	for key in bounds:
 		if not integer(value.get(key), 0, bounds[key]): return false
@@ -154,7 +161,7 @@ static func valid_budget(value: Variant, tick: int, count: int, schema: int = Ci
 	var per_home: int = Balance.RESIDENTS_BY_LEVEL[Balance.MAX_LEVEL] if schema >= 10 else 8
 	var per_job: int = Balance.WORKSHOP_JOBS_BY_LEVEL[Balance.MAX_LEVEL] if schema >= 10 else 8
 	var minimum_zones: int = (int(value.residents) + per_home - 1) / per_home + (int(value.jobs) + per_job - 1) / per_job
-	return int(value.roads) + int(value.stations) + int(value.parks) + minimum_zones <= count
+	return int(value.roads) + int(value.stations) + int(value.parks) + int(value.get("police", 0)) + int(value.get("fire", 0)) + minimum_zones <= count
 
 ## D30: every zone or station tile belongs to exactly one whole, in-map footprint
 ## of one kind, anchored at its top-left tile; growth state lives only on lot anchors.

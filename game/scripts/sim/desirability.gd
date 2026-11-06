@@ -143,7 +143,12 @@ func _rebuild_freight(city: RefCounted) -> void:
 ## Highest level a lot may reach (D33/D36/D37): residential and commercial lots by land
 ## value (below 0 held at 1; then gated at 2 until the D37 level-3 and level-4 values);
 ## industry by town residents (workforce) instead.
+## D38: level 4 also needs police and fire cover.
 func cap(city: RefCounted, anchor: int) -> int:
+	return mini(value_cap(city, anchor), city.services.level_cap(anchor))
+
+## The D37 cap from land value (or workforce) alone, before the D38 service gate.
+func value_cap(city: RefCounted, anchor: int) -> int:
 	if city.occupancy[anchor] == city.WORKSHOP:
 		var workforce: int = city.growth.population
 		if workforce >= Balance.WORKFORCE_LEVEL4: return Balance.MAX_LEVEL

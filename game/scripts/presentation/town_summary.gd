@@ -7,7 +7,7 @@ const City = preload("res://scripts/sim/city_state.gd")
 const Balance = preload("res://content/balance.gd")
 const MAX_BLOCKERS: int = 5
 ## Tie-break order for blockers affecting the same number of levels.
-const ORDER: Array[String] = ["no_link", "access", "no_power", "short", "held", "leaving", "no_room"]
+const ORDER: Array[String] = ["no_link", "access", "no_power", "short", "held", "uncovered", "leaving", "no_room"]
 const ZONE_NAMES: Dictionary = {City.HOME: "residential", City.SHOP: "commercial", City.WORKSHOP: "industrial"}
 
 ## Returns an Array of Dictionaries: kind, levels, count, built, example (cell index or
@@ -21,6 +21,7 @@ static func build(city: City) -> Array:
 		var no_power: Array = []
 		var short: Array = []
 		var held: Array = []
+		var uncovered: Array = []
 		for a in city.lot_anchors:
 			if city.access.served_homes[a] == 0: no_access.append(a)
 			var state: int = city.power.home_state[a]
@@ -28,6 +29,9 @@ static func build(city: City) -> Array:
 			elif state != city.power.POWERED: no_power.append(a)
 			if (city.occupancy[a] == City.HOME or city.occupancy[a] == City.SHOP) and city.growth.serviced(city, a) and city.desirability.cap(city, a) <= Balance.HELD_LEVEL and city.development[a] >= Balance.HELD_LEVEL:
 				held.append(a)
+			# D38: serviced lots at level 3 that land value (or workforce) would let reach 4.
+			if city.growth.serviced(city, a) and city.development[a] >= Balance.SERVICE_GATED_LEVEL and city.desirability.value_cap(city, a) > city.desirability.cap(city, a):
+				uncovered.append(a)
 		var link_missing: bool = root_index >= 0 and city.occupancy[root_index] != City.ROAD
 		if link_missing and not no_access.is_empty():
 			blockers.append(_lots("no_link", no_access, city, root_index))
@@ -42,6 +46,10 @@ static func build(city: City) -> Array:
 			var kinds: Dictionary = {}
 			for a in held: kinds[city.occupancy[a]] = true
 			item.zone = int(kinds.keys()[0]) if kinds.size() == 1 else -1
+			blockers.append(item)
+		if not uncovered.is_empty():
+			var item: Dictionary = _lots("uncovered", uncovered, city)
+			item.levels = uncovered.size()
 			blockers.append(item)
 		if city.tax_rate > Balance.TAX_STANDARD:
 			var surplus: int = 0
@@ -64,6 +72,12 @@ static func build(city: City) -> Array:
 		items.append({"kind": "empty", "levels": 0, "count": 0, "built": 0, "example": root_index, "action": "show" if root_index >= 0 else "", "zone": -1})
 	elif items.is_empty() and net >= 0:
 		items.append({"kind": "satisfied", "levels": 0, "count": 0, "built": 0, "example": -1, "action": "", "zone": -1})
+	# D38: stations that do not work, as a status item after the ranked blockers.
+	var idle: Array = []
+	for s in city.civic_anchors:
+		if city.services.working[s] == 0: idle.append(s)
+	if not idle.is_empty():
+		items.append({"kind": "idle_station", "levels": 0, "count": idle.size(), "built": 0, "example": int(idle[0]), "action": "show", "zone": -1})
 	if net < 0:
 		items.append({"kind": "deficit", "levels": 0, "count": -net, "built": 0, "example": -1, "action": "budget", "zone": -1})
 	for item in items: item["text"] = describe(item, city)
@@ -104,12 +118,14 @@ static func describe(item: Dictionary, city: City) -> String:
 		"no_power": return "%s without power%s. Place a power plant (P) beside their street, or join the street to a powered one." % [_plural(item.count, "lot"), _built(item)]
 		"short": return "%s short of power%s. Each power plant supplies %d lots: add a plant on that network." % [_plural(item.count, "lot"), _built(item), Balance.POWER_CAPACITY / Balance.HOME_POWER_DEMAND]
 		"held": return "%s held at level 1 by low land value from nearby industry. Add a park within 3 steps, or keep industrial lots 3+ steps away." % _plural(item.count, (ZONE_NAMES[int(item.zone)] + " lot") if int(item.zone) >= 0 else "lot")
+		"uncovered": return "%s police and fire cover to reach level 4. Build a police station (9) and a fire station (0) within %d steps, with road access and power." % [_plural(item.count, "lot") + (" needs" if int(item.count) == 1 else " need"), Balance.SERVICE_RADIUS]
+		"idle_station": return "%s not working, so %s nothing. Give %s road access and power." % [_plural(item.count, "police or fire station"), "it covers" if int(item.count) == 1 else "they cover", "it" if int(item.count) == 1 else "them"]
 		"leaving": return "%s leaving because the tax rate is %d%% (above %d%%). Lower it in Budget to keep them." % [_plural(item.count, "level"), city.tax_rate, Balance.TAX_STANDARD]
 		"no_room":
 			var name: String = ZONE_NAMES[int(item.zone)]
 			var past: String = "grow the town past %d residents so industry can pass level 2" % Balance.WORKFORCE_LEVEL3 if int(item.zone) == City.WORKSHOP else "raise land value so lots can pass level 2"
 			return "%s wanted, but no %s lot can grow. Zone more %s lots beside connected, powered streets, or %s." % [_plural(item.count, name + " level"), name, name, past]
-		"deficit": return "Monthly deficit of %s. Clear unused roads, power plants or parks, restore services, or review the tax rate in Budget." % Balance.money(int(item.count))
+		"deficit": return "Monthly deficit of %s. Clear unused roads, power plants, parks or stations, restore services, or review the tax rate in Budget." % Balance.money(int(item.count))
 		"empty": return "No zones yet. Lay a road on the gold flag, zone 3x3 residential lots beside it, then add a 4x4 power plant (P)."
 		"satisfied": return "Nothing measurable is holding the town back. Demand is met; residents and jobs create more demand as the town grows, and lower taxes raise it."
 	return ""
