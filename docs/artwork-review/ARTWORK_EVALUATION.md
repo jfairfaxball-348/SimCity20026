@@ -1,6 +1,6 @@
 # Artwork evaluation: Kenney Tiny City and Kenney Roguelike Modern City
 
-6 November 2026. **Experimental evaluation only.** Neither pack is adopted. The original code-drawn renderer remains the approved fallback and the default. The owner chooses a direction after reviewing the screenshots. The roadmap in [NEXT_SESSION.md](../../NEXT_SESSION.md) is unchanged.
+6 November 2026. **Owner choice recorded (U22):** after reviewing the side-by-side comparison, the owner chose **Kenney Roguelike Modern City** as the artwork direction. It is not yet the game's default: the original code-drawn renderer remains the default and fallback until a later change adopts Modern City as the normal style. The roadmap in [NEXT_SESSION.md](../../NEXT_SESSION.md) is unchanged.
 
 - **Starting commit:** `99c1868ada45ecc5872ff1b66a87f39efb530244` (M2e delivered). Work branch `codex/artwork-eval`.
 - **Tested build:** game 0.7.0-m2e plus the experimental art modes, schema 6 / `m2e-1` unchanged. Release EXE SHA256 `d34d36f3be1a6c49c56525ae86469b92e4f417ddf0b43cf00dd80c385c4b0562`, PCK SHA256 `4d8bc60f0aec6fc526c3a4a79d182f0606810822edf5a6c19d6df30e0fa423a3`. The version string was not bumped, so identify this build by the PCK hash, not by `0.7.0-m2e`. No package was made and nothing was published.
@@ -103,7 +103,7 @@ Based on these captures, **Roguelike Modern City is the stronger practical base*
 
 If charm matters more than coverage, a third option is to keep Modern City's terrain and road approach and commission or draw warmer building art in Tiny City's style. That is a larger production decision.
 
-The owner has not chosen. Until they do, the original renderer stays the default and the fallback, and no gameplay work depends on this choice.
+**Owner decision (U22, 6 November 2026):** Roguelike Modern City is the chosen direction. Adoption is a separate, later change: make it the default style, keep the original renderer as a fallback, and supply documented supplementary sprites for the gaps above (water and shore, power station, roof edges). No gameplay work depends on that change.
 
 ## Test results
 

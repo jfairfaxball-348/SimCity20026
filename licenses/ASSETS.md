@@ -14,7 +14,7 @@ M2e (6 November 2026) replaces the single-tile zone and station placeholders wit
 
 ## Experimental third-party artwork (evaluation only, not adopted)
 
-On 6 November 2026 two tile packs were acquired for an owner-requested artwork evaluation ([report](../docs/artwork-review/ARTWORK_EVALUATION.md)). They are **experimental candidates**: the original placeholders above remain the approved default and fallback, and no pack has been selected.
+On 6 November 2026 two tile packs were acquired for an owner-requested artwork evaluation ([report](../docs/artwork-review/ARTWORK_EVALUATION.md)). The owner chose **Roguelike Modern City** as the artwork direction (U22); it is not yet the default. The original placeholders above remain the default and fallback, and Tiny City stays an experimental candidate.
 
 | Field | Kenney Tiny City | Kenney Roguelike Modern City |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ On 6 November 2026 two tile packs were acquired for an owner-requested artwork e
 | Licence | Creative Commons CC0 1.0; commercial use, modification and redistribution permitted; credit appreciated, not required | Same |
 | Files retained | `game/assets/experiments/city_art/tiny_city/`: `tilemap_packed.png` (SHA256 `e4b371dd…ec2b9`), `License.txt`, `Tilesheet.txt` | `game/assets/experiments/city_art/roguelike_modern_city/`: `tilemap_packed.png` (SHA256 `e8b653bd…b59f`), `License.txt`, `Tilesheet.txt` |
 | Modifications | None to the files. At runtime: road curb strips composited from pack tiles; empty lots, water, bolt sign and flowers use original placeholders | None to the files. At runtime: roof outlines in the pack's own dark roof shades; pack overlays composed into facades; water is a flat fill of the pack's pool colour; original zone outline, bolt sign and flowers |
-| Status | Experimental, selectable in Display → Artwork; not adopted | Experimental, selectable in Display → Artwork; not adopted |
+| Status | Experimental, selectable in Display → Artwork; not chosen | Chosen direction (U22), selectable in Display → Artwork; not yet the default |
 
 The PNG atlases are packed into the exported PCK because the experimental mode can load them. Credit: artwork by Kenney (www.kenney.nl), CC0. Archives, individual tiles, preview/sample images and `.url` shortcuts were not retained. No reference-game material was used.
 

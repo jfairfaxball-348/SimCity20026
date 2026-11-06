@@ -1,6 +1,6 @@
 # Experimental city artwork (evaluation only)
 
-Two CC0 tile packs by Kenney (www.kenney.nl), retained for the 6 November 2026 artwork evaluation. **Neither is adopted.** The game's original code-drawn renderer remains the approved fallback and default. See `docs/artwork-review/ARTWORK_EVALUATION.md` and `licenses/ASSETS.md` for provenance, hashes and the owner decision that is still pending.
+Two CC0 tile packs by Kenney (www.kenney.nl), retained for the 6 November 2026 artwork evaluation. The owner chose **Roguelike Modern City** as the artwork direction (U22); it is not yet the default. The game's original code-drawn renderer remains the default and fallback until adoption. See `docs/artwork-review/ARTWORK_EVALUATION.md` and `licenses/ASSETS.md` for provenance, hashes and the owner decision that is still pending.
 
 | Folder | Pack | Source | Licence |
 | --- | --- | --- | --- |

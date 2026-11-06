@@ -1,6 +1,6 @@
 # Untitled city builder
 
-**M0/M1 through M2d, the bounded M3a project and M2e zone lots are implemented and tested locally, 4–6 November 2026.** Version **0.7.0-m2e** makes homes, shops and workshops 3x3 lots and power stations 4x4 buildings, with schema-6 saves. M3 as a whole and public release remain future work. **Specified, not implemented:** a dismissible first-steps guide ([M3b](docs/M3B_SPEC.md)) is next. [Classic-genre candidates](docs/GENRE_ALIGNMENT.md) await the owner's choice. **Artwork evaluation (experimental):** two CC0 Kenney packs can be compared in-game through Display → Artwork; see the [screenshots and report](docs/artwork-review/ARTWORK_EVALUATION.md). The original graphics remain the default; no pack is chosen yet.
+**M0/M1 through M2d, the bounded M3a project and M2e zone lots are implemented and tested locally, 4–6 November 2026.** Version **0.7.0-m2e** makes homes, shops and workshops 3x3 lots and power stations 4x4 buildings, with schema-6 saves. M3 as a whole and public release remain future work. **Specified, not implemented:** a dismissible first-steps guide ([M3b](docs/M3B_SPEC.md)) is next. [Classic-genre candidates](docs/GENRE_ALIGNMENT.md) await the owner's choice. **Artwork evaluation (experimental):** two CC0 Kenney packs can be compared in-game through Display → Artwork; see the [screenshots and report](docs/artwork-review/ARTWORK_EVALUATION.md). The owner chose Roguelike Modern City (U22); it is not yet the default, so the original graphics remain the default for now.
 
 The user confirmed desktop players, a possible Steam release, relaxed building, charming pixel art, and approachable controls. The code, map generation, geometric graphics, and interface were created independently. The repository name is a workspace identifier, not a cleared product title.
 
@@ -91,7 +91,7 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 | [Next session](NEXT_SESSION.md) | Current checkpoint, M3b implementation assignment, and study boundary |
 | [M2e lots](docs/M2E_SPEC.md) / [M3b guide](docs/M3B_SPEC.md) | M2e implemented and tested; M3b specified, not implemented |
 | [Genre candidates](docs/GENRE_ALIGNMENT.md) | Classic-genre systems for owner choice |
-| [Artwork evaluation](docs/artwork-review/ARTWORK_EVALUATION.md) | Kenney pack screenshots, comparison and recommendation; owner choice pending |
+| [Artwork evaluation](docs/artwork-review/ARTWORK_EVALUATION.md) | Kenney pack screenshots and comparison; owner chose Modern City |
 | [Decisions](docs/DECISIONS.md) | Requirements and exact adopted rules |
 | [Toolchain](docs/TOOLCHAIN.md) | Setup, verification, export, packaging |
 | [Technical plan](docs/TECHNICAL_PLAN.md) | Architecture and future systems |
