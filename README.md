@@ -1,6 +1,6 @@
 # Untitled city builder
 
-**M0/M1 through M2d and the bounded M3a project are implemented and tested locally, 4–5 November 2026.** Version **0.6.0-m3a** adds one optional neighbourhood project, cosmetic flowers, and schema-5 saves. M3 as a whole and public release remain future work. **Specified, not implemented:** 4x4 zone lots ([M2e](docs/M2E_SPEC.md)), the owner's design change, are next; then a dismissible first-steps guide ([M3b](docs/M3B_SPEC.md)). [Classic-genre candidates](docs/GENRE_ALIGNMENT.md) await the owner's choice.
+**M0/M1 through M2d and the bounded M3a project are implemented and tested locally, 4–5 November 2026.** Version **0.6.0-m3a** adds one optional neighbourhood project, cosmetic flowers, and schema-5 saves. M3 as a whole and public release remain future work. **Specified, not implemented:** zone lots and 4x4 power stations ([M2e](docs/M2E_SPEC.md)), the owner's design change, are next; then a dismissible first-steps guide ([M3b](docs/M3B_SPEC.md)). [Classic-genre candidates](docs/GENRE_ALIGNMENT.md) await the owner's choice.
 
 The user confirmed desktop players, a possible Steam release, relaxed building, charming pixel art, and approachable controls. The code, map generation, geometric graphics, and interface were created independently. The repository name is a workspace identifier, not a cleared product title.
 

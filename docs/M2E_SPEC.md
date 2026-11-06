@@ -1,6 +1,6 @@
-# M2e: four-by-four zone lots
+# M2e: four-by-four zone lots and power stations
 
-Scoped 6 November 2026 after an owner design note during the M3b scoping session (U16). **Specified, not implemented.** This is proposed D30. Adopt these rules in Decisions before writing implementation code. M2e comes before the M3b guide; see [M3b](M3B_SPEC.md#dependency-on-m2e).
+Scoped 6 November 2026 after owner design notes during the M3b scoping session (U16, U18). **Specified, not implemented.** This is proposed D30. Adopt these rules in Decisions before writing implementation code. M2e comes before the M3b guide; see [M3b](M3B_SPEC.md#dependency-on-m2e).
 
 ## Owner requirement and intent
 
@@ -8,7 +8,9 @@ U16: homes, shops and workshops are **4x4-tile** buildings, not single tiles. Ro
 
 M2e changes building geometry only. A **lot** replaces today's single-tile **plot** one-for-one: same price, same one power unit, same levels, capacities, demand, growth, decline, taxes and park priority. Changing geometry alone keeps every adopted number in D19-D28 meaningful and testable. It also makes balance changes a separate, later decision.
 
-Power stations and pocket parks stay one tile, because U16 names only residential, commercial and industrial buildings. Making them larger is a later owner decision.
+U18: power stations are also **4x4** buildings. The owner's guiding preference is whichever option is closest to the original game, within copyright limits, and power plants there were 4x4. A station keeps its $500 price, 20-unit capacity and $60/month upkeep, now per 4x4 station. Pocket parks stay one tile, which also matches the original's single-tile parks.
+
+**Open owner question: zone size.** The original game's residential, commercial and industrial zones were **3x3**, not 4x4. U16 chose 4x4 for zones; the owner's U18 preference would favour 3x3. The next session must ask before adopting D30. Every rule below is written for a zone size S = 4. If the owner switches zones to 3x3, use S = 3 throughout: each lot is 3x3 with 9 tiles, the pointer tile is the lot's centre tile, a drag steps 3 tiles, and the feasibility example is redrawn and asserted. Power stations stay 4x4 either way.
 
 ## Proposed rules (D30)
 
@@ -27,6 +29,14 @@ Power stations and pocket parks stay one tile, because U16 names only residentia
 - **Price.** **$25 per lot** (the existing zone price, now charged per lot). An identical lot of the same type at the same anchor costs nothing and is skipped. In a mixed stroke, only the new lots are charged. Partly overlapping a different lot, road, station or park rejects the stroke with the existing "clear first" message.
 - **Clear (tool 3).** Clearing any tile of a lot removes the whole lot, for free and with no refund. A clear stroke removes the union of its tiles plus the full footprint of every lot it touches. The preview highlights everything that will be removed.
 - Roads, stations and parks still need empty land, so they cannot be placed on lot tiles.
+
+### Power station footprint (U18; revises the D19 station shape)
+
+- A station is a 4x4 square of land tiles, all carrying occupancy ID 3, with its anchor at the top-left tile. The preview and pointer placement follow the 4x4 lot rule. Tool P places **one station per command**; a drag only moves the preview, as today.
+- **Validation.** All 16 tiles must be land, empty and inside the map, and must not cover the outside-link flag. Price **$500 per station**, charged atomically.
+- **Clear.** Clearing any station tile removes the whole station, for free and with no refund (same rule as lots).
+- **Network.** All 16 station tiles are network tiles at station distance 0. Roads or other stations sharing a side with any of them join that network, and a lot beside any station tile can draw from it. Stations still carry no road access.
+- **Counting by station, not tile.** Capacity is the number of stations (anchors) on a network x 20 units; one 4x4 station supplies 20, not 320. Upkeep counts stations by anchor: $60/month per station, not per tile. The toolbar total, inspector and budget count stations the same way.
 
 ### Road access (revises D17/D18 geometry)
 
@@ -60,21 +70,21 @@ Power stations and pocket parks stay one tile, because U16 names only residentia
 
 ## Saves and migration
 
-- **New format.** Game `0.7.0-m2e`, schema **6**, simulation/content **m2e-1**. It adds one strict byte array, `lot_anchor`, with exactly one value per cell, each 0 or 1.
-- **Validation.** Every anchor's footprint must lie inside the map. All 16 tiles must hold one zone ID, and footprints must not overlap. Every zone tile must belong to exactly one anchor. Development and loss values may be non-zero only on anchors. All earlier strict rules still apply, including the project, ledger and RNG rules. Reject anything else without replacing the live town.
-- **Older saves (schemas 1-5).** They cannot carry lots. After validating each under its original meaning, migration turns every home, shop and workshop tile into empty land, with zero development and loss.
-  - *Kept unchanged:* terrain, roads, stations, parks, cash, tick, pending time, RNG state, sequence, the last-budget record and the project record. The park anchor stays if that park still exists.
-  - *What the player sees:* the load message states how many old single-tile zone tiles were cleared, and that loading wrote nothing.
+- **New format.** Game `0.7.0-m2e`, schema **6**, simulation/content **m2e-1**. It adds one strict byte array, `footprint_anchor`, with exactly one value per cell, each 0 or 1. It marks the anchors of both zone lots and power stations.
+- **Validation.** Every anchor's footprint must lie inside the map. All its tiles must hold one ID: a zone ID for a lot, or 3 for a station. Footprints must not overlap. Every zone or station tile must belong to exactly one anchor. Development and loss values may be non-zero only on zone anchors. All earlier strict rules still apply, including the project, ledger and RNG rules. Reject anything else without replacing the live town.
+- **Older saves (schemas 1-5).** They cannot carry lots or 4x4 stations. After validating each under its original meaning, migration turns every home, shop, workshop and single-tile station tile into empty land, with zero development and loss.
+  - *Kept unchanged:* terrain, roads, parks, cash, tick, pending time, RNG state, sequence, the last-budget record and the project record. The park anchor stays if that park still exists.
+  - *What the player sees:* the load message states how many old single-tile zone and station tiles were cleared, and that loading wrote nothing.
   - *Original bytes:* saving preserves them once as `manual.schema1-5.json` before any replacement, extending the existing mechanism to schema 5. A failed preservation aborts the save.
   - *Superseded rule:* this replaces only the "retain development" parts of the D24/D27/D28 migration rules for loading into `m2e-1`.
-- **Fixtures.** All six historical fixtures stay byte-identical; only their migrated expectations change. Add a schema-6 lot fixture with developed lots, a park, a ledger and a completed project. Older builds reject schema 6, so roll back using the preserved original.
+- **Fixtures.** All six historical fixtures stay byte-identical; only their migrated expectations change. Add a schema-6 fixture with developed lots, a 4x4 station, a park, a ledger and a completed project. Older builds reject schema 6, so roll back using the preserved original.
 
 ## Implementation boundary
 
-- **Model:** lot helpers (footprint, anchor lookup, lot perimeter) live in the model, in `city_state.gd` or a small `sim/lots.gd`. `road_access.gd`, `power_grid.gd`, `growth.gd`, `amenity.gd`, `economy.gd` and the project count are adapted to iterate lots. Commands keep their ordered, atomic, no-RNG contract.
+- **Model:** footprint helpers for lots and stations (footprint, anchor lookup, perimeter) live in the model, in `city_state.gd` or a small `sim/lots.gd`. `road_access.gd`, `power_grid.gd`, `growth.gd`, `amenity.gd`, `economy.gd` and the project count are adapted to iterate lots and to count stations by anchor. Commands keep their ordered, atomic, no-RNG contract.
 - **Persistence:** the schema-6 codec, the migration and schema-5 preservation, with no change to the store's general rotation rules.
-- **Presentation:** lot preview and stroke stepping in `main.gd`, lot drawing and per-lot marks in `world_view.gd`, and wording changes.
-- **Out of scope:** new zone types, price or balance changes, larger stations or parks, other lot sizes, rotation, automatic roads, variable building shapes, guided-opening work and any other M3 feature.
+- **Presentation:** lot and station previews and stroke stepping in `main.gd`, original code-drawn 4x4 lot and station buildings and per-lot marks in `world_view.gd`, and wording changes.
+- **Out of scope:** new zone types, price or balance changes, larger parks, other station sizes, other lot sizes, rotation, automatic roads, variable building shapes, guided-opening work and any other M3 feature.
 
 ## Acceptance checklist for the implementation session
 
@@ -84,17 +94,18 @@ Power stations and pocket parks stay one tile, because U16 names only residentia
 | Access | Access works through each side and each of the four edge positions. Corner-only contact is excluded. Lots do not relay access, a shared road serves lots on both sides, and disconnection and reconnection are immediate. |
 | Power | One unit per lot: 21 lots on one station leave the farthest one short. Distance is measured to the nearest perimeter tile, and anchor ties break as specified. Separate networks and nearer-lot displacement give the expected results, and power never passes through lots. |
 | Growth and economy | A mixed serviced town built from lots reaches the same aggregate totals as the corresponding plot scenario (48 residents / 18 jobs under these rules). Caps, decline, regrowth, park priority (radius 3/4 boundary, overlap) and month settlement match the per-plot expectations. |
+| Stations | A 4x4 station places atomically for $500 and is rejected on water, overlap, the map edge and the flag. A drag places one station. Clearing any tile removes the whole station. Roads and lots beside any station tile join or draw from its network. One station gives 20 units of capacity, and upkeep is $60 per station, not per tile. Stations carry no road access. |
 | Project | The specified three-lot layout completes; shop/workshop lots and unserviced lots are excluded; a level-2 lot counts once; clearing and replacing a lot follow D28. |
-| Saves | Exact schema-6 round trips. Strict rejections: overlapping footprints, an orphan zone tile, an out-of-range footprint, mixed IDs, an anchor on a non-zone tile, development on a non-anchor tile. Schemas 1-5 migrate with zones cleared and everything else kept. Schema-5 primary/backup preservation works, including injected failure. Six historical hashes are unchanged and the new schema-6 fixture continues across a month. |
+| Saves | Exact schema-6 round trips. Strict rejections: overlapping footprints, an orphan zone tile, an out-of-range footprint, mixed IDs, an anchor on a non-zone tile, development on a non-anchor tile. Schemas 1-5 migrate with zones and single-tile stations cleared and everything else kept. Schema-5 primary/backup preservation works, including injected failure. Six historical hashes are unchanged and the new schema-6 fixture continues across a month. |
 | Packed UI and layout | Click, drag and clear lots through real pointer events. The preview shows the footprint and cost, marks appear once per lot, and any lot tile inspects the lot. The four existing sizes x three text sizes still pass. |
-| Actual Windows EXE | **Build:** from an empty town, build roads, a station, home/shop/workshop lots and a park, then run to growth and complete the project. **Look:** inspect the 4x4 buildings at zoom 1-3. **Persistence:** save, exit, restart and load; then load a schema-5 save and confirm the clearing message and the preserved original. **Profile hygiene:** record and restore the save path the process resolved, and close the process. |
+| Actual Windows EXE | **Build:** from an empty town, build roads, a 4x4 station, home/shop/workshop lots and a park, then run to growth and complete the project. **Look:** inspect the 4x4 lots and station at zoom 1-3. **Persistence:** save, exit, restart and load; then load a schema-5 save and confirm the clearing message and the preserved original. **Profile hygiene:** record and restore the save path the process resolved, and close the process. |
 
 Run the pinned `tools/verify.ps1`, the native EXE checks, then `tools/package.ps1`. Record actual counts and limits.
 
 ## Original assets and stop point
 
-The 4x4 building placeholders are to be drawn with code by this project's implementation and recorded in `licenses/ASSETS.md`. No external art, generated bitmaps, reference source or new licence is needed.
+The 4x4 lot and station placeholders are to be drawn with code by this project's implementation and recorded in `licenses/ASSETS.md`. No external art, generated bitmaps, reference source or new licence is needed.
 
-Stop after lots, migration, art, tests, native evidence, documentation/handoff and authorised delivery. The M3b guide follows in its own session.
+Stop after lots, stations, migration, art, tests, native evidence, documentation/handoff and authorised delivery. The M3b guide follows in its own session.
 
-**Balance note.** Keeping $25 and one power unit per lot keeps each building's economics unchanged, but every building now needs more land and road frontage. Roads cost $10 plus $1/month. That trade-off is provisional; observe it in the M3 playtests rather than tuning it here.
+**Balance note.** Keeping $25 and one power unit per lot, and $500 / 20 units per station, keeps each building's economics unchanged, but every building now needs more land and road frontage. Roads cost $10 plus $1/month. That trade-off is provisional; observe it in the M3 playtests rather than tuning it here.

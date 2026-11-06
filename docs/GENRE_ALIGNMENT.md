@@ -26,7 +26,7 @@ Relaxed play (U05) stays the default. A candidate that conflicts with it (for ex
 
 | # | Candidate | What the player gets | Decisions it would revise | Conditions and notes | Suggested timing |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Multi-tile power station (and optionally a larger park) | Plants and parks read as major buildings beside 4x4 lots | D19 station footprint; D26 park footprint | Footprint, capacity, price and art chosen independently; same access/power explanations | Can be folded into M2e if chosen before M2e starts |
+| 1 | Multi-tile power station | Plants read as major buildings beside lots | D19 station footprint | **Chosen (U18): 4x4 stations in M2e.** Parks stay one tile, as in the original | In M2e |
 | 2 | Neighbourhood desirability | Lots grow sooner or denser where surroundings are pleasant; parks help, workshops hurt; visible overlay | D22 growth order; D26 park benefit | Derived, deterministic and explained per lot; no land market or wealth tiers (study: adapt a visible benefit) | After M2e; its own spec |
 | 3 | Workshop nuisance | Homes beside workshops grow more slowly, so the classic separate-your-zones tension appears | D22 | Visible sources, explained and recoverable effect; never destruction (study: adopt the principle) | Pairs with 2 |
 | 4 | Adjustable tax rate | A rate control that trades income against growth | D25 (no tax slider) | Own range and effect; keep the no-debt, no-spiral recovery rules | Small; after M2e |
@@ -38,7 +38,7 @@ Relaxed play (U05) stays the default. A candidate that conflicts with it (for ex
 
 ## Effect on the plan
 
-- [M2e](M2E_SPEC.md) (4x4 lots) remains the next implementation session; candidate 1 can join it if chosen first.
+- [M2e](M2E_SPEC.md) (lots and 4x4 stations) remains the next implementation session. U18 also sets a standing preference: when choosing between options, prefer whichever is closest to the original game, within the rights boundary above.
 - After M2e, the owner chooses whether the [M3b guide](M3B_SPEC.md) or the first chosen system comes next.
 - If several systems are chosen, the product brief's positioning, "a small, readable city simulation about making welcoming neighbourhoods", and its first-release exclusions need an owner revision.
 - The "Conditions and notes" column records the earlier study proposals for context. Under U17 the owner may override any of them except the rights boundary.
