@@ -1,6 +1,6 @@
 # Untitled city builder
 
-**M0/M1 through M2d and the bounded M3a project are implemented and tested locally, 4–5 November 2026.** Version **0.6.0-m3a** adds one optional neighbourhood project, cosmetic flowers, and schema-5 saves. M3 as a whole and public release remain future work.
+**M0/M1 through M2d and the bounded M3a project are implemented and tested locally, 4–5 November 2026.** Version **0.6.0-m3a** adds one optional neighbourhood project, cosmetic flowers, and schema-5 saves. M3 as a whole and public release remain future work. **Specified, not implemented:** 4x4 zone lots ([M2e](docs/M2E_SPEC.md)), the owner's design change, are next; then a dismissible first-steps guide ([M3b](docs/M3B_SPEC.md)). [Classic-genre candidates](docs/GENRE_ALIGNMENT.md) await the owner's choice.
 
 The user confirmed desktop players, a possible Steam release, relaxed building, charming pixel art, and approachable controls. The code, map generation, geometric graphics, and interface were created independently. The repository name is a workspace identifier, not a cleared product title.
 
@@ -84,11 +84,13 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 
 ## Continue here
 
-**M3a is complete at the local checkpoint; M3 is not complete.** [Next session](NEXT_SESSION.md) scopes a small guided-opening follow-up before implementation. The source-study permission remains exhausted: never open reference source; only the permitted qualitative notes and Decisions may supply study input. The game remains original, unnamed, and not GPL-licensed.
+**M3a is complete at the local checkpoint; M3 is not complete.** Owner decisions U16/U17 (6 November 2026) make homes, shops and workshops 4x4 lots and lean the design closer to the classic genre, within unchanged copyright limits. [Next session](NEXT_SESSION.md) implements M2e lots only; the M3b guide follows. The source-study permission remains exhausted: never open reference source; only the permitted qualitative notes and Decisions may supply study input. The game remains original, unnamed, and not GPL-licensed.
 
 | Document | Purpose |
 | --- | --- |
-| [Next session](NEXT_SESSION.md) | M3a checkpoint, next scoping assignment, and study boundary |
+| [Next session](NEXT_SESSION.md) | Current checkpoint, M2e implementation assignment, and study boundary |
+| [M2e lots](docs/M2E_SPEC.md) / [M3b guide](docs/M3B_SPEC.md) | Proposed specifications, not implemented |
+| [Genre candidates](docs/GENRE_ALIGNMENT.md) | Classic-genre systems for owner choice |
 | [Decisions](docs/DECISIONS.md) | Requirements and exact adopted rules |
 | [Toolchain](docs/TOOLCHAIN.md) | Setup, verification, export, packaging |
 | [Technical plan](docs/TECHNICAL_PLAN.md) | Architecture and future systems |
@@ -97,4 +99,4 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 | [IP and assets](docs/IP_AND_ASSETS.md) | Provenance and rights boundaries |
 | [Asset ledger](licenses/ASSETS.md) | Original placeholders and notices |
 
-**M2 local functional gate met; M3a locally verified; the full M3 gate remains open.** Work uses `codex/m3a-project`, based on `4631b3e`, with standing commit/push/fast-forward delivery into default branch `codex/m2a-road-access`. No public release, title, source licence, price, release date or additional supported platform was selected.
+**M2 local functional gate met; M3a locally verified; the full M3 gate remains open.** Scoping work uses `codex/m3b-scope`, based on `9120b60`, with standing commit/push/fast-forward delivery into default branch `codex/m2a-road-access`. No public release, title, source licence, price, release date or additional supported platform was selected.

@@ -20,6 +20,9 @@ Recorded: 4 November 2026. Use this file to distinguish the user's requirements 
 | U12 | Run the bounded M2d session from NEXT_SESSION, then continue to completion | Owner request, **5 November 2026**; local implementation, testing, evidence and handoff |
 | U13 | Run the next-session M3 scoping assignment, ending with a concrete M3a handoff | Owner request, **5 November 2026**; planning only in this session, standing source-delivery instruction applies |
 | U14 | Implement the bounded M3a assignment and continue through verification and delivery | Owner “Run next session” and “Continue”, **5 November 2026**; scoped by the M3a handoff |
+| U15 | Run the next-session M3b scoping assignment, ending with a concrete guided-opening handoff | Owner “Run next session”, **6 November 2026**; planning only, standing source-delivery instruction applies |
+| U16 | Homes, shops and workshops are 4x4-tile buildings; roads stay one tile | Owner design note during U15, **6 November 2026** |
+| U17 | Lean closer to the classic city-builder design; the owner overrules earlier design-scope limits, provided no copyright rules are broken | Owner direction during U15, **6 November 2026**; rights and U10 clean-room boundaries unchanged |
 
 U06 superseded the earlier planning-only scope for M0/M1. U07 and U08 authorised M2a and M2b. U09 authorises M2c and source integration. U12 authorises M2d local implementation. The follow-up owner instruction authorises source delivery now and in future sessions: commit, push, merge and fast-forward completed work. Public game release remains separate.
 
@@ -58,6 +61,26 @@ D01–D06, D08, and the M1 part of D10 were adopted for the foundation. Later pr
 | <a id="d25"></a>D25 | Thirty-day integer budget; serviced taxes, universal facility upkeep, explicit waiver at zero | Recoverable relaxed-play deficits with auditable income/expenses; exact rules below. |
 | <a id="d26"></a>D26 | One pocket park gives covered homes growth priority within existing demand/caps | A local choice with a tested contention effect; no extra simulation system. |
 | <a id="d27"></a>D27 | Schema 4 / m2d-1 with last-budget inputs and schema-3 migration | Preserve earlier development and original save bytes; no retroactive collection. |
+| <a id="d29"></a>D29 | Proposed: one dismissible, session-only First steps card derived from the current town; no save change | Replaces a start-up status line that vanishes after the first command. Implement after M2e, using lot wording. Revisit persistence of dismissal with M3 settings/autosaves or if observed players find it intrusive. |
+| <a id="d30"></a>D30 | Proposed: freely placed 4x4 zone lots replace single-tile plots one-for-one; schema 6 / m2e-1; older zones cleared on migration | Implements U16 while keeping D19-D28 numbers unchanged. Revisit prices and frontage costs after M3 playtests. |
+
+## D30 - M2e zone lots, proposed 6 November 2026
+
+Proposed, not adopted or implemented. [The M2e specification](M2E_SPEC.md) turns homes, shops and workshops into 4x4 lots anchored at their top-left tile, placed by click or by straight drag runs. A lot replaces a plot one-for-one: $25, one power unit, levels 0-2, unchanged capacities, demand, growth, decline, taxes, park priority and project rules.
+
+- Access and power use any side-sharing tile on the lot's perimeter; corner-only contact does not count.
+- Clearing any lot tile removes the whole lot for free.
+- Stations and parks stay one tile unless the owner chooses [candidate 1](GENRE_ALIGNMENT.md#candidates) before M2e starts.
+- Schema 6 / `m2e-1` adds a strict per-cell `lot_anchor` array.
+- Schemas 1-5 migrate with their old single-tile zones cleared and everything else kept. Schema-5 originals are preserved, and the six fixtures stay byte-identical. This supersedes only the development-retention parts of the D24/D27/D28 migrations.
+
+Adopt before implementation code under a subsequent owner request. M2e is the next implementation session; M3b follows it.
+
+## D29 - M3b guided opening, proposed 6 November 2026
+
+Proposed, not adopted or implemented. [The M3b specification](M3B_SPEC.md) defines one non-modal **First steps** card with five ordered steps. The steps are: lay the flag road, zone a home with road access, power a home, grow a home, then open the optional project. The card always shows the first step whose condition is currently false, so undoing a step moves it back. It is visible at each start; Hide/Close dismisses it for the session; F1 and a Help action bring it back. Show centres the camera on a derived target and points the existing inspector at it; a static code-drawn bracket marks that target.
+
+Guide evaluation is read-only and never a command. It cannot change the canonical town, sequence, cash, time, RNG or unsaved flag. No guide state is saved: schema 5 and `m3a-1` stay; game version becomes `0.7.0-m3b`; there is no settings file and fixtures stay unchanged. D17-D28 are unchanged, and no file under `sim/`, `persistence/` or `content/` changes. Adopt before implementation code under a subsequent owner request. Passing its automated and native checks would not satisfy the five-person M3 gate.
 
 ## D28 - M3a project, adopted and locally verified 5 November 2026
 
@@ -162,3 +185,5 @@ None of these unanswered commercial questions prevents local prototype implement
 - 2026-11-05, U13 M3 scoping: reviewed the delivered M2d checkpoint and product gates; specified proposed D28 and a bounded M3a implementation handoff. Documentation only; no game code, assets, saves or binaries changed, and no new runtime/playtest claim. See [scoping record](sessions/2026-11-05-m3a-scope.md).
 
 - 2026-11-05, U14 M3a: adopted D28 before code, implemented one optional square project, cosmetic flowers, modal project/scrollable Help and schema-5 persistence. Verified 418 source / 360 packed checks, native completion/restart/removal and restored original saves. Updated the bounded next handoff; standing source delivery applies. No full M3 completion or public release.
+
+- 2026-11-06, U15 M3b scoping: confirmed that M3a delivery had completed despite the previous session's interrupted close-out. Reviewed the checkpoint and recorded UX limits; found no blocking defect that must precede a guide. Specified proposed D29 and a bounded M3b handoff. During the session the owner set U16 (4x4 zone lots) and U17 (lean closer to the classic genre within copyright limits). Specified proposed D30 (M2e lots) as the next implementation and recorded [genre candidates](GENRE_ALIGNMENT.md) for owner choice. M3b now follows M2e. Documentation only: no game code, assets, saves, fixtures or binaries changed, and no runtime or playtest claim. See [scoping record](sessions/2026-11-06-m3b-scope.md).
