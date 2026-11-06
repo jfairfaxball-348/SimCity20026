@@ -4,12 +4,12 @@ Scoped 6 November 2026 under the owner's "Run next session" request. **Specified
 
 ## Dependency on M2e
 
-During this session the owner decided that homes, shops and workshops become 4x4 lots (U16). [M2e](M2E_SPEC.md) implements that first, so implement this guide only after M2e. When adopting D29, apply that geometry to the steps below:
+During this session the owner decided that homes, shops and workshops become 3x3 lots (U16, sized by U19) and power stations 4x4 (U18). [M2e](M2E_SPEC.md) implements that first, so implement this guide only after M2e. When adopting D29, apply that geometry to the steps below:
 
 - Read every "HOME plot" as "home lot".
 - Step 2's text becomes "Zone a home lot (2) beside a road joined to the flag."
 - Step 3's text becomes "Place a power station (P) touching that street. It powers 20 lots."
-- Show centres on the target lot's footprint, and the bracket marker outlines the whole 4x4 footprint.
+- Show centres on the target lot's footprint, and the bracket marker outlines the whole 3x3 footprint.
 - The version follows whatever M2e delivers. The guide still adds no save change and takes the next minor game version, keeping M2e's schema and simulation/content versions.
 
 The other rules stay as written.

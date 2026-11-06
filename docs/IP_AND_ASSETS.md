@@ -10,7 +10,7 @@ The US Copyright Office distinguishes a game's ideas and methods from copyrighta
 
 Use genre-level ideas as inputs to an independently designed product. The following are project boundaries, not assertions that each individual feature is legally exclusive.
 
-**Owner direction U17 (6 November 2026).** The owner chose to lean closer to the classic city-builder in mechanics: 4x4 zone lots (U16) and [further genre candidates](GENRE_ALIGNMENT.md). Earlier design-scope rejections no longer block them. The owner made this conditional on not breaking copyright rules, so every boundary in this document, the U10 clean-room boundary and the rule against recreating the reference game's look or identity stay unchanged.
+**Owner direction U17 (6 November 2026).** The owner chose to lean closer to the classic city-builder in mechanics: 3x3 zone lots and 4x4 power stations (U16/U18/U19) and [further genre candidates](GENRE_ALIGNMENT.md). Earlier design-scope rejections no longer block them. The owner made this conditional on not breaking copyright rules, so every boundary in this document, the U10 clean-room boundary and the rule against recreating the reference game's look or identity stay unchanged.
 
 | Useful inspiration | Required independent treatment |
 | --- | --- |

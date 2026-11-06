@@ -1,6 +1,6 @@
 # Untitled city builder
 
-**M0/M1 through M2d and the bounded M3a project are implemented and tested locally, 4–5 November 2026.** Version **0.6.0-m3a** adds one optional neighbourhood project, cosmetic flowers, and schema-5 saves. M3 as a whole and public release remain future work. **Specified, not implemented:** zone lots and 4x4 power stations ([M2e](docs/M2E_SPEC.md)), the owner's design change, are next; then a dismissible first-steps guide ([M3b](docs/M3B_SPEC.md)). [Classic-genre candidates](docs/GENRE_ALIGNMENT.md) await the owner's choice.
+**M0/M1 through M2d and the bounded M3a project are implemented and tested locally, 4–5 November 2026.** Version **0.6.0-m3a** adds one optional neighbourhood project, cosmetic flowers, and schema-5 saves. M3 as a whole and public release remain future work. **Specified, not implemented:** 3x3 zone lots and 4x4 power stations ([M2e](docs/M2E_SPEC.md)), the owner's design change, are next; then a dismissible first-steps guide ([M3b](docs/M3B_SPEC.md)). [Classic-genre candidates](docs/GENRE_ALIGNMENT.md) await the owner's choice.
 
 The user confirmed desktop players, a possible Steam release, relaxed building, charming pixel art, and approachable controls. The code, map generation, geometric graphics, and interface were created independently. The repository name is a workspace identifier, not a cleared product title.
 
@@ -84,7 +84,7 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 
 ## Continue here
 
-**M3a is complete at the local checkpoint; M3 is not complete.** Owner decisions U16/U17 (6 November 2026) make homes, shops and workshops 4x4 lots and lean the design closer to the classic genre, within unchanged copyright limits. [Next session](NEXT_SESSION.md) implements M2e lots only; the M3b guide follows. The source-study permission remains exhausted: never open reference source; only the permitted qualitative notes and Decisions may supply study input. The game remains original, unnamed, and not GPL-licensed.
+**M3a is complete at the local checkpoint; M3 is not complete.** Owner decisions U16-U19 (6 November 2026) make homes, shops and workshops 3x3 lots and power stations 4x4, and lean the design closer to the classic genre, within unchanged copyright limits. [Next session](NEXT_SESSION.md) implements M2e lots only; the M3b guide follows. The source-study permission remains exhausted: never open reference source; only the permitted qualitative notes and Decisions may supply study input. The game remains original, unnamed, and not GPL-licensed.
 
 | Document | Purpose |
 | --- | --- |

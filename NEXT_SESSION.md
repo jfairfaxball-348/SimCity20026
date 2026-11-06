@@ -1,10 +1,10 @@
-# Next session: implement M2e zone lots and 4x4 power stations
+# Next session: implement M2e 3x3 zone lots and 4x4 power stations
 
 Updated 6 November 2026 after the M3b scoping session. **M0/M1 through M2d and the single M3a project are implemented and locally tested. M2e lots and the M3b guide are specified, not implemented. M3 as a whole is incomplete.** There is no public release and no human enjoyment evidence.
 
 ## Start here
 
-Read README, AGENTS, docs/DECISIONS.md (U16, U17, U18, D30, D29), docs/TOOLCHAIN.md, [the M2e specification](docs/M2E_SPEC.md), [M3b](docs/M3B_SPEC.md), [genre candidates](docs/GENRE_ALIGNMENT.md) and [the scoping record](docs/sessions/2026-11-06-m3b-scope.md). Inspect the local diff, and fetch and reconcile live remote refs before editing.
+Read README, AGENTS, docs/DECISIONS.md (U16-U19, D30, D29), docs/TOOLCHAIN.md, [the M2e specification](docs/M2E_SPEC.md), [M3b](docs/M3B_SPEC.md), [genre candidates](docs/GENRE_ALIGNMENT.md) and [the scoping record](docs/sessions/2026-11-06-m3b-scope.md). Inspect the local diff, and fetch and reconcile live remote refs before editing.
 
 - **Branches.** The scoping branch is `codex/m3b-scope`; use live history for its delivered commit. The default branch is still `codex/m2a-road-access`, whose name is historical. Create a new `codex/` branch for M2e.
 - **Delivery.** Standing commit/push/fast-forward delivery applies. Never force-push or discard unrelated work.
@@ -16,11 +16,11 @@ Use the isolated Godot 4.7.2 Standard (`4.7.2.stable.official.ed1daf0bf`) throug
 On a subsequent **"Run next session"**, implement only M2e as specified:
 
 1. Adopt D30 in Decisions before any model edits.
-   - **Owner check first:** ask whether zones are 4x4 (U16) or 3x3, which the original game used and which the owner's U18 closest-to-original preference would favour. Record the answer, and apply S = 3 throughout the spec if they choose 3x3. Power stations are 4x4 either way (U18); parks stay one tile.
+   - Sizes are settled: zone lots 3x3 (U19), power stations 4x4 (U18) and parks one tile.
 2. Build in this order:
    - **Model:** lot and station footprints, placement, clear, access, power (stations counted by anchor), growth, park, project and economy.
    - **Saves:** schema 6 with `footprint_anchor`, migration of schemas 1-5 with old zones and stations cleared, and schema-5 preservation.
-   - **Presentation:** original code-drawn lot and 4x4 station buildings, footprint previews, per-lot marks and inspection, and "plot" to "lot" wording.
+   - **Presentation:** original code-drawn 3x3 lot and 4x4 station buildings, footprint previews, per-lot marks and inspection, and "plot" to "lot" wording.
 3. Meet the M2e acceptance checklist. Run pinned `tools/verify.ps1`, the native EXE checks, then `tools/package.ps1`. Record actual counts, artifact hashes and limits.
 4. Update README, Decisions, the asset ledger, fixture notes and this handoff, then deliver under the standing instruction.
 
