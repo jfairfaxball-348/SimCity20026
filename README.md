@@ -84,12 +84,12 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 
 ## Continue here
 
-**M2e is complete at the local checkpoint; M3 is not complete.** Owner decisions U16-U19 (6 November 2026) made homes, shops and workshops 3x3 lots and power stations 4x4, and lean the design closer to the classic genre, within unchanged copyright limits. [Next session](NEXT_SESSION.md) implements the M3b guide by default, unless the owner chooses a genre candidate first. The source-study permission remains exhausted: never open reference source; only the permitted qualitative notes and Decisions may supply study input. The game remains original, unnamed, and not GPL-licensed.
+**M2e is complete at the local checkpoint; M3 is not complete.** Owner decisions U16-U19 (6 November 2026) made homes, shops and workshops 3x3 lots and power stations 4x4, and lean the design closer to the classic genre, within unchanged copyright limits. The owner then chose the city-builder systems ahead of the guide (U24): [Next session](NEXT_SESSION.md) specifies and implements **M2f, a demand meter and adjustable tax rate**, followed by M2g (neighbourhood desirability and workshop nuisance) and M2h (town summary); the M3b guide is deferred. The source-study permission remains exhausted: never open reference source; only the permitted qualitative notes and Decisions may supply study input. The game remains original, unnamed, and not GPL-licensed.
 
 | Document | Purpose |
 | --- | --- |
-| [Next session](NEXT_SESSION.md) | Current checkpoint, M3b implementation assignment, and study boundary |
-| [M2e lots](docs/M2E_SPEC.md) / [M3b guide](docs/M3B_SPEC.md) | M2e implemented and tested; M3b specified, not implemented |
+| [Next session](NEXT_SESSION.md) | Current checkpoint, city-builder roadmap, M2f assignment, and study boundary |
+| [M2e lots](docs/M2E_SPEC.md) / [M3b guide](docs/M3B_SPEC.md) | M2e implemented and tested; M3b specified, deferred by U24 |
 | [Genre candidates](docs/GENRE_ALIGNMENT.md) | Classic-genre systems for owner choice |
 | [Artwork evaluation](docs/artwork-review/ARTWORK_EVALUATION.md) | Kenney pack screenshots and comparison; Modern City chosen and now default |
 | [Decisions](docs/DECISIONS.md) | Requirements and exact adopted rules |

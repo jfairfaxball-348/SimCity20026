@@ -29,6 +29,7 @@ Recorded: 4 November 2026. Use this file to distinguish the user's requirements 
 | U21 | Pause the roadmap for one controlled artwork evaluation of two Kenney packs, keep both as experimental assets, preserve the NEXT_SESSION assignment, and leave the final choice to the owner | Owner artwork-evaluation brief, **6 November 2026** |
 | U22 | Kenney Roguelike Modern City is the chosen artwork direction | Owner answer after reviewing the side-by-side comparison, **6 November 2026** |
 | U23 | Make Modern City the game's default artwork now, keeping the original as a fallback | Owner instruction "Do it now yes", **6 November 2026** |
+| U24 | Build the classic city-builder systems before the M3b guide: M2f demand meter and tax rate, then M2g desirability and workshop nuisance, then M2h town summary; the guide is deferred, not cancelled | Owner "Can I choose now and you set that up...i want the city builder", **6 November 2026**; order recommended in [NEXT_SESSION.md](../NEXT_SESSION.md) |
 
 U06 superseded the earlier planning-only scope for M0/M1. U07 and U08 authorised M2a and M2b. U09 authorises M2c and source integration. U12 authorises M2d local implementation. The follow-up owner instruction authorises source delivery now and in future sessions: commit, push, merge and fast-forward completed work. Public game release remains separate.
 
@@ -68,7 +69,7 @@ D01–D06, D08, and the M1 part of D10 were adopted for the foundation. Later pr
 | <a id="d26"></a>D26 | One pocket park gives covered homes growth priority within existing demand/caps | A local choice with a tested contention effect; no extra simulation system. |
 | <a id="d27"></a>D27 | Schema 4 / m2d-1 with last-budget inputs and schema-3 migration | Preserve earlier development and original save bytes; no retroactive collection. |
 | <a id="d31"></a>D31 | Selectable presentation-only art modes; Kenney Roguelike Modern City is the default since 0.7.1-m2e (U22/U23); original renderer is the fallback; Tiny City stays experimental | Still to add: documented supplementary sprites (water/shore, power station, roof edges). The art choice is never saved and never changes the model. |
-| <a id="d29"></a>D29 | Proposed: one dismissible, session-only First steps card derived from the current town; no save change | Replaces a start-up status line that vanishes after the first command. Implement after M2e, using lot wording. Revisit persistence of dismissal with M3 settings/autosaves or if observed players find it intrusive. |
+| <a id="d29"></a>D29 | Proposed: one dismissible, session-only First steps card derived from the current town; no save change | Replaces a start-up status line that vanishes after the first command. Deferred by U24 until after M2h; refresh its steps for M2f-M2h before adopting. Use lot wording. Revisit persistence of dismissal with M3 settings/autosaves or if observed players find it intrusive. |
 | <a id="d30"></a>D30 | Adopted and locally verified (M2e): freely placed 3x3 zone lots replace single-tile plots one-for-one, and power stations become 4x4; schema 6 / m2e-1; older zones and stations cleared on migration | Implements U16/U18/U19 while keeping D19-D28 numbers unchanged. Revisit prices and frontage costs after M3 playtests. |
 
 ## D30 - M2e zone lots and stations, adopted 6 November 2026
@@ -81,11 +82,11 @@ D01–D06, D08, and the M1 part of D10 were adopted for the foundation. Later pr
 - Schema 6 / `m2e-1` adds a strict per-cell `footprint_anchor` array covering lots and stations.
 - Schemas 1-5 migrate with their old single-tile zones and stations cleared and everything else kept. Schema-5 originals are preserved, and the six fixtures stay byte-identical. This supersedes only the development-retention parts of the D24/D27/D28 migrations.
 
-Adopt before implementation code under a subsequent owner request. M2e is the next implementation session; M3b follows it.
+Adopt before implementation code under a subsequent owner request. M2e is the next implementation session; M3b follows it. (Superseded: M2e shipped as 0.7.0-m2e, and U24 places M2f-M2h before M3b.)
 
 ## D29 - M3b guided opening, proposed 6 November 2026
 
-Proposed, not adopted or implemented. [The M3b specification](M3B_SPEC.md) defines one non-modal **First steps** card with five ordered steps. The steps are: lay the flag road, zone a home with road access, power a home, grow a home, then open the optional project. The card always shows the first step whose condition is currently false, so undoing a step moves it back. It is visible at each start; Hide/Close dismisses it for the session; F1 and a Help action bring it back. Show centres the camera on a derived target and points the existing inspector at it; a static code-drawn bracket marks that target.
+**Deferred (U24, 6 November 2026)** until after M2h. Before adoption, refresh its steps, version and save notes for M2f-M2h. Proposed, not adopted or implemented. [The M3b specification](M3B_SPEC.md) defines one non-modal **First steps** card with five ordered steps. The steps are: lay the flag road, zone a home with road access, power a home, grow a home, then open the optional project. The card always shows the first step whose condition is currently false, so undoing a step moves it back. It is visible at each start; Hide/Close dismisses it for the session; F1 and a Help action bring it back. Show centres the camera on a derived target and points the existing inspector at it; a static code-drawn bracket marks that target.
 
 Guide evaluation is read-only and never a command. It cannot change the canonical town, sequence, cash, time, RNG or unsaved flag. No guide state is saved: schema 5 and `m3a-1` stay; game version becomes `0.7.0-m3b`; there is no settings file and fixtures stay unchanged. D17-D28 are unchanged, and no file under `sim/`, `persistence/` or `content/` changes. Adopt before implementation code under a subsequent owner request. Passing its automated and native checks would not satisfy the five-person M3 gate.
 
@@ -202,3 +203,5 @@ None of these unanswered commercial questions prevents local prototype implement
 - 2026-11-06, U22: after reviewing the artwork side-by-side, the owner chose Kenney Roguelike Modern City as the artwork direction. Recorded only; it is not yet the default style, and the NEXT_SESSION assignment is unchanged.
 
 - 2026-11-06, U23: made Modern City the default artwork in game 0.7.1-m2e, with the original renderer as fallback and Tiny City experimental. Verified 483 source / 429 packed checks, release-EXE start-up and a native default/switch check; packaged locally. Saves and simulation unchanged (schema 6 / m2e-1); NEXT_SESSION assignment unchanged.
+
+- 2026-11-06, U24: the owner chose the city-builder systems ahead of the M3b guide. Recorded the roadmap M2f (demand meter and tax rate), M2g (desirability and workshop nuisance), M2h (town summary), then the refreshed guide; civic services and traffic later on request; hazards only if asked. Planning only: no game code, saves or version changed. NEXT_SESSION now assigns M2f.
