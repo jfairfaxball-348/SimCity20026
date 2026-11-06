@@ -468,7 +468,8 @@ func test_scene() -> void:
 	check(main.power_label.text.contains("Supplies 20 units") and main.grid_label.text.begins_with("Power 0 / 20"), "inspector and toolbar report station capacity")
 	main._inspect_cell(Vector2i(31,31))
 	check(main.selection_label.text.contains("Home lot L0") and main.power_label.text.contains("lot"), "any tile of a lot inspects the lot")
-	# EXPERIMENTAL artwork evaluation: every mode redraws the same model.
+	check(main.world.art_mode == "modern_city", "the real scene starts with the default Modern City artwork")
+	# Every artwork mode redraws the same model.
 	var art_before: String = main.city.canonical()
 	for mode in ["tiny_city", "modern_city", "original"]:
 		main._set_art(mode)

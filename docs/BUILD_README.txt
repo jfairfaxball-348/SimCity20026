@@ -1,4 +1,4 @@
-UNTITLED CITY BUILDER - M2e ZONE LOTS (0.7.0-m2e)
+UNTITLED CITY BUILDER - M2e ZONE LOTS, MODERN CITY ARTWORK (0.7.1-m2e)
 
 Run citybuilder.exe. Keep citybuilder.pck beside it.
 Local development checkpoint; 3x3 zone lots, 4x4 power stations, a monthly
@@ -19,6 +19,9 @@ WASD/arrows/middle drag: pan. Wheel/+/-: zoom. Home: outside link.
 R: road marks (+/-). E: power marks (bolt/x). Hover a tile to inspect.
 Space: pause/resume. 4: normal speed. 5: fast speed.
 Ctrl+S: save. Ctrl+L: load. F6: display and text settings.
+Artwork: Kenney Roguelike Modern City (CC0) is the default; Display > Artwork
+also offers Original (fallback) and Tiny City (experimental). Art choice is
+not saved and never changes the town.
 
 Lay a road on the east-edge gold flag. Join streets along shared sides.
 A lot needs a connected road beside any of its sides; corners do not count.
@@ -61,5 +64,7 @@ Windows x64, tested on the development machine. Other hardware, Windows DPI
 variants, other operating systems, and controllers remain unverified.
 This export is unsigned and is not a public game release.
 
-Original geometric placeholders. Engine/font notices: GODOT_LICENSE.txt,
+Map art: Kenney Roguelike Modern City (CC0, www.kenney.nl) plus original
+placeholders for water, the power-station sign, empty-lot outlines and
+flowers; original geometric art remains available. Engine/font notices: GODOT_LICENSE.txt,
 GODOT_COPYRIGHT.txt, ASSETS.md. Keep these with the game.

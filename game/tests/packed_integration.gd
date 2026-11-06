@@ -577,6 +577,7 @@ func project_flow(isolated: IsolatedStore) -> void:
 ## and switching art through the shipped Display buttons never touches the model.
 func artwork_flow(isolated: IsolatedStore) -> void:
 	await fresh_scene(isolated)
+	check(main.world.art_mode == "modern_city" and main.world.art != null, "a fresh game starts with the default Modern City artwork")
 	for path in ["res://assets/experiments/city_art/tiny_city/tilemap_packed.png", "res://assets/experiments/city_art/roguelike_modern_city/tilemap_packed.png"]:
 		var texture: Texture2D = load(path)
 		check(texture != null and texture.get_size() == (Vector2(192, 176) if "tiny" in path else Vector2(592, 448)), "experimental atlas resolves in the exported pack: " + path.get_base_dir().get_file())
@@ -596,7 +597,7 @@ func artwork_flow(isolated: IsolatedStore) -> void:
 	var buttons: Array = []
 	for child in main.settings.find_children("*", "Button", true, false):
 		if (child as Button).text in ["Original", "Tiny City", "Modern City"]: buttons.append(child)
-	check(buttons.size() == 3, "display dialog offers three artwork modes")
+	check(buttons.size() == 3 and "Modern City default" in main.settings.find_children("*", "Label", true, false).map(func(l): return l.text).reduce(func(a, b): return a + "|" + b, ""), "display dialog offers three artwork modes and names the default")
 	for button in buttons:
 		(button as Button).pressed.emit()
 		await frames()

@@ -27,7 +27,8 @@ Recorded: 4 November 2026. Use this file to distinguish the user's requirements 
 | U19 | Homes, shops and workshops are 3x3 lots, as in the original; supersedes U16's 4x4 size | Owner answer, **6 November 2026**, after being told the original's zones were 3x3 |
 | U20 | Implement the M2e assignment from the handoff through verification and delivery | Owner “Run next session”, **6 November 2026** |
 | U21 | Pause the roadmap for one controlled artwork evaluation of two Kenney packs, keep both as experimental assets, preserve the NEXT_SESSION assignment, and leave the final choice to the owner | Owner artwork-evaluation brief, **6 November 2026** |
-| U22 | Kenney Roguelike Modern City is the chosen artwork direction | Owner answer after reviewing the side-by-side comparison, **6 November 2026**; not yet the default |
+| U22 | Kenney Roguelike Modern City is the chosen artwork direction | Owner answer after reviewing the side-by-side comparison, **6 November 2026** |
+| U23 | Make Modern City the game's default artwork now, keeping the original as a fallback | Owner instruction "Do it now yes", **6 November 2026** |
 
 U06 superseded the earlier planning-only scope for M0/M1. U07 and U08 authorised M2a and M2b. U09 authorises M2c and source integration. U12 authorises M2d local implementation. The follow-up owner instruction authorises source delivery now and in future sessions: commit, push, merge and fast-forward completed work. Public game release remains separate.
 
@@ -66,7 +67,7 @@ D01–D06, D08, and the M1 part of D10 were adopted for the foundation. Later pr
 | <a id="d25"></a>D25 | Thirty-day integer budget; serviced taxes, universal facility upkeep, explicit waiver at zero | Recoverable relaxed-play deficits with auditable income/expenses; exact rules below. |
 | <a id="d26"></a>D26 | One pocket park gives covered homes growth priority within existing demand/caps | A local choice with a tested contention effect; no extra simulation system. |
 | <a id="d27"></a>D27 | Schema 4 / m2d-1 with last-budget inputs and schema-3 migration | Preserve earlier development and original save bytes; no retroactive collection. |
-| <a id="d31"></a>D31 | Selectable presentation-only art modes (original, Kenney Tiny City, Kenney Roguelike Modern City); owner chose Modern City (U22); original stays default and fallback until adoption | Adoption would make Modern City the default, keep the original as fallback, and add documented supplementary sprites (water/shore, power station, roof edges). Tiny City stays experimental unless the owner says otherwise. |
+| <a id="d31"></a>D31 | Selectable presentation-only art modes; Kenney Roguelike Modern City is the default since 0.7.1-m2e (U22/U23); original renderer is the fallback; Tiny City stays experimental | Still to add: documented supplementary sprites (water/shore, power station, roof edges). The art choice is never saved and never changes the model. |
 | <a id="d29"></a>D29 | Proposed: one dismissible, session-only First steps card derived from the current town; no save change | Replaces a start-up status line that vanishes after the first command. Implement after M2e, using lot wording. Revisit persistence of dismissal with M3 settings/autosaves or if observed players find it intrusive. |
 | <a id="d30"></a>D30 | Adopted and locally verified (M2e): freely placed 3x3 zone lots replace single-tile plots one-for-one, and power stations become 4x4; schema 6 / m2e-1; older zones and stations cleared on migration | Implements U16/U18/U19 while keeping D19-D28 numbers unchanged. Revisit prices and frontage costs after M3 playtests. |
 
@@ -199,3 +200,5 @@ None of these unanswered commercial questions prevents local prototype implement
 - 2026-11-06, U21 artwork evaluation: acquired Kenney Tiny City 1.0 and Roguelike Modern City 2.0 (CC0 confirmed), added presentation-only art modes with the original renderer as default and fallback, captured three equivalent 1920x1080 screenshots from the real EXE and a side-by-side, and wrote the [evaluation](artwork-review/ARTWORK_EVALUATION.md). Verified 482 source / 428 packed checks plus a native run. No pack selected; owner decision pending; NEXT_SESSION assignment unchanged.
 
 - 2026-11-06, U22: after reviewing the artwork side-by-side, the owner chose Kenney Roguelike Modern City as the artwork direction. Recorded only; it is not yet the default style, and the NEXT_SESSION assignment is unchanged.
+
+- 2026-11-06, U23: made Modern City the default artwork in game 0.7.1-m2e, with the original renderer as fallback and Tiny City experimental. Verified 483 source / 429 packed checks, release-EXE start-up and a native default/switch check; packaged locally. Saves and simulation unchanged (schema 6 / m2e-1); NEXT_SESSION assignment unchanged.

@@ -1,8 +1,9 @@
 extends RefCounted
-## EXPERIMENTAL artwork evaluation (6 November 2026): draws the world with one of two
-## CC0 Kenney tile packs instead of the original code-drawn placeholders. Presentation
-## only: it reads the model and never changes it. The original renderer in
-## world_view.gd remains the approved fallback. See docs/artwork-review/.
+## Artwork kits (6 November 2026): draws the world with a CC0 Kenney tile pack instead
+## of the original code-drawn placeholders. Presentation only: it reads the model and
+## never changes it. Roguelike Modern City is the owner-chosen default (U22/U23); Tiny
+## City stays an experimental option; the original renderer in world_view.gd remains
+## the fallback. See docs/artwork-review/.
 ##
 ## Gaps in each pack are filled with explicitly marked ORIGINAL placeholders:
 ## water (both packs), grass (Tiny City: flat fill of its own sample grass colour),
@@ -11,6 +12,8 @@ const City = preload("res://scripts/sim/city_state.gd")
 const TILE: int = 16
 const MODES: Array[String] = ["original", "tiny_city", "modern_city"]
 const LABELS: Dictionary = {"original": "Original", "tiny_city": "Tiny City", "modern_city": "Modern City"}
+## Owner-chosen default (U23). "original" is the fallback for unknown modes.
+const DEFAULT_MODE: String = "modern_city"
 const TINY_SHEET := preload("res://assets/experiments/city_art/tiny_city/tilemap_packed.png")
 const MODERN_SHEET := preload("res://assets/experiments/city_art/roguelike_modern_city/tilemap_packed.png")
 

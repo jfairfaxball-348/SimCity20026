@@ -96,7 +96,9 @@ func _ready() -> void:
 	_set_speed(0)
 	_center_camera()
 	_inspect_cell(city.access.root)
-	# EXPERIMENTAL artwork evaluation: optional launch argument, e.g. -- --art=tiny_city.
+	# Modern City artwork is the default (U23); an optional launch argument such as
+	# -- --art=original or -- --art=tiny_city selects another mode.
+	world.set_art(ArtKit.DEFAULT_MODE)
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--art="): world.set_art(argument.trim_prefix("--art="))
 	last_usec = Time.get_ticks_usec()
@@ -279,7 +281,7 @@ func _build_dialogs() -> void:
 	column.add_child(texts)
 	for amount in [16,18,20]:
 		texts.add_child(_button("Standard" if amount == 16 else "Larger" if amount == 18 else "Largest", func(): _set_text_size(amount)))
-	column.add_child(_label("Artwork (experimental evaluation)", 18))
+	column.add_child(_label("Artwork (Modern City default; Original fallback)", 18))
 	var arts := HBoxContainer.new()
 	column.add_child(arts)
 	for mode in ArtKit.MODES:
@@ -776,10 +778,11 @@ func _open_settings() -> void:
 	_cancel_stroke()
 	settings.popup_centered(Vector2i(680,440))
 
-## EXPERIMENTAL: presentation only; the simulation, saves and controls are unchanged.
+## Presentation only; the simulation, saves and controls are unchanged.
 func _set_art(mode: String) -> void:
 	world.set_art(mode)
-	_status("Artwork: %s%s. Presentation only; the town and simulation are unchanged." % [ArtKit.LABELS[world.art_mode], "" if world.art_mode == "original" else " (experimental Kenney CC0 pack)"])
+	var note: String = {"original": " (original fallback)", "tiny_city": " (experimental Kenney CC0 pack)", "modern_city": " (default, Kenney CC0 pack)"}[world.art_mode]
+	_status("Artwork: %s%s. Presentation only; the town and simulation are unchanged." % [ArtKit.LABELS[world.art_mode], note])
 
 func _open_help() -> void:
 	_cancel_stroke()

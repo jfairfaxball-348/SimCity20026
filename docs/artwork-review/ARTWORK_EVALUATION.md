@@ -1,6 +1,6 @@
 # Artwork evaluation: Kenney Tiny City and Kenney Roguelike Modern City
 
-6 November 2026. **Owner choice recorded (U22):** after reviewing the side-by-side comparison, the owner chose **Kenney Roguelike Modern City** as the artwork direction. It is not yet the game's default: the original code-drawn renderer remains the default and fallback until a later change adopts Modern City as the normal style. The roadmap in [NEXT_SESSION.md](../../NEXT_SESSION.md) is unchanged.
+6 November 2026. **Owner choice (U22) and adoption (U23):** after reviewing the side-by-side comparison, the owner chose **Kenney Roguelike Modern City**. Since game **0.7.1-m2e** it is the default artwork. The original code-drawn renderer remains available as the fallback (Display → Artwork → Original, or `-- --art=original`), and Tiny City stays an experimental option. The supplementary sprites listed below are still outstanding. The roadmap in [NEXT_SESSION.md](../../NEXT_SESSION.md) is unchanged.
 
 - **Starting commit:** `99c1868ada45ecc5872ff1b66a87f39efb530244` (M2e delivered). Work branch `codex/artwork-eval`.
 - **Tested build:** game 0.7.0-m2e plus the experimental art modes, schema 6 / `m2e-1` unchanged. Release EXE SHA256 `d34d36f3be1a6c49c56525ae86469b92e4f417ddf0b43cf00dd80c385c4b0562`, PCK SHA256 `4d8bc60f0aec6fc526c3a4a79d182f0606810822edf5a6c19d6df30e0fa423a3`. The version string was not bumped, so identify this build by the PCK hash, not by `0.7.0-m2e`. No package was made and nothing was published.
@@ -103,7 +103,13 @@ Based on these captures, **Roguelike Modern City is the stronger practical base*
 
 If charm matters more than coverage, a third option is to keep Modern City's terrain and road approach and commission or draw warmer building art in Tiny City's style. That is a larger production decision.
 
-**Owner decision (U22, 6 November 2026):** Roguelike Modern City is the chosen direction. Adoption is a separate, later change: make it the default style, keep the original renderer as a fallback, and supply documented supplementary sprites for the gaps above (water and shore, power station, roof edges). No gameplay work depends on that change.
+**Owner decision (U22, 6 November 2026):** Roguelike Modern City is the chosen direction. **Adopted as the default in 0.7.1-m2e (U23).** Still outstanding: documented supplementary sprites for the gaps above (water and shore, power station, roof edges). No gameplay work depends on them.
+
+## Default adoption check (0.7.1-m2e)
+
+- **Automated.** Pinned `tools/verify.ps1` passed **483 source / 429 exported-PCK checks** and release-EXE start-up (`builds/validation/artwork/verify-default.log`). New checks confirm that the real scene and a fresh packed game start in Modern City, and that the Display dialog names the default.
+- **Native EXE (windowed 1280x720, no launch arguments).** A fresh launch drew Modern City; Display → Original switched to the original renderer, and Display → Modern City switched back. Pixel samples at the same screen point read the Modern City grass colour (64,156,98), the original grass colour (130,150,107), then Modern City again. Captures are under ignored `builds/validation/artwork/default/`. No save was written, and the profile's absent `saves` folder stayed absent.
+- **Tested and packaged build.** EXE `d34d36f3…`, PCK `dd70976fab07bf2c0f3875b6ca339a18f48247b3c49dbadb42a99577a7cc4ee4`, package `builds/citybuilder-0.7.1-m2e-windows-x64.zip` (local, not published).
 
 ## Test results
 

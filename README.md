@@ -1,12 +1,12 @@
 # Untitled city builder
 
-**M0/M1 through M2d, the bounded M3a project and M2e zone lots are implemented and tested locally, 4–6 November 2026.** Version **0.7.0-m2e** makes homes, shops and workshops 3x3 lots and power stations 4x4 buildings, with schema-6 saves. M3 as a whole and public release remain future work. **Specified, not implemented:** a dismissible first-steps guide ([M3b](docs/M3B_SPEC.md)) is next. [Classic-genre candidates](docs/GENRE_ALIGNMENT.md) await the owner's choice. **Artwork evaluation (experimental):** two CC0 Kenney packs can be compared in-game through Display → Artwork; see the [screenshots and report](docs/artwork-review/ARTWORK_EVALUATION.md). The owner chose Roguelike Modern City (U22); it is not yet the default, so the original graphics remain the default for now.
+**M0/M1 through M2d, the bounded M3a project and M2e zone lots are implemented and tested locally, 4–6 November 2026.** Version **0.7.0-m2e** makes homes, shops and workshops 3x3 lots and power stations 4x4 buildings, with schema-6 saves; **0.7.1-m2e** makes the owner-chosen Kenney Roguelike Modern City (CC0) the default artwork, with the original graphics as a fallback. M3 as a whole and public release remain future work. **Specified, not implemented:** a dismissible first-steps guide ([M3b](docs/M3B_SPEC.md)) is next. [Classic-genre candidates](docs/GENRE_ALIGNMENT.md) await the owner's choice. **Artwork:** Modern City is the default (U22/U23); Display → Artwork switches to Original (fallback) or Tiny City (experimental). See the [screenshots and report](docs/artwork-review/ARTWORK_EVALUATION.md).
 
 The user confirmed desktop players, a possible Steam release, relaxed building, charming pixel art, and approachable controls. The code, map generation, geometric graphics, and interface were created independently. The repository name is a workspace identifier, not a cleared product title.
 
 ## Play or develop
 
-The Windows export is `builds/windows/citybuilder.exe`; keep its `citybuilder.pck` beside it. The tested local package is `builds/citybuilder-0.7.0-m2e-windows-x64.zip`. Tools, caches, and builds are ignored and absent from a fresh clone.
+The Windows export is `builds/windows/citybuilder.exe`; keep its `citybuilder.pck` beside it. The tested local package is `builds/citybuilder-0.7.1-m2e-windows-x64.zip`. Tools, caches, and builds are ignored and absent from a fresh clone.
 
 From the repository root in PowerShell:
 
@@ -91,7 +91,7 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 | [Next session](NEXT_SESSION.md) | Current checkpoint, M3b implementation assignment, and study boundary |
 | [M2e lots](docs/M2E_SPEC.md) / [M3b guide](docs/M3B_SPEC.md) | M2e implemented and tested; M3b specified, not implemented |
 | [Genre candidates](docs/GENRE_ALIGNMENT.md) | Classic-genre systems for owner choice |
-| [Artwork evaluation](docs/artwork-review/ARTWORK_EVALUATION.md) | Kenney pack screenshots and comparison; owner chose Modern City |
+| [Artwork evaluation](docs/artwork-review/ARTWORK_EVALUATION.md) | Kenney pack screenshots and comparison; Modern City chosen and now default |
 | [Decisions](docs/DECISIONS.md) | Requirements and exact adopted rules |
 | [Toolchain](docs/TOOLCHAIN.md) | Setup, verification, export, packaging |
 | [Technical plan](docs/TECHNICAL_PLAN.md) | Architecture and future systems |
