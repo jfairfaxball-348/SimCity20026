@@ -92,8 +92,8 @@ func lots_row(y: int, x0: int, count: int) -> Array[Vector2i]:
 	return out
 
 const LONGEST_ACCESS: String = "No road beside this lot. Add one and join it to the outside link."
-const LONGEST_POWER: String = "No power: network full (20/20). Add a station; nearest lots get power first."
-const REJECTIONS: Array[String] = ["Not enough funds for the whole stroke.", "Clear the existing road, zone, or station first.", "Keep the outside-link flag free for its road.", "Keep the whole station inside the map."]
+const LONGEST_POWER: String = "No power: network full (20/20). Add a plant; nearest lots get power first."
+const REJECTIONS: Array[String] = ["Not enough funds for the whole stroke.", "Clear the existing road, zone, or power plant first.", "Keep the outside-link flag free for its road.", "Keep the whole power plant inside the map."]
 
 func run() -> void:
 	check(not FileAccess.file_exists("res://project.godot"), "driver loads exported pack, not source project")
@@ -107,7 +107,7 @@ func run() -> void:
 	await frames()
 	check(main.inspector.position.y >= main.top.get_global_rect().end.y and main.inspector.get_global_rect().end.y < main.bottom.position.y, "first-frame inspector fits without prior resize")
 	check(main._is_world_position(screen_cell(main.city.access.root)), "first-frame outside link is visible and pickable")
-	check("3x3 home lots" in main.status_label.text and "4x4 power station" in main.status_label.text, "start-up guidance names lot and station sizes")
+	check("3x3 residential lots" in main.status_label.text and "4x4 power plant" in main.status_label.text, "start-up guidance names lot and station sizes")
 	check(main.guide_panel.visible and main.guide_state.step == 1 and "1 OF 5" in main.guide_heading.text and main.world.guide_target == main.city.access.root and main.speed == 0 and not main.dirty, "start-up shows the First steps card at step 1, paused and clean")
 	main.set_process(false)
 	for resolution in main.SIZES:
@@ -163,14 +163,14 @@ func run() -> void:
 				# Exercise the longest lot reasons in every layout, without placing a city.
 				main.access_label.text = LONGEST_ACCESS
 				main.power_label.text = LONGEST_POWER
-				main.selection_label.text = "TILE 127, 127 · Workshop lot L2 · 8 jobs"
-				main.scope_label.text = "Demand −32768 (taxes) · next check day 1000000001\nLoses a level in 2 check(s) unless services return."
-				main.legend_label.text = "Desirability −3: park +2, water +1, workshops −6"
+				main.selection_label.text = "TILE 127, 127 · Residential lot L2 · 8 residents"
+				main.scope_label.text = "Demand −32768 (taxes) · next check 30 Dec 2779727\nLoses a level in 2 check(s) unless services return."
+				main.legend_label.text = "Desirability −3: park +2, water +1, industry −6"
 				await frames()
 				check(main.scope_label.get_global_rect().end.y <= main.inspector.get_global_rect().end.y and main.inspector.get_global_rect().end.y < main.bottom.position.y, "inspector text fits %s text %d cell %s" % [resolution,amount,cell])
 				check(main.power_label.get_global_rect().end.y <= main.legend_label.get_global_rect().position.y and main.inspector.size.y <= 320.5, "power reason does not overlap marks legend %s text %d cell %s" % [resolution,amount,cell])
 			# The longest migration message must fit the status bar.
-			main._status("Earlier format 5 loaded; 16384 old single-tile zone/station tiles cleared for 3x3 lots and 4x4 stations, tax rate set to the standard 10%. Nothing written; saving keeps the original as manual.schema5.json.")
+			main._status("Earlier format 5 loaded; 16384 old single-tile zone/power tiles cleared for 3x3 lots and 4x4 power plants, tax rate set to the standard 10%. Nothing written; saving keeps the original as manual.schema5.json.")
 			await frames()
 			check(main.status_label.get_global_rect().end.y <= main.bottom.get_global_rect().end.y + 0.5 and main.bottom.get_global_rect().end.y <= resolution.y, "longest migration status fits the footer %s text %d" % [resolution,amount])
 			main._open_help()
@@ -275,8 +275,8 @@ func run() -> void:
 	await key(KEY_2)
 	await click(screen_cell(Vector2i(58,30)))
 	main._inspect_cell(Vector2i(58,30))
-	check("No road beside" in main.access_label.text and "Waiting for road access and power" in main.scope_label.text and "Home lot L0" in main.selection_label.text, "empty lot explains missing road and waiting growth")
-	check("No power station yet" in main.power_label.text and main.grid_label.text.begins_with("Power 0 / 0"), "empty lot explains the missing power source")
+	check("No road beside" in main.access_label.text and "Waiting for road access and power" in main.scope_label.text and "Residential lot L0" in main.selection_label.text, "empty lot explains missing road and waiting growth")
+	check("No power plant yet" in main.power_label.text and main.grid_label.text.begins_with("Power 0 / 0"), "empty lot explains the missing power source")
 	await key(KEY_1)
 	await drag_cells(Vector2i(59,32),Vector2i(61,32))
 	main._inspect_cell(Vector2i(57,31))
@@ -332,7 +332,7 @@ func run() -> void:
 	await key(KEY_3)
 	await click(screen_cell(Vector2i(45,32)))
 	main._inspect_cell(Vector2i(49,30))
-	check("does not reach a power station" in main.power_label.text and main.city.power.short_homes == 0 and "No shortage" in main.grid_label.text, "removing a bridge disconnects far lots and ends the shortage")
+	check("does not reach a power plant" in main.power_label.text and main.city.power.short_homes == 0 and "No shortage" in main.grid_label.text, "removing a bridge disconnects far lots and ends the shortage")
 	await key(KEY_1)
 	await click(screen_cell(Vector2i(45,32)))
 	check(main.city.power.short_homes == 3, "reconnecting the bridge restores the shortage")
@@ -343,7 +343,7 @@ func run() -> void:
 	main._inspect_cell(Vector2i(58,30))
 	check(main.city.power.short_homes == 0 and main.city.power.powered_homes == 23 and "Powered" in main.power_label.text and main.grid_label.text.begins_with("Power 23 / 40"), "second station on the same network recovers every lot")
 	main._inspect_cell(Vector2i(55,34))
-	check("2 stations" in main.power_label.text and "Power works without the outside link" in main.access_label.text, "station inspector reports network capacity from any tile")
+	check("2 plants" in main.power_label.text and "Power works without the outside link" in main.access_label.text, "station inspector reports network capacity from any tile")
 	await key(KEY_E)
 	check(not main.world.power_visible and not main.power_button.button_pressed and "power marks hidden" in main.legend_label.text, "power marks keyboard toggle")
 	await click(main.power_button.get_global_rect().get_center())
@@ -398,6 +398,7 @@ func run() -> void:
 	await desirability_flow(isolated)
 	await summary_flow(isolated)
 	await guide_flow(isolated)
+	await calendar_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -445,9 +446,9 @@ func growth_flow(isolated: IsolatedStore) -> void:
 	check(main.city.growth.population == 12 and main.city.growth.jobs == 0 and "L1" in main.selection_label.text and "Demand met" in main.scope_label.text, "pack bootstrap updates residents, lot level, and demand explanation")
 	await growth_days(35)
 	# D33: the two homes across the street from developed workshops are held at level 1.
-	check(main.city.growth.population == 40 and main.city.growth.jobs == 18 and "Residents 40" in main.population_label.text and main.demand_meter.summary() == "H +2 · S 0 · W 0" and "Tax 10%" in main.demand_label.text, "shipped growth settles at 40 / 18 with matching HUD and the held homes' demand")
+	check(main.city.growth.population == 40 and main.city.growth.jobs == 18 and "Residents 40" in main.population_label.text and main.demand_meter.summary() == "R +2 · C 0 · I 0" and "Tax 10%" in main.demand_label.text, "shipped growth settles at 40 / 18 with matching HUD and the held homes' demand")
 	main._inspect_cell(Vector2i(52, 30))
-	check(main.city.growth.reason(main.city, main.city.index(Vector2i(52, 30))) == "held" and "Desirability −2: workshop −2" in main.legend_label.text and "Held at L1" in main.scope_label.text, "shipped inspector explains a home held by a workshop across the street")
+	check(main.city.growth.reason(main.city, main.city.index(Vector2i(52, 30))) == "held" and "Desirability −2: industry −2" in main.legend_label.text and "Held at L1" in main.scope_label.text, "shipped inspector explains a home held by a workshop across the street")
 	await key(KEY_S, true)
 	var saved: String = main.city.canonical()
 	await fresh_scene(isolated)
@@ -509,7 +510,7 @@ func economy_flow(isolated: IsolatedStore) -> void:
 	await growth_days(25)
 	check(main.city.last_budget.tick == 30 and City.Economy.totals(main.city.last_budget).net == 3200 and main.city.cash == 906200, "shipped month: $124 income minus $92 upkeep gives $32")
 	await key(KEY_B)
-	check(main.budget_dialog.visible and "12 serviced residents" in main.budget_text.text and "1 stations" in main.budget_text.text and "LAST SETTLEMENT" in main.budget_text.text and "Shortfall waived $0.00" in main.budget_text.text, "B shows auditable forecast and actual ledger counting one 4x4 station")
+	check(main.budget_dialog.visible and "12 serviced residents" in main.budget_text.text and "1 power plants" in main.budget_text.text and "LAST SETTLEMENT" in main.budget_text.text and "Shortfall waived $0.00" in main.budget_text.text, "B shows auditable forecast and actual ledger counting one 4x4 station")
 	main.budget_dialog.hide()
 	await key(KEY_S, true)
 	var saved: String = main.city.canonical()
@@ -570,7 +571,7 @@ func project_flow(isolated: IsolatedStore) -> void:
 	main.project_choice.select(1)
 	main.project_choice.item_selected.emit(1)
 	await frames()
-	check(not main.project_complete.disabled and "3 / 3" in main.project_text.text and "HOME LOTS" in main.project_text.text, "choosing a qualifying park enables completion")
+	check(not main.project_complete.disabled and "3 / 3" in main.project_text.text and "RESIDENTIAL LOTS" in main.project_text.text, "choosing a qualifying park enables completion")
 	project_command("clear", [Vector2i(15, 11)])
 	before = main.city.canonical()
 	main._complete_project()
@@ -655,7 +656,7 @@ func artwork_flow(isolated: IsolatedStore) -> void:
 ## D32 / M2f: the shipped meter, Budget tax row, rate effects and saved rate.
 func tax_flow(isolated: IsolatedStore) -> void:
 	await fresh_scene(isolated)
-	check(main.demand_meter.is_visible_in_tree() and main.demand_meter.summary() == "H +3 · S 0 · W 0" and "Tax 10%" in main.demand_label.text, "fresh game shows the starter home demand on the meter at the standard rate")
+	check(main.demand_meter.is_visible_in_tree() and main.demand_meter.summary() == "R +3 · C 0 · I 0" and "Tax 10%" in main.demand_label.text, "fresh game shows the starter home demand on the meter at the standard rate")
 	var roads: Array[Vector2i] = []
 	for x in range(42, 64): roads.append(Vector2i(x, 32))
 	project_command("road", roads)
@@ -665,7 +666,7 @@ func tax_flow(isolated: IsolatedStore) -> void:
 	project_command("workshop", [Vector2i(48, 33), Vector2i(51, 33)])
 	main._refresh_metrics()
 	await frames()
-	check(main.demand_meter.summary() == "H +3 · S 0 · W 0" and "H +3" in main.demand_meter.tooltip_text, "meter shows the three-level starter home demand")
+	check(main.demand_meter.summary() == "R +3 · C 0 · I 0" and "R +3" in main.demand_meter.tooltip_text, "meter shows the three-level starter home demand")
 	await key(KEY_B)
 	check(main.budget_dialog.visible and main._modal_open() and "Tax rate 10%" in main.tax_label.text and main.tax_buttons.standard.disabled, "B opens the Budget dialog at the standard rate")
 	var tick: int = main.city.tick
@@ -675,11 +676,11 @@ func tax_flow(isolated: IsolatedStore) -> void:
 		await frames(1)
 	check(main.city.tax_rate == 15 and main.city.sequence == sequence + 5 and main.city.tick == tick, "five raise presses set 15% as five ordered commands without advancing time")
 	check("Tax rate 15%" in main.tax_label.text and "$3 per serviced resident" in main.tax_note.text and "Tax 15%" in main.budget_text.text and "Tax 15%" in main.demand_label.text and "Tax rate 15%" in main.status_label.text, "Budget, toolbar and status agree on 15%")
-	check(main.demand_meter.summary() == "H +2 · S 0 · W 0", "15% lowers the starter home demand on the meter")
+	check(main.demand_meter.summary() == "R +2 · C 0 · I 0", "15% lowers the starter home demand on the meter")
 	for step in range(20):
 		main.tax_buttons.lower.pressed.emit()
 	await frames()
-	check(main.city.tax_rate == 0 and main.tax_buttons.lower.disabled and main.demand_meter.summary() == "H +4 · S 0 · W 0", "lower stops at 0% and the meter shows the larger 0% demand")
+	check(main.city.tax_rate == 0 and main.tax_buttons.lower.disabled and main.demand_meter.summary() == "R +4 · C 0 · I 0", "lower stops at 0% and the meter shows the larger 0% demand")
 	for step in range(30):
 		main.tax_buttons.raise.pressed.emit()
 	await frames()
@@ -746,7 +747,7 @@ func desirability_flow(isolated: IsolatedStore) -> void:
 	await key(KEY_8)
 	await click(screen_cell(Vector2i(52, 27)))
 	main._inspect_cell(Vector2i(52, 30))
-	check(main.city.occupancy[main.city.index(Vector2i(52, 27))] == City.PARK and main.city.desirability.lot_score[home] == 0 and "Desirability 0: park +2, workshop −2" in main.legend_label.text, "a park placed by pointer offsets the workshop")
+	check(main.city.occupancy[main.city.index(Vector2i(52, 27))] == City.PARK and main.city.desirability.lot_score[home] == 0 and "Desirability 0: park +2, industry −2" in main.legend_label.text, "a park placed by pointer offsets the workshop")
 	await growth_days(5)
 	check(main.city.development[home] == 2, "the rescued home regrows to level 2 in the shipped game")
 	main._open_settings()
@@ -795,7 +796,7 @@ func summary_flow(isolated: IsolatedStore) -> void:
 	var sequence: int = main.city.sequence
 	main.summary_button.pressed.emit()
 	await frames()
-	check(main.summary_dialog.visible and main.summary_items[0].kind == "held" and "2 home lots held" in main.summary_items[0].text and main.city.canonical() == before and main.city.sequence == sequence, "the status-bar button opens a read-only summary led by the held homes")
+	check(main.summary_dialog.visible and main.summary_items[0].kind == "held" and "2 residential lots held" in main.summary_items[0].text and main.city.canonical() == before and main.city.sequence == sequence, "the status-bar button opens a read-only summary led by the held homes")
 	var tick: int = main.city.tick
 	main._set_speed(3)
 	main.set_process(true)
@@ -924,6 +925,44 @@ func guide_flow(isolated: IsolatedStore) -> void:
 	check(Rect2(Vector2.ZERO, Vector2(1280, 720)).encloses(card) and not card.intersects(main.inspector.get_global_rect()) and main.guide_hide.get_global_rect().end.y <= card.end.y + 0.5, "the card re-lays out at the largest text")
 	check(absf(main.bottom.position.y - card.end.y - 12) <= 1.0, "the card keeps its 12 px gap above the status bar after a text-size change")
 	main._set_text_size(16)
+
+## D35 / R1: the shipped calendar and R/C/I wording; the date is never saved.
+func calendar_flow(isolated: IsolatedStore) -> void:
+	await fresh_scene(isolated)
+	check(main.day_label.text.begins_with("1 Jan 1950"), "a new town starts on 1 Jan 1950")
+	var words: String = main.help_text.text
+	for kind in main.tool_buttons: words += "
+" + main.tool_buttons[kind].text + "
+" + main.tool_buttons[kind].tooltip_text
+	words += "
+" + main.demand_meter.tooltip_text + "
+" + main.status_label.text
+	var old_words: bool = false
+	for word in ["Home", "Shop", "Workshop", "workshop", "station", "H homes", "H/S/W"]:
+		if word in words.replace("[Home]", "").replace("Home returns", ""): old_words = true
+	check(not old_words and "2  Residential" in main.tool_buttons.home.text and "6  Commercial" in main.tool_buttons.shop.text and "7  Industrial" in main.tool_buttons.workshop.text and "P  Power plant" in main.tool_buttons.power.text, "tools, tooltips, Help, meter and start-up status use Residential / Commercial / Industrial and power plant")
+	project_command("road", [Vector2i(63, 32), Vector2i(62, 32), Vector2i(61, 32)])
+	project_command("home", [Vector2i(60, 29)])
+	main._inspect_cell(Vector2i(60, 29))
+	await frames()
+	check("Residential lot L0" in main.selection_label.text and "next check 6 Jan 1950" in main.scope_label.text, "the inspector names the lot and the next check as a date")
+	await growth_days(29)
+	check(main.day_label.text.begins_with("30 Jan 1950") and main.city.last_budget.is_empty(), "day 30 is 30 Jan 1950, before the first settlement")
+	await growth_days(1)
+	check(main.city.tick == 30 and main.day_label.text.begins_with("1 Feb 1950") and not main.city.last_budget.is_empty(), "the first settlement happens on 1 Feb 1950")
+	main._open_budget()
+	await frames()
+	check("CURRENT FORECAST · Feb 1950 · settles 1 Mar 1950" in main.budget_text.text and "LAST SETTLEMENT · January 1950, settled 1 Feb 1950" in main.budget_text.text, "Budget names the forecast month and the month the last settlement closed")
+	main.budget_dialog.hide()
+	main._open_summary()
+	await frames()
+	check(main.summary_heading.text.begins_with("1 Feb 1950 · "), "the town summary heading shows the date")
+	main.summary_dialog.hide()
+	await growth_days(330)
+	check(main.city.tick == 360 and main.day_label.text.begins_with("1 Jan 1951"), "twelve 30-day months make a year: tick 360 is 1 Jan 1951")
+	await key(KEY_S, true)
+	var saved: String = FileAccess.get_file_as_string(isolated.test_path)
+	check(not saved.is_empty() and not "1951" in saved and not "Jan" in saved and int(JSON.parse_string(saved).schema_version) == 8, "the save stays schema 8 and stores no date")
 
 func project_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	return main.city.apply_command(kind, cells)

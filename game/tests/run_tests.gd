@@ -55,6 +55,7 @@ func run() -> void:
 	preload("res://tests/desirability_tests.gd").new().run(self)
 	preload("res://tests/summary_tests.gd").new().run(self)
 	preload("res://tests/guide_tests.gd").new().run(self)
+	preload("res://tests/calendar_tests.gd").new().run(self)
 	test_clock()
 	test_codec()
 	test_storage()
@@ -62,7 +63,7 @@ func run() -> void:
 	await test_scene()
 	if "--prove-failure-exit" in OS.get_cmdline_user_args():
 		check(false, "Deliberate runner failure to verify exit code")
-	print(JSON.stringify({"suite": "M3b", "checks": checks, "failed": failures.size(), "failures": failures}))
+	print(JSON.stringify({"suite": "R1", "checks": checks, "failed": failures.size(), "failures": failures}))
 	quit(0 if failures.is_empty() else 1)
 
 func test_commands() -> void:
@@ -471,7 +472,7 @@ func test_scene() -> void:
 	main._inspect_cell(Vector2i(40,31))
 	check(main.power_label.text.contains("Supplies 20 units") and main.grid_label.text.begins_with("Power 0 / 20"), "inspector and toolbar report station capacity")
 	main._inspect_cell(Vector2i(31,31))
-	check(main.selection_label.text.contains("Home lot L0") and main.power_label.text.contains("lot"), "any tile of a lot inspects the lot")
+	check(main.selection_label.text.contains("Residential lot L0") and main.power_label.text.contains("lot"), "any tile of a lot inspects the lot")
 	check(main.world.art_mode == "modern_city", "the real scene starts with the default Modern City artwork")
 	# Every artwork mode redraws the same model.
 	var art_before: String = main.city.canonical()

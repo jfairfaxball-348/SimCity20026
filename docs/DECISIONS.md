@@ -40,6 +40,7 @@ Recorded: 4 November 2026. Use this file to distinguish the user's requirements 
 | U32 | Keep the relaxed no-debt rule (D25 waiver) as the default; a stricter money rule may only be an opt-in | Owner answer, **6 November 2026**; roadmap R10 |
 | U33 | Target map and population scale: match the original game (a classic-sized map within the 128-per-side ceiling and a comparably large population, with our own exact numbers) | Owner answer "Match the original game", **6 November 2026**; roadmap R2b, R7 |
 | U34 | No later-edition extras for now (water pipes, education/health, highways, subways, loans); revisit after M4 | Owner answer, **6 November 2026** |
+| U35 | Implement roadmap R1 (terminology and calendar) from the handoff through verification and delivery | Owner "Run next session", **6 November 2026** |
 
 U06 superseded the earlier planning-only scope for M0/M1. U07 and U08 authorised M2a and M2b. U09 authorises M2c and source integration. U12 authorises M2d local implementation. The follow-up owner instruction authorises source delivery now and in future sessions: commit, push, merge and fast-forward completed work. Public game release remains separate.
 
@@ -81,9 +82,25 @@ D01–D06, D08, and the M1 part of D10 were adopted for the foundation. Later pr
 | <a id="d31"></a>D31 | Selectable presentation-only art modes; Kenney Roguelike Modern City is the default since 0.7.1-m2e (U22/U23); original renderer is the fallback; Tiny City stays experimental | Still to add: documented supplementary sprites (water/shore, power station, roof edges). The art choice is never saved and never changes the model. |
 | <a id="d32"></a>D32 | M2f: always-visible demand meter; town tax rate 0-25% (standard 10%) scales taxes and demand appeal; above 10% surplus levels leave gently; schema 7 / m2f-1 | The trade-off is money per person against growth, recoverable by lowering the rate. Revisit the numbers with playtest evidence; M2g may add local effects. |
 | <a id="d33"></a>D33 | M2g: derived home desirability (park +2, water +1, developed workshops within 2 −2 each); orders home growth; below 0 holds homes at level 1 with a gentle drop; V overlay; schema 8 / m2g-1 | Generalises D26 park priority for homes; businesses unchanged. Revisit radii and values with playtest evidence; stations and traffic are not sources yet. |
+| <a id="d35"></a>D35 | R1: player-facing Residential / Commercial / Industrial and power plant wording; a derived month-and-year calendar from 1 January 1950; no rule or save change | Implements roadmap R1 under U29. Internal identifiers, keys and saves stay. Revisit wording with playtest evidence |
 | <a id="d34"></a>D34 | M2h: a derived, read-only town summary (T and a status-bar button) ranking measurable growth blockers by levels affected, with Show/Budget actions; no rule or save change | Follows the study explanation contract; the inspector remains the per-lot explanation. Revisit item wording and ordering with playtest evidence. |
 | <a id="d29"></a>D29 | One dismissible, session-only First steps card derived from the current town; no save change. Refreshed for 0.10.0-m2h and adopted (U28) | Replaces a start-up status line that vanishes after the first command. Uses lot wording and points at the meter and T summary. Revisit persistence of dismissal with M3 settings/autosaves or if observed players find it intrusive. |
 | <a id="d30"></a>D30 | Adopted and locally verified (M2e): freely placed 3x3 zone lots replace single-tile plots one-for-one, and power stations become 4x4; schema 6 / m2e-1; older zones and stations cleared on migration | Implements U16/U18/U19 while keeping D19-D28 numbers unchanged. Revisit prices and frontage costs after M3 playtests. |
+
+## D35 - R1 terminology and calendar, adopted and locally verified 6 November 2026
+
+**Adopted before code** under the owner's "Run next session" request (U35), then implemented and locally verified as game 0.12.0-r1. Evidence: [R1 record](sessions/2026-11-06-r1.md). Schema 8 / `m2g-1` and every fixture are unchanged. Wording and display only: no rule, number, command, save field or content version changes.
+
+- **Zone words.** Player-facing text says **Residential**, **Commercial** and **Industrial** (lots and zones) in place of Homes, Shops and Workshops. Sidebar tools read "2 Residential", "6 Commercial", "7 Industrial". Lot names are "Residential lot", "Commercial lot" and "Industrial lot". Plain plurals use "residential lots", "industrial lots" or "industry".
+- **Power plant.** "Power station" becomes **power plant** everywhere a player reads it (U18 prefers the classic wording). Still 4x4, $500, 20 lots, $60 a month.
+- **Nuisance.** The desirability part for developed industrial lots reads "industry −N".
+- **Demand meter.** The letters become **R / C / I**. The bars, scale and numbers are unchanged.
+- **Unchanged.** Keys 2 / 6 / 7 / P, internal tool and command names (`home`, `shop`, `workshop`, `power`), occupancy IDs, save fields, `residents` and `jobs`, and every D17-D34 rule.
+- **Calendar.** The date is derived from the tick and never saved. Tick 0 is **1 January 1950** (our own start year). Each month is the D25 30-day month and a year is 12 months, so a year is 360 days. The status bar shows "d Mon yyyy", for example "1 Jan 1950". The inspector's next check, the Budget's next settlement and the town summary use the same date. The forecast names the month it covers. The last settlement names the month it closed: the settlement at tick 30 closes January 1950.
+- **Limit.** At the existing tick limit the status reads "Calendar limit reached" in place of "Day limit reached".
+- **Evidence.** Every changed string must fit at every supported layout and text size, and tests that matched the old text are updated to the new text.
+
+D17-D34 are unchanged.
 
 ## D34 - M2h town summary, adopted and locally verified 6 November 2026
 
@@ -301,3 +318,5 @@ None of these unanswered commercial questions prevents local prototype implement
 - 2026-11-06, U29/U30: recorded that ordinary genre vocabulary is allowed (AGENTS, IP and assets) and replaced the next-direction question with a planning-only gap-analysis and roadmap session. No game code changed.
 
 - 2026-11-06, U30 gap analysis: audited 0.11.0-m3b from this project's code, Decisions and evidence, and compared it feature by feature with the classic game described at player level in our own words, without opening any reference source ([gap analysis](GAP_ANALYSIS.md)). Wrote the ordered [roadmap](ROADMAP.md) R1-R17, superseding the GENRE_ALIGNMENT candidate table. The owner answered the four roadmap questions (U31-U34). Planning only: no game code, version, save or fixture changed. NEXT_SESSION now assigns R1 (terminology and calendar).
+
+- 2026-11-06, U35 R1: adopted D35 before code. Player-facing text now says Residential / Commercial / Industrial and power plant, the meter reads R / C / I, and a derived calendar from 1 Jan 1950 (30-day months, 12-month years) replaces the day count in the status bar, inspector, Budget and summary. No rule, save or fixture change. Passed 683 source / 571 exported-PCK checks, release-EXE start-up and a native EXE run. Packaged 0.12.0-r1 locally; not published. NEXT_SESSION now assigns R2a.

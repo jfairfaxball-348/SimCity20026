@@ -66,7 +66,7 @@ static func decode(text: String) -> Dictionary:
 			if (not City.is_zone(int(data.occupancy[i])) and int(data.development[i]) != 0) or (int(data.development[i]) == 0 and int(data.service_loss[i]) != 0):
 				return fail("Development does not match its zone.")
 	if schema >= 6 and not valid_footprints(data):
-		return fail("Lots or stations in this save do not form whole, separate footprints.")
+		return fail("Lots or power plants in this save do not form whole, separate footprints.")
 	if schema >= 4:
 		if not valid_budget(data.get("last_budget"), int(data.tick), count, schema):
 			return fail("Invalid monthly budget record.")

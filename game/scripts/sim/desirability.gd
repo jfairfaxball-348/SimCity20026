@@ -80,11 +80,11 @@ func cap(city: RefCounted, anchor: int) -> int:
 	if city.occupancy[anchor] == city.HOME and lot_score[anchor] < 0: return Balance.HELD_LEVEL
 	return Balance.MAX_LEVEL
 
-## Non-zero parts of a home lot's score, e.g. "park +2, workshops −4".
+## Non-zero parts of a home lot's score, e.g. "park +2, industry −4".
 func parts(city: RefCounted, anchor: int) -> String:
 	var out: Array[String] = []
 	if city.amenity.lot_covered[anchor] != 0: out.append("park +%d" % Balance.DESIRABILITY_PARK)
 	if lot_water[anchor] != 0: out.append("water +%d" % Balance.DESIRABILITY_WATER)
 	var shops: int = mini(lot_workshops[anchor], Balance.NUISANCE_COUNT_LIMIT)
-	if shops > 0: out.append("workshop%s −%d" % ["s" if shops > 1 else "", Balance.NUISANCE_PER_WORKSHOP * shops])
+	if shops > 0: out.append("industry −%d" % (Balance.NUISANCE_PER_WORKSHOP * shops))
 	return ", ".join(out)

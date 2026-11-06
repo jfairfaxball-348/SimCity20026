@@ -206,7 +206,7 @@ func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	if is_footprint_kind(target):
 		var size: int = footprint_size(target)
 		var claimed: Dictionary = {}
-		var noun: String = "station" if target == POWER else "lot"
+		var noun: String = "power plant" if target == POWER else "lot"
 		for raw_index in indices:
 			var a: int = int(raw_index)
 			var origin: Vector2i = cell_of(a)
@@ -218,7 +218,7 @@ func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 				if terrain[i] == WATER:
 					return _failure("Water cannot be built on or cleared.")
 				if occupancy[i] != EMPTY:
-					return _failure("Clear the existing road, zone, or station first.")
+					return _failure("Clear the existing road, zone, or power plant first.")
 				if access.root.x >= 0 and i == index(access.root):
 					return _failure("Keep the outside-link flag free for its road.")
 				if claimed.has(i):
@@ -243,7 +243,7 @@ func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 			if occupancy[i] == target:
 				continue
 			if kind != "clear" and occupancy[i] != EMPTY:
-				return _failure("Clear the existing road, zone, or station first.")
+				return _failure("Clear the existing road, zone, or power plant first.")
 			if kind == "park" and access.root.x >= 0 and i == index(access.root):
 				return _failure("Keep the outside-link flag free for its road.")
 			changed.append(i)
@@ -284,7 +284,7 @@ func apply_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 		"indices": recorded, "cost": result.cost}
 	var built: int = result.anchors.size()
 	if kind == "power":
-		result.message = "Power station built · %s · supplies up to %d lots on its network." % [Balance.money(int(result.cost)), Balance.POWER_CAPACITY / Balance.HOME_POWER_DEMAND]
+		result.message = "Power plant built · %s · supplies up to %d lots on its network." % [Balance.money(int(result.cost)), Balance.POWER_CAPACITY / Balance.HOME_POWER_DEMAND]
 	elif is_footprint_kind(int(result.target)):
 		result.message = "%d lot%s · %s" % [built, "" if built == 1 else "s", Balance.money(int(result.cost))]
 	else:
@@ -335,7 +335,7 @@ func project_homes(park_index: int) -> int:
 func complete_project(cell: Vector2i) -> Dictionary:
 	if project.completed: return _failure("This town has already completed its project.")
 	if not inside(cell) or occupancy[index(cell)] != PARK: return _failure("Choose an existing pocket park.")
-	if project_homes(index(cell)) < 3: return _failure("This park needs three developed home lots with road access and power within 3 side-steps.")
+	if project_homes(index(cell)) < 3: return _failure("This park needs three developed residential lots with road access and power within 3 side-steps.")
 	if sequence >= MAX_TICK: return _failure("This prototype has reached its command limit.")
 	project = {"completed": true, "park_index": index(cell)}
 	sequence += 1

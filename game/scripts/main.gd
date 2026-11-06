@@ -10,6 +10,7 @@ const ArtKit = preload("res://scripts/presentation/art_kit.gd")
 const Meter = preload("res://scripts/presentation/demand_meter.gd")
 const Summary = preload("res://scripts/presentation/town_summary.gd")
 const Guide = preload("res://scripts/presentation/opening_guide.gd")
+const Calendar = preload("res://scripts/presentation/calendar.gd")
 const SAVE_PATH: String = "user://saves/manual.json"
 const SIZES: Array[Vector2i] = [Vector2i(1280,720), Vector2i(1366,768), Vector2i(1920,1080), Vector2i(1280,800)]
 const PAN_VECTORS: Dictionary = {"pan_left": Vector2.LEFT, "pan_right": Vector2.RIGHT, "pan_up": Vector2.UP, "pan_down": Vector2.DOWN}
@@ -127,7 +128,7 @@ func _ready() -> void:
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--art="): world.set_art(argument.trim_prefix("--art="))
 	last_usec = Time.get_ticks_usec()
-	_status("Begin at the gold flag: lay a road on its tile, zone 3x3 home lots beside connected streets, then add a 4x4 power station (P) beside a street.")
+	_status("Begin at the gold flag: lay a road on its tile, zone 3x3 residential lots beside connected streets, then add a 4x4 power plant (P) beside a street.")
 
 func _build_ui() -> void:
 	top = _panel()
@@ -182,16 +183,16 @@ func _build_ui() -> void:
 	side.add_child(column)
 	column.add_child(_label("LAY OUT YOUR TOWN", 13, Style.MUTED))
 	var power_price: String = Balance.money(Balance.POWER_COST).trim_suffix(".00")
-	for entry in [["road", "1  Roads · $10"], ["home", "2  Homes · $25"], ["shop", "6  Shops · $25"], ["workshop", "7  Workshops · $25"], ["power", "P  Power station · " + power_price], ["park", "8  Park · $100"], ["clear", "3  Clear · free"]]:
+	for entry in [["road", "1  Roads · $10"], ["home", "2  Residential · $25"], ["shop", "6  Commercial · $25"], ["workshop", "7  Industrial · $25"], ["power", "P  Power plant · " + power_price], ["park", "8  Park · $100"], ["clear", "3  Clear · free"]]:
 		var kind: String = entry[0]
 		var button := _button(entry[1], func(): _select_tool(kind))
 		button.toggle_mode = true
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.custom_minimum_size.y = 30
 		match kind:
-			"park": button.tooltip_text = "One park; $10/month. Homes within 3 side-steps gain +2 desirability: they grow first and it offsets one nearby workshop. Overlap does not stack."
+			"park": button.tooltip_text = "One park; $10/month. Residential lots within 3 side-steps gain +2 desirability: they grow first and it offsets one nearby industrial lot. Overlap does not stack."
 			"clear": button.tooltip_text = "Clear is free, with no refund."
-			"power": button.tooltip_text = "One 4x4 station per placement. It supplies %d zone lots through the roads it touches, including empty lots." % Balance.POWER_CAPACITY
+			"power": button.tooltip_text = "One 4x4 power plant per placement. It supplies %d zone lots through the roads it touches, including empty lots." % Balance.POWER_CAPACITY
 			"road": button.tooltip_text = "Price per tile; identical repainting is free."
 			_: button.tooltip_text = "Price per 3x3 lot; drag to lay a row of lots. Identical repainting is free."
 		column.add_child(button)
@@ -334,7 +335,7 @@ func _build_dialogs() -> void:
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_text = _label("1 Roads · 2 Homes · 6 Shops · 7 Workshops\nP Station · 8 Park · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced home lots.\nZones are 3x3 lots; stations are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV desirability overlay.\n\nJoin roads from the gold flag; zone beside them.\nAdd a station: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nHome desirability: park within 3 +2, water within 3 +1,\neach developed workshop within 2 steps −2 (up to 3).\nHigher grows first; below 0 a home stops at level 1.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
+	help_text = _label("1 Roads · 2 Residential · 6 Commercial · 7 Industrial\nP Power plant · 8 Park · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced residential lots.\nZones are 3x3 lots; power plants are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV desirability overlay.\nDemand meter: R residential, C commercial, I industrial.\nDates run in 30-day months from 1 Jan 1950.\n\nJoin roads from the gold flag; zone beside them.\nAdd a power plant: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nResidential desirability: park within 3 +2, water within 3 +1,\neach developed industrial lot within 2 steps −2 (up to 3).\nHigher grows first; below 0 a lot stops at level 1.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
 	add_child(help_dialog)
 	help_dialog.add_button("Show first steps", false, "guide")
 	help_dialog.custom_action.connect(func(action: String):
@@ -616,7 +617,7 @@ func _inspect_cell(cell: Vector2i) -> void:
 	inspected_cell = cell
 	var i: int = city.index(cell)
 	power_label.text = _power_text(cell)
-	var land_use: String = "Water" if city.terrain[i] == City.WATER else ["Open ground", "Road", "Home lot", "Power station", "Shop lot", "Workshop lot", "Pocket park"][city.occupancy[i]]
+	var land_use: String = "Water" if city.terrain[i] == City.WATER else ["Open ground", "Road", "Residential lot", "Power plant", "Commercial lot", "Industrial lot", "Pocket park"][city.occupancy[i]]
 	if City.is_zone(city.occupancy[i]):
 		var a: int = city.footprint_owner[i]
 		var per_level: int = Balance.RESIDENTS_PER_LEVEL if city.occupancy[i] == City.HOME else Balance.SHOP_JOBS_PER_LEVEL if city.occupancy[i] == City.SHOP else Balance.WORKSHOP_JOBS_PER_LEVEL
@@ -627,9 +628,9 @@ func _inspect_cell(cell: Vector2i) -> void:
 	elif cell == city.access.root:
 		access_label.text = "Outside link active. Join roads along shared sides." if city.occupancy[i] == City.ROAD else "Outside link: clear this zone, then lay a road here." if City.is_zone(city.occupancy[i]) else "Outside link inactive. Lay a road on this flagged tile."
 	elif city.occupancy[i] == City.PARK:
-		access_label.text = "Covers homes within 3 side-steps. Overlap does not stack."
+		access_label.text = "Covers residential lots within 3 side-steps. Overlap does not stack."
 	elif city.occupancy[i] == City.POWER:
-		access_label.text = "Power works without the outside link. Stations do not carry road access."
+		access_label.text = "Power works without the outside link. Power plants do not carry road access."
 	elif City.is_zone(city.occupancy[i]):
 		match city.access.home_reason(city, cell):
 			"connected": access_label.text = "Road access connected to the outside link."
@@ -642,26 +643,26 @@ func _inspect_cell(cell: Vector2i) -> void:
 		access_label.text = "Water cannot be built on." if city.terrain[i] == City.WATER else "Place zones beside connected roads. Diagonals do not provide access."
 
 func _growth_text(cell: Vector2i) -> String:
-	if city.tick >= City.MAX_TICK: return "Day limit reached. Growth is stopped."
+	if city.tick >= City.MAX_TICK: return "Calendar limit reached. Growth is stopped."
 	var next_day: int = city.tick + Balance.GROWTH_DAYS - city.tick % Balance.GROWTH_DAYS + 1
 	if city.inside(cell) and city.occupancy[city.index(cell)] == City.PARK:
 		if city.project.completed and int(city.project.park_index) == city.index(cell):
 			return "Project completed. Flowers only; park priority unchanged. Upkeep $10/month."
-		return "Homes within 3 steps gain +2 desirability: they grow first and it offsets one workshop. No extra demand. Upkeep $10/month."
+		return "Residential lots within 3 steps gain +2 desirability: they grow first and it offsets one industrial lot. No extra demand. Upkeep $10/month."
 	if not city.inside(cell) or not City.is_zone(city.occupancy[city.index(cell)]):
-		return "Next growth: day %d. Zones need road access, power and demand." % next_day
+		return "Next growth: %s. Zones need road access, power and demand." % Calendar.date(next_day - 1)
 	var i: int = city.anchor_at(cell)
 	var kind: int = city.occupancy[i]
 	var wanted: String = "Demand −%d (taxes)" % city.growth.surplus[kind] if city.growth.surplus[kind] > 0 else "Demand %d" % city.growth.demand[kind]
-	var prefix: String = "%s · next check day %d\n" % [wanted, next_day]
+	var prefix: String = "%s · next check %s\n" % [wanted, Calendar.date(next_day - 1)]
 	match city.growth.reason(city, i):
 		"growing": return prefix + "Ready to gain one level."
-		"queued": return prefix + "Waiting turn; park homes first, then map order."
-		"demand": return prefix + "Demand met. More residents support jobs; jobs support homes."
+		"queued": return prefix + "Waiting turn; park-side lots first, then map order."
+		"demand": return prefix + "Demand met. More residents support jobs; jobs support residents."
 		"full": return prefix + "Fully developed (level 2)."
 		"leaving": return prefix + "High taxes: loses a level next check. Lower the rate to keep it."
-		"held": return prefix + "Held at L1 by workshops: add a park or move them."
-		"dropping": return prefix + "Drops to L1 next check (workshops): add a park."
+		"held": return prefix + "Held at L1 by industry: add a park or move it."
+		"dropping": return prefix + "Drops to L1 next check (industry): add a park."
 		"surplus": return prefix + "Taxes above %d%%: more levels may leave." % Balance.TAX_STANDARD
 		"declining": return prefix + "Loses a level in %d check(s) unless services return." % (Balance.DECLINE_ROUNDS - city.service_loss[i])
 	return prefix + "Waiting for road access and power."
@@ -676,18 +677,18 @@ func _power_text(cell: Vector2i) -> String:
 		City.HOME, City.SHOP, City.WORKSHOP:
 			match grid.home_reason(city, cell):
 				"powered": return "Powered. Network: %s." % _network_use(grid.home_network[city.footprint_owner[i]])
-				"shortage": return "No power: network full (%d/%d). Add a station; nearest lots get power first." % [grid.network_used[grid.home_network[city.footprint_owner[i]]], grid.network_capacity[grid.home_network[city.footprint_owner[i]]]]
-				"disconnected": return "No power: the road beside this lot does not reach a power station."
-				"no_source": return "No power station yet. Place one (P) beside a road that reaches this lot."
-			return "No power: add a road beside this lot that reaches a power station."
+				"shortage": return "No power: network full (%d/%d). Add a plant; nearest lots get power first." % [grid.network_used[grid.home_network[city.footprint_owner[i]]], grid.network_capacity[grid.home_network[city.footprint_owner[i]]]]
+				"disconnected": return "No power: the road beside this lot does not reach a power plant."
+				"no_source": return "No power plant yet. Place one (P) beside a road that reaches this lot."
+			return "No power: add a road beside this lot that reaches a power plant."
 		City.ROAD:
 			if grid.carries_power(i): return "Carries power. Network: %s." % _network_use(network)
-			return "No power station built yet." if grid.station_count == 0 else "No power station on this road network."
+			return "No power plant built yet." if grid.station_count == 0 else "No power plant on this road network."
 		City.PARK:
 			return "Needs no services; carries no roads or power."
 		City.POWER:
-			return "Supplies %d units. Network: %s, %d station%s." % [Balance.POWER_CAPACITY, _network_use(network), grid.network_stations[network], "" if grid.network_stations[network] == 1 else "s"]
-	return "Power stations (P) supply lots through the roads they touch."
+			return "Supplies %d units. Network: %s, %d plant%s." % [Balance.POWER_CAPACITY, _network_use(network), grid.network_stations[network], "" if grid.network_stations[network] == 1 else "s"]
+	return "Power plants (P) supply lots through the roads they touch."
 
 func _network_use(network: int) -> String:
 	var grid = city.power
@@ -706,7 +707,7 @@ func _update_legend(cell: Vector2i = inspected_cell) -> void:
 	var a: int = city.anchor_at(cell)
 	if a >= 0 and city.occupancy[a] == City.HOME:
 		var lot_parts: String = city.desirability.parts(city, a)
-		legend_label.text = "Desirability %s: %s" % [Meter.signed(city.desirability.lot_score[a]), "no park, water or workshop nearby" if lot_parts.is_empty() else lot_parts]
+		legend_label.text = "Desirability %s: %s" % [Meter.signed(city.desirability.lot_score[a]), "no park, water or industry nearby" if lot_parts.is_empty() else lot_parts]
 
 func _toggle_access() -> void:
 	world.access_visible = not world.access_visible
@@ -719,7 +720,7 @@ func _toggle_desirability() -> void:
 	world.desirability_visible = not world.desirability_visible
 	world.queue_redraw()
 	_update_legend()
-	_status("Desirability overlay on: + marks attract homes (park +2, water +1); hatching deters (each developed workshop within 2 steps −2). Homes below 0 stop at level 1." if world.desirability_visible else "Desirability overlay off (V).")
+	_status("Desirability overlay on: + marks attract residents (park +2, water +1); hatching deters (each developed industrial lot within 2 steps −2). Residential lots below 0 stop at level 1." if world.desirability_visible else "Desirability overlay off (V).")
 
 func _toggle_power() -> void:
 	world.power_visible = not world.power_visible
@@ -802,10 +803,10 @@ func _refresh_metrics() -> void:
 	demand_label.text = "Tax %d%% · Net %s%s" % [city.tax_rate, Balance.money(forecast.net), " · DEFICIT" if forecast.net < 0 else ""]
 	demand_meter.set_values(meter_values())
 	_refresh_guide()
-	budget_button.tooltip_text = "Current forecast; changes with services and development. Next settlement: day %d." % (city.tick + 31 - city.tick % 30)
-	day_label.text = "Day %d\n%s" % [city.tick + 1, "Paused" if speed == 0 or focus_paused else "%dx speed" % speed]
+	budget_button.tooltip_text = "Current forecast; changes with services and development. Next settlement: %s." % Calendar.date(city.tick + 30 - city.tick % 30)
+	day_label.text = "%s\n%s" % [Calendar.date(city.tick), "Paused" if speed == 0 or focus_paused else "%dx speed" % speed]
 	var grid = city.power
-	grid_label.text = "Power %d / %d\n%s" % [grid.total_used, grid.total_capacity, "No stations" if grid.station_count == 0 else "%d lot%s short" % [grid.short_homes, "" if grid.short_homes == 1 else "s"] if grid.short_homes > 0 else "No shortage"]
+	grid_label.text = "Power %d / %d\n%s" % [grid.total_used, grid.total_capacity, "No plants" if grid.station_count == 0 else "%d lot%s short" % [grid.short_homes, "" if grid.short_homes == 1 else "s"] if grid.short_homes > 0 else "No shortage"]
 
 ## D32: signed meter values; negative only while levels leave above the standard rate.
 func meter_values() -> Array[int]:
@@ -887,7 +888,7 @@ func _load_path(path: String) -> void:
 	var preserved_name: String = Store.preserved_path(path.trim_suffix(".bak"), maxi(1, int(result.get("migrated_from", 0)))).get_file()
 	# Formats 1-5 lose their single-tile zones and stations (D30); format 6 keeps
 	# everything. Every earlier format starts at the standard tax rate (D32).
-	var cleared: String = "every lot kept" if int(result.get("migrated_from", 0)) >= 6 else "%d old single-tile zone/station tiles cleared for 3x3 lots and 4x4 stations" % int(result.get("cleared_tiles", 0))
+	var cleared: String = "every lot kept" if int(result.get("migrated_from", 0)) >= 6 else "%d old single-tile zone/power tiles cleared for 3x3 lots and 4x4 power plants" % int(result.get("cleared_tiles", 0))
 	if int(result.get("migrated_from", 0)) < 7: cleared += ", tax rate set to the standard %d%%" % Balance.TAX_STANDARD
 	if int(result.get("migrated_from", 0)) > 0 and path.ends_with(".bak"):
 		_status("Backup restored from earlier format %d; %s. Save to make it current; its bytes are kept as %s first." % [result.migrated_from, cleared, preserved_name])
@@ -941,25 +942,25 @@ func _fill_budget() -> void:
 	tax_buttons.lower.disabled = city.tax_rate <= Balance.TAX_MIN
 	tax_buttons.raise.disabled = city.tax_rate >= Balance.TAX_MAX
 	tax_buttons.standard.disabled = city.tax_rate == Balance.TAX_STANDARD
-	tax_note.text = "Each month: %s per serviced resident, %s per serviced job. Demand %d%% of standard (%d-%d%%, standard %d%%). Lower rates attract homes and businesses; %s" % [_rate_money(Balance.RESIDENT_TAX_PER_POINT * city.tax_rate), _rate_money(Balance.JOB_TAX_PER_POINT * city.tax_rate), Balance.appeal(city.tax_rate), Balance.TAX_MIN, Balance.TAX_MAX, Balance.TAX_STANDARD, "above %d%%, up to %d levels of each type leave per check while above demand." % [Balance.TAX_STANDARD, Balance.LEAVE_LIMIT]]
+	tax_note.text = "Each month: %s per serviced resident, %s per serviced job. Demand %d%% of standard (%d-%d%%, standard %d%%). Lower rates attract residents and businesses; %s" % [_rate_money(Balance.RESIDENT_TAX_PER_POINT * city.tax_rate), _rate_money(Balance.JOB_TAX_PER_POINT * city.tax_rate), Balance.appeal(city.tax_rate), Balance.TAX_MIN, Balance.TAX_MAX, Balance.TAX_STANDARD, "above %d%%, up to %d levels of each type leave per check while above demand." % [Balance.TAX_STANDARD, Balance.LEAVE_LIMIT]]
 	var next_day: int = city.tick + Balance.MONTH_DAYS - city.tick % Balance.MONTH_DAYS + 1
 	budget_text.add_theme_font_size_override("font_size", font_size)
-	budget_text.text = "CURRENT FORECAST · settles day %d after growth\n" % next_day
+	budget_text.text = "CURRENT FORECAST · %s · settles %s after growth\n" % [Calendar.month(city.tick), Calendar.date(next_day - 1)]
 	budget_text.text += _budget_breakdown(city.budget)
 	budget_text.text += "\nForecast uses today's services and development.\nNo tax from unserved buildings, even during decline grace.\n"
 	if city.last_budget.is_empty():
 		budget_text.text += "\nLAST SETTLEMENT · none recorded yet\n"
 	else:
 		var last: Dictionary = City.Economy.totals(city.last_budget)
-		budget_text.text += "\nLAST SETTLEMENT · day %d\n" % (int(city.last_budget.tick) + 1)
+		budget_text.text += "\nLAST SETTLEMENT · %s, settled %s\n" % [Calendar.settled_month(int(city.last_budget.tick)), Calendar.date(int(city.last_budget.tick))]
 		budget_text.text += _budget_breakdown(city.last_budget)
 		budget_text.text += "\nOpening %s → closing %s\nShortfall waived %s · surplus capped %s\n" % [Balance.money(city.last_budget.opening_cash), Balance.money(last.closing_cash), Balance.money(last.waiver), Balance.money(last.capped)]
-	budget_text.text += "\nRECOVERY · Clear surplus roads, stations or parks for free.\nRestore road access and power to restore taxes.\nAt zero, unpaid costs are waived: no debt or service cuts.\nWith everything cleared, the $100 monthly grant rebuilds cash."
+	budget_text.text += "\nRECOVERY · Clear surplus roads, power plants or parks for free.\nRestore road access and power to restore taxes.\nAt zero, unpaid costs are waived: no debt or service cuts.\nWith everything cleared, the $100 monthly grant rebuilds cash."
 
 func _budget_breakdown(data: Dictionary) -> String:
 	var result: Dictionary = City.Economy.totals(data)
 	var rate: int = int(data.get("tax_rate", Balance.TAX_STANDARD))
-	return "Tax %d%%: grant $100 + %d serviced residents × %s + %d serviced jobs × %s = %s\nUpkeep: %d roads × $1 + %d stations × $60 + %d parks × $10 = %s\nNet %s%s" % [rate, data.residents, _rate_money(Balance.RESIDENT_TAX_PER_POINT * rate), data.jobs, _rate_money(Balance.JOB_TAX_PER_POINT * rate), Balance.money(result.income), data.roads, data.stations, data.parks, Balance.money(result.expenses), Balance.money(result.net), " · DEFICIT: costs exceed income" if result.net < 0 else ""]
+	return "Tax %d%%: grant $100 + %d serviced residents × %s + %d serviced jobs × %s = %s\nUpkeep: %d roads × $1 + %d power plants × $60 + %d parks × $10 = %s\nNet %s%s" % [rate, data.residents, _rate_money(Balance.RESIDENT_TAX_PER_POINT * rate), data.jobs, _rate_money(Balance.JOB_TAX_PER_POINT * rate), Balance.money(result.income), data.roads, data.stations, data.parks, Balance.money(result.expenses), Balance.money(result.net), " · DEFICIT: costs exceed income" if result.net < 0 else ""]
 
 func _build_project_dialog() -> void:
 	project_dialog = AcceptDialog.new()
@@ -1014,10 +1015,10 @@ func _refresh_project() -> void:
 		project_text.text = "Completed: a welcoming square.\nFlowers celebrate your town; the park benefit is unchanged.\n"
 		if not valid: project_text.text += "The decorated park was cleared. Your completion is kept; rebuilding does not repeat the project.\n"
 	else:
-		project_text.text = "Optional goal: three developed HOME LOTS with a tile within 3 side-steps of one park, each with road access and power. Each lot counts once, at either level.\n\n"
-		project_text.text += "%d / 3 qualifying home lots.\n" % city.project_homes(i) if valid else "No parks yet. Place a pocket park with 8.\n"
+		project_text.text = "Optional goal: three developed RESIDENTIAL LOTS with a tile within 3 side-steps of one park, each with road access and power. Each lot counts once, at either level.\n\n"
+		project_text.text += "%d / 3 qualifying residential lots.\n" % city.project_homes(i) if valid else "No parks yet. Place a pocket park with 8.\n"
 		project_text.text += "\nComplete the square to add flowers. Decoration only: no extra growth, income or service. No deadline or penalty.\n"
-	project_text.text += "\nA park costs $100 to place and $10/month. It already prioritizes nearby homes within existing demand; completion does not change that benefit."
+	project_text.text += "\nA park costs $100 to place and $10/month. It already prioritizes nearby residential lots within existing demand; completion does not change that benefit."
 
 func _complete_project() -> void:
 	var i: int = _project_index()
@@ -1062,7 +1063,7 @@ func _fill_summary() -> void:
 		summary_column.remove_child(child)
 		child.queue_free()
 	summary_heading.add_theme_font_size_override("font_size", font_size - 1)
-	summary_heading.text = "Day %d · Residents %d · Jobs %d · Tax %d%%\nWhat is holding the town back, biggest first:" % [city.tick + 1, city.growth.population, city.growth.jobs, city.tax_rate]
+	summary_heading.text = "%s · Residents %d · Jobs %d · Tax %d%%\nWhat is holding the town back, biggest first:" % [Calendar.date(city.tick), city.growth.population, city.growth.jobs, city.tax_rate]
 	for item in summary_items:
 		var row := HBoxContainer.new()
 		summary_column.add_child(row)

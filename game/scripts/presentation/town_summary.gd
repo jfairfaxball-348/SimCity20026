@@ -8,7 +8,7 @@ const Balance = preload("res://content/balance.gd")
 const MAX_BLOCKERS: int = 5
 ## Tie-break order for blockers affecting the same number of levels.
 const ORDER: Array[String] = ["no_link", "access", "no_power", "short", "held", "leaving", "no_room"]
-const ZONE_NAMES: Dictionary = {City.HOME: "home", City.SHOP: "shop", City.WORKSHOP: "workshop"}
+const ZONE_NAMES: Dictionary = {City.HOME: "residential", City.SHOP: "commercial", City.WORKSHOP: "industrial"}
 
 ## Returns an Array of Dictionaries: kind, levels, count, built, example (cell index or
 ## -1), action ("show", "budget" or ""), zone (for no_room) and text.
@@ -97,14 +97,14 @@ static func describe(item: Dictionary, city: City) -> String:
 	match String(item.kind):
 		"no_link": return "The gold flag has no road, so %s cannot reach the edge of the map%s. Lay a road on the flag and join your streets to it." % [_plural(item.count, "lot"), _built(item)]
 		"access": return "%s without road access%s. Join a road beside each lot to streets that reach the gold flag." % [_plural(item.count, "lot"), _built(item)]
-		"no_power": return "%s without power%s. Place a power station (P) beside their street, or join the street to a powered one." % [_plural(item.count, "lot"), _built(item)]
-		"short": return "%s short of power%s. Each station supplies %d lots: add a station on that network." % [_plural(item.count, "lot"), _built(item), Balance.POWER_CAPACITY / Balance.HOME_POWER_DEMAND]
-		"held": return "%s held at level 1 by nearby workshops. Add a park within 3 steps, or keep workshops 3+ steps away." % _plural(item.count, "home lot")
+		"no_power": return "%s without power%s. Place a power plant (P) beside their street, or join the street to a powered one." % [_plural(item.count, "lot"), _built(item)]
+		"short": return "%s short of power%s. Each power plant supplies %d lots: add a plant on that network." % [_plural(item.count, "lot"), _built(item), Balance.POWER_CAPACITY / Balance.HOME_POWER_DEMAND]
+		"held": return "%s held at level 1 by nearby industry. Add a park within 3 steps, or keep industrial lots 3+ steps away." % _plural(item.count, "residential lot")
 		"leaving": return "%s leaving because the tax rate is %d%% (above %d%%). Lower it in Budget to keep them." % [_plural(item.count, "level"), city.tax_rate, Balance.TAX_STANDARD]
 		"no_room":
 			var name: String = ZONE_NAMES[int(item.zone)]
 			return "%s wanted, but no %s lot can grow. Zone more %s lots beside connected, powered streets." % [_plural(item.count, name + " level"), name, name]
-		"deficit": return "Monthly deficit of %s. Clear unused roads, stations or parks, restore services, or review the tax rate in Budget." % Balance.money(int(item.count))
-		"empty": return "No zones yet. Lay a road on the gold flag, zone 3x3 home lots beside it, then add a 4x4 power station (P)."
+		"deficit": return "Monthly deficit of %s. Clear unused roads, power plants or parks, restore services, or review the tax rate in Budget." % Balance.money(int(item.count))
+		"empty": return "No zones yet. Lay a road on the gold flag, zone 3x3 residential lots beside it, then add a 4x4 power plant (P)."
 		"satisfied": return "Nothing measurable is holding the town back. Demand is met; residents and jobs create more demand as the town grows, and lower taxes raise it."
 	return ""

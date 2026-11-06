@@ -4,7 +4,7 @@ extends Control
 ## leaving under high taxes) and a signed number. Presentation only: main.gd passes
 ## values read from the model.
 const Style = preload("res://scripts/presentation/ui_style.gd")
-const LETTERS: Array[String] = ["H", "S", "W"]
+const LETTERS: Array[String] = ["R", "C", "I"]
 ## The bar is full at the growth round cap on a square-root scale, so a single level
 ## is clearly visible; the number always shows the true value.
 const FULL: int = 8
@@ -40,14 +40,14 @@ func set_font_size(amount: int) -> void:
 static func signed(value: int) -> String:
 	return "+%d" % value if value > 0 else "−%d" % -value if value < 0 else "0"
 
-## Plain-text reading of the meter, e.g. "H +3 · S 0 · W −2".
+## Plain-text reading of the meter, e.g. "R +3 · C 0 · I −2".
 func summary() -> String:
 	var parts: Array[String] = []
 	for n in range(3): parts.append("%s %s" % [LETTERS[n], signed(values[n])])
 	return " · ".join(parts)
 
 func _describe() -> void:
-	tooltip_text = "Demand meter (H homes, S shops, W workshops), in building levels: " + summary() + ".\nUp / +: levels the town welcomes now. Down / −: levels leaving at the next check because taxes are above 10%.\nLower the tax rate in Budget [B] to attract growth. Growth is checked every five days."
+	tooltip_text = "Demand meter (R residential, C commercial, I industrial), in building levels: " + summary() + ".\nUp / +: levels the town welcomes now. Down / −: levels leaving at the next check because taxes are above 10%.\nLower the tax rate in Budget [B] to attract growth. Growth is checked every five days."
 
 func _font() -> Font:
 	return get_theme_default_font() if is_inside_tree() else ThemeDB.fallback_font

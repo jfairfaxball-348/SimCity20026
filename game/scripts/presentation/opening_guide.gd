@@ -7,9 +7,9 @@ const TOTAL: int = 5
 const NONE := Vector2i(-1, -1)
 const TEXTS: Array[String] = [
 	"Lay a road (1) on the gold flag. It joins your town to the outside link.",
-	"Zone a home lot (2) beside a road joined to the flag. Diagonals don't count.",
-	"Place a power station (P) touching that street. It powers 20 lots.",
-	"Run time (Space or 1x). Homes with road and power grow; H on the meter is demand.",
+	"Zone a residential lot (2) beside a road joined to the flag. Diagonals don't count.",
+	"Place a power plant (P) touching that street. It powers 20 lots.",
+	"Run time (Space or 1x). Lots with road and power grow; R on the meter is demand.",
 	"Optional goal: open Project (J). T shows what holds the town back.",
 ]
 const DONE_TEXT: String = "First steps done. T shows what holds the town back; Help lists every rule."

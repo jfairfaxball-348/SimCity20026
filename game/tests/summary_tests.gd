@@ -43,7 +43,7 @@ func run(tester: SceneTree) -> void:
 	items = pure(bare)
 	t.check(kinds(items) == ["no_link", "no_power", "no_room"], "no flag road: no-link, no-power, then no-room for the starter demand")
 	t.check(int(item(items, "no_link").count) == 2 and int(item(items, "no_link").levels) == 4 and int(item(items, "no_link").example) == bare.index(bare.access.root), "no-link counts both lots, 2 levels each, and shows the flag")
-	t.check(int(item(items, "no_room").levels) == 3 and int(item(items, "no_room").zone) == City.HOME and "3 home levels wanted" in String(item(items, "no_room").text), "no-room reports the three starter home levels")
+	t.check(int(item(items, "no_room").levels) == 3 and int(item(items, "no_room").zone) == City.HOME and "3 residential levels wanted" in String(item(items, "no_room").text), "no-room reports the three starter home levels")
 	# A served town with one isolated lot.
 	var town: City = growth.town()
 	town.apply_command("home", [Vector2i(20, 0)])
@@ -62,7 +62,7 @@ func run(tester: SceneTree) -> void:
 	days(grown, 40)
 	items = pure(grown)
 	t.check(kinds(items) == ["held", "no_room"] and int(item(items, "held").count) == 2 and int(item(items, "held").example) == grown.index(Vector2i(13, 3)), "a grown town reports its two held homes first, then the unusable home demand")
-	t.check("2 home lots held at level 1" in String(item(items, "held").text) and "2 home levels wanted" in String(item(items, "no_room").text), "held and no-room texts give counts and remedies")
+	t.check("2 residential lots held at level 1" in String(item(items, "held").text) and "2 residential levels wanted" in String(item(items, "no_room").text), "held and no-room texts give counts and remedies")
 	# Leaving under high taxes (D32).
 	grown.set_tax_rate(25)
 	items = pure(grown)
