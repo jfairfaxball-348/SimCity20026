@@ -213,7 +213,7 @@ func test_migration_validation() -> void:
 			bad[field] = value
 			t.check(not Codec.decode(JSON.stringify(bad)).ok, "reject malformed growth array %s %s" % [field, value])
 	var station_tile: int = city.index(Vector2i(0, 5))
-	for mutation in [["development", HOME_A, 3], ["development", HOME_A, -1], ["development", HOME_A, 0.5], ["development", HOME_A, true], ["development", station_tile, 1], ["development", HOME_A + 1, 1], ["service_loss", HOME_A, 2], ["service_loss", HOME_A, 1], ["service_loss", 0, 1]]:
+	for mutation in [["development", HOME_A, 5], ["development", HOME_A, -1], ["development", HOME_A, 0.5], ["development", HOME_A, true], ["development", station_tile, 1], ["development", HOME_A + 1, 1], ["service_loss", HOME_A, 2], ["service_loss", HOME_A, 1], ["service_loss", 0, 1]]:
 		var bad: Dictionary = city.snapshot()
 		bad[mutation[0]][mutation[1]] = mutation[2]
 		t.check(not Codec.decode(JSON.stringify(bad)).ok, "reject inconsistent growth %s" % str(mutation))

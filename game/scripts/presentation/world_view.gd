@@ -222,12 +222,14 @@ func _draw_footprint(anchor: int) -> void:
 			var color := Color("577c62") if kind == City.HOME else Color("557f94") if kind == City.SHOP else Color("9a7954")
 			if not art.draw_lot(self, kind, city.development[anchor], at, size, z, color):
 				_draw_zone_symbol(kind, 0, at + Vector2(16, 16) * z, z)
+			_draw_stage_pips(city.development[anchor], at, size, z)
 			_draw_marks(anchor, at, z)
 		return
 	if kind == City.POWER:
 		_draw_station(at, rect, z)
 	else:
 		_draw_lot(anchor, at, rect, z)
+		_draw_stage_pips(city.development[anchor], at, size, z)
 		_draw_marks(anchor, at, z)
 
 func _draw_power_mark(i: int, at: Vector2, z: float) -> void:
@@ -261,6 +263,9 @@ func _draw_lot(i: int, at: Vector2, rect: Rect2, z: float) -> void:
 		_draw_zone_symbol(kind, 0, at + Vector2(16, 16) * z, z)
 		return
 	var p := func(x: float, y: float) -> Vector2: return at + Vector2(x, y) * z
+	if level >= 3:
+		_draw_tall_lot(kind, level, p, z, wall, dark, ink)
+		return
 	match kind:
 		City.HOME:
 			var top: float = 22.0 if level == 1 else 15.0
@@ -294,6 +299,65 @@ func _draw_lot(i: int, at: Vector2, rect: Rect2, z: float) -> void:
 			if level == 2:
 				draw_rect(Rect2(p.call(34, top - 14), Vector2(4, 8) * z), Color("8c6f4e"))
 				for x in [9, 36]: draw_rect(Rect2(p.call(x, top + 4), Vector2(3, 3) * z), dark)
+
+## D37: original taller buildings for levels 3-4 in the same zone families: flat-roofed
+## residential blocks and a tower, a storeyed shop and an office block, and larger
+## factories with more chimneys.
+func _draw_tall_lot(kind: int, level: int, p: Callable, z: float, wall: Color, dark: Color, ink: Color) -> void:
+	var tower: bool = level >= 4
+	match kind:
+		City.HOME:
+			var left: float = 10.0 if tower else 7.0
+			var width: float = 28.0 if tower else 34.0
+			var top: float = 3.0 if tower else 9.0
+			draw_rect(Rect2(p.call(left, top), Vector2(width, 40 - top) * z), wall)
+			draw_rect(Rect2(p.call(left - 1, top - 2), Vector2(width + 2, 3) * z), Color("a5604c"))
+			draw_rect(Rect2(p.call(left - 1, top - 2), Vector2(width + 2, 3) * z), ink, false, z)
+			var rows: int = 5 if tower else 3
+			for r in range(rows):
+				for x in range(int(left) + 4, int(left + width) - 4, 7):
+					draw_rect(Rect2(p.call(x, top + 4 + r * 6), Vector2(3, 3) * z), dark)
+			draw_rect(Rect2(p.call(22, 33), Vector2(4, 7) * z), dark)
+			if tower: draw_rect(Rect2(p.call(28, top - 6), Vector2(6, 4) * z), Color("8c8f86"))
+		City.SHOP:
+			var top: float = 2.0 if tower else 6.0
+			draw_rect(Rect2(p.call(7, top), Vector2(34, 40 - top) * z), Color("cfd8d2") if tower else wall)
+			if tower:
+				for x in range(10, 38, 6):
+					draw_rect(Rect2(p.call(x, top + 3), Vector2(3, 26) * z), Color("8fb3b5"))
+				draw_rect(Rect2(p.call(7, 30), Vector2(34, 2) * z), dark)
+			else:
+				for r in range(2):
+					for x in [12, 22, 32]: draw_rect(Rect2(p.call(x, top + 4 + r * 7), Vector2(4, 4) * z), dark)
+			for x in range(6, 42, 6):
+				draw_rect(Rect2(p.call(x, 27), Vector2(6, 4) * z), Color("c9775a") if (x / 6) % 2 == 0 else Color("efe3c0"))
+			for x in [11, 27]: draw_rect(Rect2(p.call(x, 32), Vector2(10, 6) * z), Color("8fb3b5"))
+			draw_rect(Rect2(p.call(22, 32), Vector2(4, 8) * z), dark)
+		_:
+			var top: float = 12.0 if tower else 16.0
+			draw_rect(Rect2(p.call(3, top), Vector2(42, 40 - top) * z), Color("d8cfa6"))
+			var teeth: PackedVector2Array = PackedVector2Array()
+			for x in range(3, 45, 7):
+				teeth.append(p.call(x, top))
+				teeth.append(p.call(mini(x + 7, 45), top - 6))
+				teeth.append(p.call(mini(x + 7, 45), top))
+			draw_polyline(teeth, ink, z)
+			var chimneys: Array = [8, 20, 34] if tower else [10, 34]
+			for x in chimneys:
+				draw_rect(Rect2(p.call(x, top - 16), Vector2(4, 10) * z), Color("8c6f4e"))
+				draw_rect(Rect2(p.call(x, top - 16), Vector2(4, 2) * z), Color("b8a27a"))
+			draw_rect(Rect2(p.call(14, 29), Vector2(20, 11) * z), Color("6e6a5c"))
+			for x in [7, 38]: draw_rect(Rect2(p.call(x, top + 5), Vector2(3, 3) * z), dark)
+
+## D37: an original stage marker on levels 3-4 lots in every art mode: one small square
+## pip per level above 2, so the stage does not rely on the building art alone.
+func _draw_stage_pips(level: int, at: Vector2, size: int, z: float) -> void:
+	if level < 3: return
+	var count: int = level - 2
+	var origin: Vector2 = at + Vector2(size * TILE - 4 - 5 * count, 2) * z
+	draw_rect(Rect2(origin - Vector2(1, 1) * z, Vector2(5 * count + 1, 6) * z), Color("304842"))
+	for n in range(count):
+		draw_rect(Rect2(origin + Vector2(5 * n + 1, 1) * z, Vector2(3, 3) * z), Color("f6d76b"))
 
 func _draw_zone_symbol(kind: int, level: int, at: Vector2, z: float) -> void:
 	var roof_y: int = 6 if level < 2 else 3

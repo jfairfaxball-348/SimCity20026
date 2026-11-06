@@ -26,7 +26,7 @@ static func build(city: City) -> Array:
 			var state: int = city.power.home_state[a]
 			if state == city.power.SHORTAGE: short.append(a)
 			elif state != city.power.POWERED: no_power.append(a)
-			if (city.occupancy[a] == City.HOME or city.occupancy[a] == City.SHOP) and city.growth.serviced(city, a) and city.desirability.cap(city, a) < Balance.MAX_LEVEL and city.development[a] >= Balance.HELD_LEVEL:
+			if (city.occupancy[a] == City.HOME or city.occupancy[a] == City.SHOP) and city.growth.serviced(city, a) and city.desirability.cap(city, a) <= Balance.HELD_LEVEL and city.development[a] >= Balance.HELD_LEVEL:
 				held.append(a)
 		var link_missing: bool = root_index >= 0 and city.occupancy[root_index] != City.ROAD
 		if link_missing and not no_access.is_empty():
@@ -88,7 +88,7 @@ static func _lots(kind: String, anchors: Array, city: City, example: int = -2) -
 	var built: int = 0
 	for a in anchors:
 		if city.development[int(a)] > 0: built += 1
-	return {"kind": kind, "levels": Balance.MAX_LEVEL * anchors.size(), "count": anchors.size(), "built": built,
+	return {"kind": kind, "levels": Balance.GATED_LEVEL * anchors.size(), "count": anchors.size(), "built": built,
 		"example": int(anchors[0]) if example == -2 else example, "action": "show", "zone": -1}
 
 static func _plural(count: int, word: String) -> String:
@@ -107,7 +107,8 @@ static func describe(item: Dictionary, city: City) -> String:
 		"leaving": return "%s leaving because the tax rate is %d%% (above %d%%). Lower it in Budget to keep them." % [_plural(item.count, "level"), city.tax_rate, Balance.TAX_STANDARD]
 		"no_room":
 			var name: String = ZONE_NAMES[int(item.zone)]
-			return "%s wanted, but no %s lot can grow. Zone more %s lots beside connected, powered streets." % [_plural(item.count, name + " level"), name, name]
+			var past: String = "grow the town past %d residents so industry can pass level 2" % Balance.WORKFORCE_LEVEL3 if int(item.zone) == City.WORKSHOP else "raise land value so lots can pass level 2"
+			return "%s wanted, but no %s lot can grow. Zone more %s lots beside connected, powered streets, or %s." % [_plural(item.count, name + " level"), name, name, past]
 		"deficit": return "Monthly deficit of %s. Clear unused roads, power plants or parks, restore services, or review the tax rate in Budget." % Balance.money(int(item.count))
 		"empty": return "No zones yet. Lay a road on the gold flag, zone 3x3 residential lots beside it, then add a 4x4 power plant (P)."
 		"satisfied": return "Nothing measurable is holding the town back. Demand is met; residents and jobs create more demand as the town grows, and lower taxes raise it."

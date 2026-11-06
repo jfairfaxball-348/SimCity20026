@@ -49,7 +49,7 @@ func test_scores() -> void:
 	develop(c, {farther: 2})
 	t.check(c.desirability.lot_score[h] == -2 and c.desirability.lot_workshops[h] == 1, "a workshop 3 steps away causes no nuisance")
 	c.apply_command("park", [Vector2i(9, 3)])
-	t.check(c.desirability.lot_score[h] == 0 and c.desirability.parts(c, h) == "park +2, industry −2" and c.desirability.cap(c, h) == Balance.MAX_LEVEL, "a park within 3 steps offsets one workshop")
+	t.check(c.desirability.lot_score[h] == 0 and c.desirability.parts(c, h) == "park +2, industry −2" and c.desirability.cap(c, h) == Balance.GATED_LEVEL, "a park within 3 steps offsets one workshop (value 0: level 2 at most)")
 	c.apply_command("workshop", [Vector2i(7, 5), Vector2i(13, 5), Vector2i(10, 2)])
 	develop(c, {at(c, 7, 5): 1, at(c, 13, 5): 2, at(c, 10, 2): 1})
 	t.check(c.desirability.lot_workshops[h] == 4 and c.desirability.lot_score[h] == -4 and c.desirability.parts(c, h) == "park +2, industry −6", "nuisance counts at most three workshops (floor −6)")
@@ -125,7 +125,7 @@ func test_held() -> void:
 		days(item, 17)
 		item.apply_command("park", [Vector2i(11, 1)])
 		days(item, 23)
-	t.check(a.canonical() == b.canonical() and a.canonical().contains("\"schema_version\":9"), "schema-9 save/load continuation matches the uninterrupted town")
+	t.check(a.canonical() == b.canonical() and a.canonical().contains("\"schema_version\":%d" % City.SCHEMA), "current-schema save/load continuation matches the uninterrupted town")
 
 func test_with_leaving() -> void:
 	var c: City = growth.town()

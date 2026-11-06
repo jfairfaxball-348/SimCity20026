@@ -400,6 +400,7 @@ func run() -> void:
 	await guide_flow(isolated)
 	await calendar_flow(isolated)
 	await landvalue_flow(isolated)
+	await density_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -450,7 +451,7 @@ func growth_flow(isolated: IsolatedStore) -> void:
 	# from those developed workshops are held at level 1.
 	check(main.city.growth.population == 40 and main.city.growth.jobs == 18 and "Residents 40" in main.population_label.text and main.demand_meter.summary() == "R +2 · C 0 · I 0" and "Tax 10%" in main.demand_label.text, "shipped growth settles at 40 / 18 with matching HUD and the held homes' demand")
 	main._inspect_cell(Vector2i(58, 30))
-	check(main.city.growth.reason(main.city, main.city.index(Vector2i(58, 30))) == "held" and "Land value −2: industry −2" in main.legend_label.text and "Held at L1" in main.scope_label.text, "shipped inspector explains a home held by a workshop across the street")
+	check(main.city.growth.reason(main.city, main.city.index(Vector2i(58, 30))) == "held" and "Land value −2 (modest): industry −2" in main.legend_label.text and "Held at L1" in main.scope_label.text, "shipped inspector explains a home held by a workshop across the street")
 	await key(KEY_S, true)
 	var saved: String = main.city.canonical()
 	await fresh_scene(isolated)
@@ -508,7 +509,7 @@ func economy_flow(isolated: IsolatedStore) -> void:
 	check("3 side-steps" in main.access_label.text and "Upkeep $10/month" in main.scope_label.text, "shipped park inspector explains coverage effect and upkeep")
 	await growth_days(5)
 	main._inspect_cell(Vector2i(58, 30))
-	check(main.city.development[main.city.index(Vector2i(57, 29))] == 1 and main.city.development[main.city.index(Vector2i(54, 29))] == 1 and "Land value +2: park +2" in main.legend_label.text, "shipped park changes which lots receive starter growth")
+	check(main.city.development[main.city.index(Vector2i(57, 29))] == 1 and main.city.development[main.city.index(Vector2i(54, 29))] == 1 and "Land value +2" in main.legend_label.text and ": park +2" in main.legend_label.text, "shipped park changes which lots receive starter growth")
 	await growth_days(25)
 	check(main.city.last_budget.tick == 30 and City.Economy.totals(main.city.last_budget).net == 3200 and main.city.cash == 906200, "shipped month: $124 income minus $92 upkeep gives $32")
 	await key(KEY_B)
@@ -749,7 +750,7 @@ func desirability_flow(isolated: IsolatedStore) -> void:
 	await key(KEY_8)
 	await click(screen_cell(Vector2i(52, 27)))
 	main._inspect_cell(Vector2i(52, 30))
-	check(main.city.occupancy[main.city.index(Vector2i(52, 27))] == City.PARK and main.city.desirability.lot_score[home] == 0 and "Land value 0: park +2, industry −2" in main.legend_label.text, "a park placed by pointer offsets the workshop")
+	check(main.city.occupancy[main.city.index(Vector2i(52, 27))] == City.PARK and main.city.desirability.lot_score[home] == 0 and "Land value 0 (modest): park +2, industry −2" in main.legend_label.text, "a park placed by pointer offsets the workshop")
 	await growth_days(5)
 	check(main.city.development[home] == 2, "the rescued home regrows to level 2 in the shipped game")
 	main._open_settings()
@@ -999,6 +1000,47 @@ func landvalue_flow(isolated: IsolatedStore) -> void:
 	await key(KEY_V)
 	check(main.world.desirability_visible and main.city.desirability.tile_score[main.city.index(Vector2i(55, 34))] == -2, "V shows the commercial lot's land value")
 	await key(KEY_V)
+
+## D37 / R2b: upper levels, gates, wealth and the longest new texts in the shipped game.
+func density_flow(isolated: IsolatedStore) -> void:
+	await fresh_scene(isolated)
+	var roads: Array[Vector2i] = []
+	for x in range(42, 64): roads.append(Vector2i(x, 32))
+	project_command("road", roads)
+	project_command("power", [Vector2i(38, 31)])
+	project_command("home", [Vector2i(42, 29), Vector2i(48, 29)])
+	project_command("park", [Vector2i(43, 27)])
+	project_command("shop", [Vector2i(54, 29)])
+	project_command("workshop", [Vector2i(57, 29)])
+	var tower: int = main.city.index(Vector2i(42, 29))
+	var plain: int = main.city.index(Vector2i(48, 29))
+	main.city.development[tower] = 4
+	main.city.development[plain] = 2
+	main.city.development[main.city.index(Vector2i(57, 29))] = 2
+	main.city.rebuild_derived()
+	main._refresh_metrics()
+	await frames()
+	check(main.city.growth.population == 48 and "Residents 48" in main.population_label.text, "a level-4 lot (40) and a level-2 lot (8) make 48 residents in the shipped HUD")
+	main._inspect_cell(Vector2i(43, 30))
+	await frames()
+	check("Residential lot L4 · 40 residents" in main.selection_label.text and "(well-off): park +2" in main.legend_label.text and "Fully developed (level 4)" in main.scope_label.text, "the inspector shows a level-4 lot, its wealth and that it is full")
+	main._inspect_cell(Vector2i(49, 30))
+	await frames()
+	check("L3 needs land value 1 (now 0): park or water." in main.scope_label.text and "(modest)" in main.legend_label.text, "the inspector explains the level-3 gate on a plain street")
+	main._inspect_cell(Vector2i(58, 30))
+	await frames()
+	check("L3 needs 100 residents in town (now 48)." in main.scope_label.text, "the inspector explains the industrial workforce gate")
+	main._set_text_size(20)
+	await frames()
+	main._inspect_cell(Vector2i(43, 30))
+	main.scope_label.text = "Demand −32768 (taxes) · next check 30 Dec 2779727\nL4 needs land value 4 (now 3): park or residents."
+	main.legend_label.text = "Land value −1 (well-off): park +2, water +1, industry −6"
+	await frames()
+	check(main.scope_label.get_global_rect().end.y <= main.inspector.get_global_rect().end.y and main.inspector.size.y <= 320.5, "the longest gate and wealth texts fit the inspector at the largest text")
+	main._set_text_size(16)
+	await frames()
+	await growth_days(5)
+	check(main.city.development[plain] == 2 and main.city.development[tower] == 4, "the gated lot stays at level 2 and the tower stays at level 4")
 
 func project_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	return main.city.apply_command(kind, cells)

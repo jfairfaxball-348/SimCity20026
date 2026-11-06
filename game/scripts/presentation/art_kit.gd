@@ -137,17 +137,25 @@ func draw_lot(canvas: CanvasItem, kind: int, level: int, at: Vector2, size: int,
 		canvas.draw_rect(rect.grow(-2 * z), zone_color, false, 2 * z)
 		return false # caller draws the original zone symbol
 	if spec.has("lots"):
-		var rows: Array = spec.lots[kind][level]
+		# D37: Tiny City has no taller tiles; levels 3-4 reuse level 2 (the caller adds
+		# the original stage pips).
+		var rows: Array = spec.lots[kind][mini(level, 2)]
 		for y in range(rows.size()):
 			for x in range(rows[y].size()): tile(canvas, int(rows[y][x]), at + Vector2(x, y) * TILE * z, z)
 		return true
-	var roof_rows: int = 2 if level == 1 else 1
+	# D37: levels 3-4 are full-height facades (no visible roof rows) with a thin roof
+	# edge; level 4 adds an ORIGINAL code-drawn parapet band.
+	var roof_rows: int = 2 if level == 1 else 1 if level == 2 else 0
 	_modern_building(canvas, kind, at, size, roof_rows, z)
 	var front: Array = spec.front[kind]
 	for x in range(size): tile(canvas, int(front[x]), at + Vector2(x, size - 1) * TILE * z, z)
-	if level == 2:
-		var upper: Array = spec.upper[kind]
-		for x in range(size): tile(canvas, int(upper[x]), at + Vector2(x, size - 2) * TILE * z, z)
+	var upper: Array = spec.upper[kind]
+	for row in range(1, size - roof_rows):
+		for x in range(size): tile(canvas, int(upper[x]), at + Vector2(x, size - 1 - row) * TILE * z, z)
+	if level >= 3:
+		var roof: Array = spec.roof[kind]
+		canvas.draw_rect(Rect2(at, Vector2(size * TILE, 3) * z), roof[1])
+		if level >= 4: canvas.draw_rect(Rect2(at + Vector2(0, 3) * z, Vector2(size * TILE, 2) * z), Color(0.2, 0.22, 0.24, 0.85)) # original parapet
 	if spec.roof_props.has(kind): tile(canvas, int(spec.roof_props[kind]), at + Vector2(size - 1, 0) * TILE * z, z)
 	return true
 

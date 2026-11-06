@@ -147,13 +147,13 @@ func test_recovery_and_purity() -> void:
 	var b: City = Codec.decode(a.canonical()).city
 	days(a, 40)
 	days(b, 40)
-	t.check(a.canonical() == b.canonical() and a.canonical().contains("\"schema_version\":9") and a.canonical().contains("\"simulation_version\":\"r2a-1\""), "schema-9 save/load continuation matches the uninterrupted town")
+	t.check(a.canonical() == b.canonical() and a.canonical().contains("\"schema_version\":%d" % City.SCHEMA), "current-schema save/load continuation matches the uninterrupted town")
 
 func test_saves() -> void:
 	t.check(FileAccess.get_sha256(FIXTURE) == FIXTURE_SHA, "schema-9 fixture hash")
 	var text: String = FileAccess.get_file_as_string(FIXTURE).strip_edges()
 	var loaded: Dictionary = Codec.decode(text)
-	t.check(loaded.ok and loaded.migrated_from == 0 and loaded.city.canonical() == text, "schema-9 fixture exact round trip")
+	t.check(loaded.ok and loaded.migrated_from == 9 and loaded.cleared_tiles == 0 and loaded.city.canonical() == t.migrated_text(text), "schema-9 fixture migrates with every value kept")
 	if loaded.ok:
 		var c: City = loaded.city
 		t.check(c.growth.reason(c, at(c, 16, 7)) == "held" and c.development[at(c, 16, 7)] == 1 and c.desirability.parts(c, at(c, 16, 7)) == "trade +2, industry −4", "schema-9 fixture holds a commercial lot between two industrial lots")
@@ -164,8 +164,8 @@ func test_saves() -> void:
 	var every: bool = true
 	for fixture in ["m1-schema1", "m2a-schema1", "m2b-schema2", "m2c-schema3", "m2d-schema4", "m3a-schema5", "m2e-schema6", "m2f-schema7", "m2g-schema8"]:
 		var result: Dictionary = Codec.decode(FileAccess.get_file_as_string("res://tests/fixtures/%s.json" % fixture))
-		every = every and result.ok and int(result.migrated_from) > 0 and Codec.decode(result.city.canonical()).ok and result.city.canonical().contains("\"schema_version\":9")
-	t.check(every, "every earlier fixture loads and resaves as schema 9")
+		every = every and result.ok and int(result.migrated_from) > 0 and Codec.decode(result.city.canonical()).ok and result.city.canonical().contains("\"schema_version\":%d" % City.SCHEMA)
+	t.check(every, "every earlier fixture loads and resaves as the current schema")
 	var eight: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://tests/fixtures/m2g-schema8.json"))
 	eight.simulation_version = "r2a-1"
 	eight.content_version = "r2a-1"

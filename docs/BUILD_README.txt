@@ -1,4 +1,4 @@
-UNTITLED CITY BUILDER - R2a LAND VALUE (0.13.0-r2a)
+UNTITLED CITY BUILDER - R2b DENSITY STAGES (0.14.0-r2b)
 
 Run citybuilder.exe. Keep citybuilder.pck beside it. A First steps card at
 the bottom left of the map shows one next step at a time (Show centres on
@@ -39,9 +39,16 @@ when empty. Power plants supply the nearest lots first; new nearer lots can
 displace grown buildings. Power works without the outside link; growth
 needs both services. Power plants carry power but never road access.
 
-Every five days, eligible lots can gain one of two development levels.
-A residential level holds 4 residents; commercial/industrial levels provide
-2/4 jobs.
+Every five days, eligible lots can gain one level, from 0 up to 4.
+A residential lot holds 4 / 8 / 20 / 40 residents at levels 1-4; commercial
+lots provide 2 / 4 / 10 / 20 jobs and industrial lots 4 / 8 / 16 / 28.
+Levels 3 and 4 are gated: residential lots need land value 1 / 2,
+commercial lots 3 / 4 (trade plus a park), and industry needs 100 / 250
+residents in town. Plain streets stop at level 2. A lot whose value falls
+drops one level per check until it fits; nothing is demolished. Two yellow
+pips on a lot mark level 4, one pip level 3. The inspector also shows a
+residential lot's wealth (modest, comfortable, well-off) from land value;
+wealth changes nothing else yet.
 Starter demand supports 12 residents before jobs exist. Residents create
 business demand; jobs support more residents. The R/C/I meter in the top bar
 shows levels the town welcomes (up, +) or that will leave (down, -). At most eight additions per type per round:
@@ -79,14 +86,14 @@ derived from elapsed days and never saved. Time starts paused. Construction work
 dialogs suspend time. Save manually; after restarting, press Load.
 Saves: %APPDATA%/OriginalCityBuilder/saves/manual.json
 The previous valid save is manual.json.bak; failed loads leave the city intact.
-Format 9 (0.13.0-r2a; the guide and calendar save nothing) stores the same fields as formats 7
+Format 10 (0.14.0-r2b; levels 0-4; the guide and calendar save nothing) stores the same fields as formats 7
 and 8: the tax rate and lot and power plant anchors; land value and freight are derived, never saved.
-Format 8 and 7 saves load unchanged; format 6 saves load at the standard 10% rate. Earlier formats (1-5) load with
+Format 9, 8 and 7 saves load unchanged; format 6 saves load at the standard 10% rate. Earlier formats (1-5) load with
 their old single-tile zones and power stations cleared; roads, parks, funds, time,
 budget history and project completion are kept. Loading changes no files.
 Saving preserves older primary/backup bytes once as manual.schema1.json to
-manual.schema8.json before replacement. No retroactive charges. Older builds
-cannot read format 9; use the preserved older-format copy to roll back.
+manual.schema9.json before replacement. No retroactive charges. Older builds
+cannot read format 10; use the preserved older-format copy to roll back.
 
 Windows x64, tested on the development machine. Other hardware, Windows DPI
 variants, other operating systems, and controllers remain unverified.

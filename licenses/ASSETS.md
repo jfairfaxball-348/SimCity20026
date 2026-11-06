@@ -20,6 +20,8 @@ M2h (6 November 2026) adds an original *Town summary* dialog and status-bar butt
 
 M3b (6 November 2026) adds the original First steps card (step texts written for this project, refreshed for 0.10.0-m2h) in `game/scripts/presentation/opening_guide.gd` and `main.gd`, and an original code-drawn corner-bracket marker (four two-tone L-shaped corners) in `world_view.gd`. No external assets or reference sources were used.
 
+R1-R2b (6 November 2026) add original wording only (R1), an original land-value overlay legend and freight text (R2a), and original code-drawn level 3-4 buildings in `world_view.gd` (flat-roofed residential blocks and a tower, a storeyed shop and an office block, larger factories with more chimneys) plus an original yellow stage-pip marker drawn in every art mode (R2b). In the Kenney modes, levels 3-4 reuse pack facade tiles at full height with an original roof edge and parapet band; Tiny City reuses its level-2 tiles. No external assets or reference sources were used.
+
 ## Experimental third-party artwork (evaluation only, not adopted)
 
 On 6 November 2026 two tile packs were acquired for an owner-requested artwork evaluation ([report](../docs/artwork-review/ARTWORK_EVALUATION.md)). The owner chose **Roguelike Modern City** (U22), and since game 0.7.1-m2e it is the **default map artwork** (U23). The original placeholders above remain available as the fallback, and Tiny City stays an experimental candidate.

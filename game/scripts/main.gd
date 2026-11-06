@@ -335,7 +335,7 @@ func _build_dialogs() -> void:
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_text = _label("1 Roads · 2 Residential · 6 Commercial · 7 Industrial\nP Power plant · 8 Park · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced residential lots.\nZones are 3x3 lots; power plants are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV land value overlay.\nDemand meter: R residential, C commercial, I industrial.\nDates run in 30-day months from 1 Jan 1950.\n\nJoin roads from the gold flag; zone beside them.\nAdd a power plant: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nLand value: park within 3 +2, water within 3 +1,\neach developed industrial lot within 2 steps −2 (up to 3).\nCommercial: +1 per developed residential lot within 3 (up to 2).\nResidential and commercial: higher grows first;\nbelow 0 a lot stops at level 1.\nIndustry ignores land value: nearest the link (by road) grows first.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
+	help_text = _label("1 Roads · 2 Residential · 6 Commercial · 7 Industrial\nP Power plant · 8 Park · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced residential lots.\nZones are 3x3 lots; power plants are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV land value overlay.\nDemand meter: R residential, C commercial, I industrial.\nDates run in 30-day months from 1 Jan 1950.\n\nJoin roads from the gold flag; zone beside them.\nAdd a power plant: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level (0-4).\nLevels 3-4 hold far more; they need land value 1 / 2\n(commercial 3 / 4); industry needs 100 / 250 residents. Plain streets stop at level 2.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nLand value: park within 3 +2, water within 3 +1,\neach developed industrial lot within 2 steps −2 (up to 3).\nCommercial: +1 per developed residential lot within 3 (up to 2).\nResidential and commercial: higher grows first;\nbelow 0 a lot stops at level 1.\nIndustry ignores land value: nearest the link (by road) grows first.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
 	add_child(help_dialog)
 	help_dialog.add_button("Show first steps", false, "guide")
 	help_dialog.custom_action.connect(func(action: String):
@@ -620,8 +620,7 @@ func _inspect_cell(cell: Vector2i) -> void:
 	var land_use: String = "Water" if city.terrain[i] == City.WATER else ["Open ground", "Road", "Residential lot", "Power plant", "Commercial lot", "Industrial lot", "Pocket park"][city.occupancy[i]]
 	if City.is_zone(city.occupancy[i]):
 		var a: int = city.footprint_owner[i]
-		var per_level: int = Balance.RESIDENTS_PER_LEVEL if city.occupancy[i] == City.HOME else Balance.SHOP_JOBS_PER_LEVEL if city.occupancy[i] == City.SHOP else Balance.WORKSHOP_JOBS_PER_LEVEL
-		land_use += " L%d · %d %s" % [city.development[a], city.development[a] * per_level, "residents" if city.occupancy[i] == City.HOME else "jobs"]
+		land_use += " L%d · %d %s" % [city.development[a], Balance.capacity(city.occupancy[i], city.development[a]), "residents" if city.occupancy[i] == City.HOME else "jobs"]
 	selection_label.text = "TILE %d, %d · %s" % [cell.x, cell.y, land_use]
 	if city.access.root.x < 0:
 		access_label.text = "No boundary land for an outside link. Road access is unavailable."
@@ -659,10 +658,18 @@ func _growth_text(cell: Vector2i) -> String:
 		"growing": return prefix + "Ready to gain one level."
 		"queued": return prefix + ("Waiting turn; nearer the link grows first." if kind == City.WORKSHOP else "Waiting turn; higher land value grows first.")
 		"demand": return prefix + "Demand met. More residents support jobs; jobs support residents."
-		"full": return prefix + "Fully developed (level 2)."
+		"full": return prefix + "Fully developed (level %d)." % Balance.MAX_LEVEL
 		"leaving": return prefix + "High taxes: loses a level next check. Lower the rate to keep it."
 		"held": return prefix + "Held at L1 by industry: add a park or move it."
-		"dropping": return prefix + "Drops to L1 next check (industry): add a park."
+		"gated":
+			var next: int = city.development[i] + 1
+			if kind == City.WORKSHOP:
+				return prefix + "L%d needs %d residents in town (now %d)." % [next, Balance.WORKFORCE_LEVEL4 if next >= 4 else Balance.WORKFORCE_LEVEL3, city.growth.population]
+			return prefix + "L%d needs land value %d (now %d): %s." % [next, Balance.value_needed(kind, next), city.desirability.lot_score[i], "park or residents" if kind == City.SHOP else "park or water"]
+		"dropping":
+			var cap: int = city.desirability.cap(city, i)
+			if cap <= Balance.HELD_LEVEL: return prefix + "Drops to L1 next check (industry): add a park."
+			return prefix + "Drops to L%d next check: %s." % [cap, "too few residents" if kind == City.WORKSHOP else "land value too low"]
 		"surplus": return prefix + "Taxes above %d%%: more levels may leave." % Balance.TAX_STANDARD
 		"declining": return prefix + "Loses a level in %d check(s) unless services return." % (Balance.DECLINE_ROUNDS - city.service_loss[i])
 	return prefix + "Waiting for road access and power."
@@ -707,7 +714,8 @@ func _update_legend(cell: Vector2i = inspected_cell) -> void:
 	var a: int = city.anchor_at(cell)
 	if a >= 0 and (city.occupancy[a] == City.HOME or city.occupancy[a] == City.SHOP):
 		var lot_parts: String = city.desirability.parts(city, a)
-		legend_label.text = "Land value %s: %s" % [Meter.signed(city.desirability.lot_score[a]), "nothing nearby" if lot_parts.is_empty() else lot_parts]
+		var band: String = city.desirability.wealth(city, a)
+		legend_label.text = "Land value %s%s: %s" % [Meter.signed(city.desirability.lot_score[a]), "" if band.is_empty() else " (%s)" % band, "nothing nearby" if lot_parts.is_empty() else lot_parts]
 	elif a >= 0 and city.occupancy[a] == City.WORKSHOP:
 		var steps: int = city.desirability.lot_freight[a]
 		legend_label.text = ("Freight %d road step%s · ignores land value" % [steps, "" if steps == 1 else "s"]) if steps >= 0 else "Freight: not joined to the link · ignores land value"

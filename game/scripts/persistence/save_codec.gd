@@ -15,14 +15,14 @@ static func decode(text: String) -> Dictionary:
 	var schema: int = int(data.schema_version)
 	if schema > City.SCHEMA:
 		return fail("This save was made by a newer version of the game (format %d). The file was not changed." % schema)
-	if schema not in [1, 2, 3, 4, 5, 6, 7, 8, City.SCHEMA]:
+	if schema not in [1, 2, 3, 4, 5, 6, 7, 8, 9, City.SCHEMA]:
 		return fail("This save uses an unsupported format (%d). The file was not changed." % schema)
 	# Each historical format has its own version pair and allowed occupancy IDs.
-	var version: String = {1: "m1-1", 2: "m2b-1", 3: "m2c-1", 4: "m2d-1", 5: "m3a-1", 6: "m2e-1", 7: "m2f-1", 8: "m2g-1", 9: City.SIMULATION}[schema]
+	var version: String = {1: "m1-1", 2: "m2b-1", 3: "m2c-1", 4: "m2d-1", 5: "m3a-1", 6: "m2e-1", 7: "m2f-1", 8: "m2g-1", 9: "r2a-1", 10: City.SIMULATION}[schema]
 	var content: String = version
 	if data.get("simulation_version") != version or data.get("content_version") != content:
 		return fail("This save belongs to a different simulation/content version.")
-	var max_use: int = {1: City.HOME, 2: City.POWER, 3: City.WORKSHOP, 4: City.PARK, 5: City.PARK, 6: City.PARK, 7: City.PARK, 8: City.PARK, 9: City.PARK}[schema]
+	var max_use: int = {1: City.HOME, 2: City.POWER, 3: City.WORKSHOP, 4: City.PARK, 5: City.PARK, 6: City.PARK, 7: City.PARK, 8: City.PARK, 9: City.PARK, 10: City.PARK}[schema]
 	if not integer(data.get("width"), 8, 128) or not integer(data.get("height"), 8, 128):
 		return fail("Invalid map dimensions.")
 	if not signed_integer_string(data.get("seed")) or not signed_integer_string(data.get("random_state")):
@@ -61,7 +61,7 @@ static func decode(text: String) -> Dictionary:
 		if int(data.terrain[i]) == City.WATER and int(data.occupancy[i]) != City.EMPTY:
 			return fail("Save contains construction on water.")
 		if schema >= 3:
-			if not integer(data.development[i], 0, Balance.MAX_LEVEL) or not integer(data.service_loss[i], 0, Balance.DECLINE_ROUNDS - 1):
+			if not integer(data.development[i], 0, Balance.MAX_LEVEL if schema >= 10 else Balance.LEGACY_MAX_LEVEL) or not integer(data.service_loss[i], 0, Balance.DECLINE_ROUNDS - 1):
 				return fail("Invalid development or service-loss value.")
 			if (not City.is_zone(int(data.occupancy[i])) and int(data.development[i]) != 0) or (int(data.development[i]) == 0 and int(data.service_loss[i]) != 0):
 				return fail("Development does not match its zone.")
@@ -142,7 +142,7 @@ static func valid_budget(value: Variant, tick: int, count: int, schema: int = Ci
 	if typeof(value) != TYPE_DICTIONARY: return false
 	if value.is_empty(): return true
 	var bounds: Dictionary = {"tick": tick, "opening_cash": Balance.MAX_CASH,
-		"residents": count * 8, "jobs": count * 8, "roads": count, "stations": count, "parks": count}
+		"residents": count * (Balance.RESIDENTS_BY_LEVEL[Balance.MAX_LEVEL] if schema >= 10 else 8), "jobs": count * (Balance.WORKSHOP_JOBS_BY_LEVEL[Balance.MAX_LEVEL] if schema >= 10 else 8), "roads": count, "stations": count, "parks": count}
 	if schema >= 7: bounds["tax_rate"] = Balance.TAX_MAX
 	if value.size() != bounds.size(): return false
 	for key in bounds:
@@ -150,7 +150,10 @@ static func valid_budget(value: Variant, tick: int, count: int, schema: int = Ci
 	if int(value.tick) == 0 or int(value.tick) % Balance.MONTH_DAYS != 0: return false
 	if int(value.residents) % 4 != 0 or int(value.jobs) % 2 != 0: return false
 	# Historical counts must fit the saved map even though today's layout may differ.
-	var minimum_zones: int = (int(value.residents) + 7) / 8 + (int(value.jobs) + 7) / 8
+	# D37: schema 10 lot capacities reach 40 residents / 28 jobs per zone tile at most.
+	var per_home: int = Balance.RESIDENTS_BY_LEVEL[Balance.MAX_LEVEL] if schema >= 10 else 8
+	var per_job: int = Balance.WORKSHOP_JOBS_BY_LEVEL[Balance.MAX_LEVEL] if schema >= 10 else 8
+	var minimum_zones: int = (int(value.residents) + per_home - 1) / per_home + (int(value.jobs) + per_job - 1) / per_job
 	return int(value.roads) + int(value.stations) + int(value.parks) + minimum_zones <= count
 
 ## D30: every zone or station tile belongs to exactly one whole, in-map footprint

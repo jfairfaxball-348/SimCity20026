@@ -8,10 +8,28 @@ const POWER_COST: int = 50_000
 const POWER_CAPACITY: int = 20
 const HOME_POWER_DEMAND: int = 1
 const ZONE_COST: int = 2_500
-const MAX_LEVEL: int = 2
+## D37: zone levels 0-4. Per-lot capacity by level (levels 1-2 keep D22's 4/2/4 per level).
+const MAX_LEVEL: int = 4
+## Highest level stored by schemas 3-9 (D22).
+const LEGACY_MAX_LEVEL: int = 2
+const RESIDENTS_BY_LEVEL: Array[int] = [0, 4, 8, 20, 40]
+const SHOP_JOBS_BY_LEVEL: Array[int] = [0, 2, 4, 10, 20]
+const WORKSHOP_JOBS_BY_LEVEL: Array[int] = [0, 4, 8, 16, 28]
+## Kept for readers of the per-level D22 numbers (levels 1-2).
 const RESIDENTS_PER_LEVEL: int = 4
 const SHOP_JOBS_PER_LEVEL: int = 2
 const WORKSHOP_JOBS_PER_LEVEL: int = 4
+## D37 gates: land value needed for levels 3 and 4. Residential needs 1 / 2; commercial,
+## whose trade adds up to +2, needs COMMERCIAL_EXTRA more (3 / 4: trade plus a park).
+## Below the level-3 value a lot is capped at GATED_LEVEL.
+const GATED_LEVEL: int = 2
+const LEVEL3_VALUE: int = 1
+const LEVEL4_VALUE: int = 2
+const COMMERCIAL_EXTRA: int = 2
+## D37: industry ignores land value but needs a workforce: town residents (prior state)
+## for industrial levels 3 and 4.
+const WORKFORCE_LEVEL3: int = 100
+const WORKFORCE_LEVEL4: int = 250
 const STARTER_HOME_LEVELS: int = 3
 const GROWTH_DAYS: int = 5
 const GROWTH_LIMIT: int = 8
@@ -54,6 +72,23 @@ const CUSTOMER_COUNT_LIMIT: int = 2
 ## D30 footprints: zones are square lots; power stations are larger squares.
 const LOT_SIZE: int = 3
 const STATION_SIZE: int = 4
+
+## D37: residents (residential) or jobs (commercial/industrial) a lot holds at a level.
+static func capacity(kind: int, level: int) -> int:
+	level = clampi(level, 0, MAX_LEVEL)
+	match kind:
+		2: return RESIDENTS_BY_LEVEL[level]
+		4: return SHOP_JOBS_BY_LEVEL[level]
+		5: return WORKSHOP_JOBS_BY_LEVEL[level]
+	return 0
+
+## D37: land value a residential (2) or commercial (4) lot needs to reach a level
+## (0 for levels up to GATED_LEVEL).
+static func value_needed(kind: int, level: int) -> int:
+	var extra: int = COMMERCIAL_EXTRA if kind == 4 else 0
+	if level >= 4: return LEVEL4_VALUE + extra
+	if level == 3: return LEVEL3_VALUE + extra
+	return 0
 
 static func cost(kind: String) -> int:
 	match kind:

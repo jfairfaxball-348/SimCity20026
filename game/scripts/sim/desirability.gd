@@ -140,10 +140,28 @@ func _rebuild_freight(city: RefCounted) -> void:
 			if road_steps[n] != NONE and (best == NONE or road_steps[n] < best): best = road_steps[n]
 		lot_freight[a] = best
 
-## Highest level a lot may reach (D33/D36); industry and other lots use the D22 maximum.
+## Highest level a lot may reach (D33/D36/D37): residential and commercial lots by land
+## value (below 0 held at 1; then gated at 2 until the D37 level-3 and level-4 values);
+## industry by town residents (workforce) instead.
 func cap(city: RefCounted, anchor: int) -> int:
-	if (city.occupancy[anchor] == city.HOME or city.occupancy[anchor] == city.SHOP) and lot_score[anchor] < 0: return Balance.HELD_LEVEL
-	return Balance.MAX_LEVEL
+	if city.occupancy[anchor] == city.WORKSHOP:
+		var workforce: int = city.growth.population
+		if workforce >= Balance.WORKFORCE_LEVEL4: return Balance.MAX_LEVEL
+		if workforce >= Balance.WORKFORCE_LEVEL3: return 3
+		return Balance.GATED_LEVEL
+	if city.occupancy[anchor] != city.HOME and city.occupancy[anchor] != city.SHOP: return Balance.MAX_LEVEL
+	var value: int = lot_score[anchor]
+	var kind: int = city.occupancy[anchor]
+	if value < 0: return Balance.HELD_LEVEL
+	if value >= Balance.value_needed(kind, 4): return Balance.MAX_LEVEL
+	if value >= Balance.value_needed(kind, 3): return 3
+	return Balance.GATED_LEVEL
+
+## D37: display-only wealth band of a developed residential lot.
+func wealth(city: RefCounted, anchor: int) -> String:
+	if city.occupancy[anchor] != city.HOME or city.development[anchor] == 0: return ""
+	var value: int = lot_score[anchor]
+	return "well-off" if value >= Balance.LEVEL4_VALUE else "comfortable" if value >= Balance.LEVEL3_VALUE else "modest"
 
 ## Non-zero parts of a lot value, e.g. "park +2, trade +1, industry −4".
 func parts(city: RefCounted, anchor: int) -> String:

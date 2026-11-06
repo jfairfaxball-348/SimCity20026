@@ -14,9 +14,9 @@ static func inputs(city: RefCounted) -> Dictionary:
 	for i in city.lot_anchors:
 		if not city.growth.serviced(city, i): continue
 		match city.occupancy[i]:
-			city.HOME: data.residents += city.development[i] * Balance.RESIDENTS_PER_LEVEL
-			city.SHOP: data.jobs += city.development[i] * Balance.SHOP_JOBS_PER_LEVEL
-			city.WORKSHOP: data.jobs += city.development[i] * Balance.WORKSHOP_JOBS_PER_LEVEL
+			city.HOME: data.residents += Balance.capacity(city.HOME, city.development[i])
+			city.SHOP: data.jobs += Balance.capacity(city.SHOP, city.development[i])
+			city.WORKSHOP: data.jobs += Balance.capacity(city.WORKSHOP, city.development[i])
 	return data
 
 static func totals(data: Dictionary) -> Dictionary:

@@ -33,8 +33,13 @@ func refresh(city: RefCounted) -> void:
 	dropping.fill(0)
 	city.desirability.rebuild(city)
 	for i in city.lot_anchors: levels[city.occupancy[i]] += city.development[i]
-	population = levels[city.HOME] * Balance.RESIDENTS_PER_LEVEL
-	jobs = levels[city.SHOP] * Balance.SHOP_JOBS_PER_LEVEL + levels[city.WORKSHOP] * Balance.WORKSHOP_JOBS_PER_LEVEL
+	# D37: totals use per-level capacities; demand stays counted in levels.
+	population = 0
+	jobs = 0
+	for i in city.lot_anchors:
+		var amount: int = Balance.capacity(city.occupancy[i], city.development[i])
+		if city.occupancy[i] == city.HOME: population += amount
+		else: jobs += amount
 	var drops: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, 0, 0])
 	for i in city.lot_anchors:
 		if city.development[i] > city.desirability.cap(city, i) and serviced(city, i):
@@ -79,9 +84,9 @@ func refresh(city: RefCounted) -> void:
 			planned[i] = 1
 			remaining[kind] -= 1
 
-## Level-2 lots first, then later row-major index first; developed, serviced lots only.
+## Highest-level lots first (D37), then later row-major index first; developed, serviced lots only.
 func _plan_leaving(city: RefCounted, kind: int, amount: int) -> void:
-	for level in [Balance.MAX_LEVEL, 1]:
+	for level in range(Balance.MAX_LEVEL, 0, -1):
 		for n in range(city.lot_anchors.size() - 1, -1, -1):
 			if amount <= 0: return
 			var i: int = city.lot_anchors[n]
@@ -116,6 +121,7 @@ func reason(city: RefCounted, i: int) -> String:
 	if dropping[i] != 0: return "dropping"
 	if surplus[city.occupancy[i]] > 0: return "surplus" if city.development[i] > 0 else "demand"
 	if city.development[i] >= Balance.MAX_LEVEL: return "full"
-	if city.development[i] >= city.desirability.cap(city, i): return "held"
+	var cap: int = city.desirability.cap(city, i)
+	if city.development[i] >= cap: return "held" if cap <= Balance.HELD_LEVEL else "gated"
 	if demand[city.occupancy[i]] == 0: return "demand"
 	return "growing" if planned[i] != 0 else "queued"
