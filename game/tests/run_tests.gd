@@ -16,7 +16,7 @@ class FaultFiles extends FileOps:
 		return super.write_text(path, "{" if fault == "truncate" else text)
 	func copy_file(from: String, to: String) -> Error:
 		if fault == "backup_copy": return ERR_CANT_CREATE
-		if fault == "preserve_copy" and (to.contains(".schema1.json") or to.contains(".schema2.json") or to.contains(".schema3.json") or to.contains(".schema4.json")): return ERR_CANT_CREATE
+		if fault == "preserve_copy" and (to.contains(".schema1.json") or to.contains(".schema2.json") or to.contains(".schema3.json") or to.contains(".schema4.json") or to.contains(".schema5.json")): return ERR_CANT_CREATE
 		return super.copy_file(from, to)
 	func replace_file(from: String, to: String) -> Error:
 		if fault == "backup_replace" and to.ends_with(".bak"): return ERR_CANT_CREATE
@@ -44,6 +44,7 @@ func command(city: City, kind: String, cells: Array[Vector2i]) -> Dictionary:
 
 func run() -> void:
 	test_commands()
+	test_lots()
 	test_access()
 	test_power()
 	test_migration()
@@ -57,7 +58,7 @@ func run() -> void:
 	await test_scene()
 	if "--prove-failure-exit" in OS.get_cmdline_user_args():
 		check(false, "Deliberate runner failure to verify exit code")
-	print(JSON.stringify({"suite": "M3a", "checks": checks, "failed": failures.size(), "failures": failures}))
+	print(JSON.stringify({"suite": "M2e", "checks": checks, "failed": failures.size(), "failures": failures}))
 	quit(0 if failures.is_empty() else 1)
 
 func test_commands() -> void:
@@ -73,25 +74,26 @@ func test_commands() -> void:
 	check(result.record.sequence == 1 and result.record.tick == 0, "ordered command record")
 	before = city.canonical()
 	check(command(city,"road",cells).ok and city.canonical() == before, "repeated road is exact no-op")
-	check(not command(city,"home",[Vector2i(5,3),Vector2i(3,3)]).ok and city.canonical() == before, "conflict rejects entire stroke")
+	check(not command(city,"home",[Vector2i(0,0),Vector2i(3,2)]).ok and city.canonical() == before, "lot over a road rejects entire stroke")
 	for bad in [Vector2i(-1,0), Vector2i(8,0), Vector2i(0,8), Vector2i(0,-1)]:
 		check(not command(city,"road",[Vector2i(5,3),bad]).ok and city.canonical() == before, "bounds rejection %s" % bad)
 	city.terrain[city.index(Vector2i(1,1))] = City.WATER
 	before = city.canonical()
 	for kind in ["road","home","clear"]:
-		check(not command(city,kind,[Vector2i(5,3),Vector2i(1,1)]).ok and city.canonical() == before, "water rejection " + kind)
+		check(not command(city,kind,[Vector2i(5,0),Vector2i(1,1)]).ok and city.canonical() == before, "water rejection " + kind)
+	check(not command(city,"home",[Vector2i(0,0)]).ok and city.canonical() == before, "lot with one water tile rejected")
 	check(not command(city,"invalid",cells).ok and city.canonical() == before, "unknown tool rejection")
 	city.cash = Balance.HOME_COST - 1
 	before = city.canonical()
-	check(not command(city,"home",[Vector2i(5,3)]).ok and city.canonical() == before, "insufficient funds preserves complete state")
+	check(not command(city,"home",[Vector2i(0,5)]).ok and city.canonical() == before, "insufficient funds preserves complete state")
 	city.cash = Balance.HOME_COST
-	check(command(city,"home",[Vector2i(5,3)]).ok and city.cash == 0, "exact affordability")
-	check(command(city,"home",[Vector2i(5,3)]).ok and city.cash == 0, "no-op valid with zero funds")
+	check(command(city,"home",[Vector2i(0,5)]).ok and city.cash == 0, "exact affordability: one lot costs one zone price")
+	check(command(city,"home",[Vector2i(0,5)]).ok and city.cash == 0, "identical lot is a free no-op with zero funds")
 	var old_terrain: PackedByteArray = city.terrain.duplicate()
-	check(command(city,"clear",[Vector2i(5,3)]).ok and city.cash == 0, "clear free with no refund")
-	check(city.terrain == old_terrain and city.occupancy[city.index(Vector2i(5,3))] == City.EMPTY, "clear preserves terrain")
+	check(command(city,"clear",[Vector2i(2,7)]).ok and city.cash == 0, "clearing any lot tile is free with no refund")
+	check(city.terrain == old_terrain and city.occupancy.count(City.HOME) == 0 and city.footprint_anchor.count(1) == 0, "clear removes the whole lot and preserves terrain")
 	before = city.canonical()
-	check(command(city,"clear",[Vector2i(5,3)]).ok and city.canonical() == before, "empty clear idempotent")
+	check(command(city,"clear",[Vector2i(1,6)]).ok and city.canonical() == before, "empty clear idempotent")
 	check(command(city,"road",[]).ok and city.canonical() == before, "empty stroke idempotent")
 	var a: City = fresh()
 	var b: City = fresh()
@@ -108,51 +110,110 @@ func test_commands() -> void:
 	check(a.terrain.size() == 1024 and a.terrain[a.index(Vector2i(7,127))] == City.LAND, "narrow tall map shoreline stays inside bounds")
 	print("PASS group: construction and seeded maps")
 
+## D30 footprints: 3x3 lots and 4x4 stations, independent of services.
+func test_lots() -> void:
+	var city: City = land(16, 12)
+	var built: Dictionary = command(city, "home", [Vector2i(0,0)])
+	check(built.ok and built.cost == Balance.HOME_COST and built.record.indices == [0], "one lot is charged once and recorded by its anchor")
+	check(city.occupancy.count(City.HOME) == 9 and city.footprint_anchor.count(1) == 1 and city.lot_anchors == PackedInt32Array([0]), "a lot occupies nine tiles with one anchor")
+	var owners: bool = true
+	for y in range(3):
+		for x in range(3): owners = owners and city.anchor_at(Vector2i(x,y)) == 0
+	check(owners and city.anchor_at(Vector2i(3,0)) == -1 and city.anchor_at(Vector2i(0,3)) == -1, "every lot tile maps to its anchor and only those tiles")
+	var before: String = city.canonical()
+	check(not command(city, "home", [Vector2i(14,0)]).ok and not command(city, "shop", [Vector2i(0,10)]).ok and city.canonical() == before, "a lot must fit wholly inside the map")
+	check(String(city.preview("home", [Vector2i(14,0)]).message).contains("inside the map"), "edge rejection explains the whole-lot rule")
+	check(not command(city, "home", [Vector2i(4,0),Vector2i(5,1)]).ok and city.canonical() == before, "overlapping lots in one stroke reject atomically")
+	check(String(city.preview("home", [Vector2i(4,0),Vector2i(5,1)]).message).contains("overlap"), "overlap rejection explains itself")
+	check(not command(city, "shop", [Vector2i(1,1)]).ok and city.canonical() == before, "partly overlapping a different lot is rejected")
+	check(not command(city, "road", [Vector2i(1,1)]).ok and not command(city, "park", [Vector2i(2,2)]).ok and city.canonical() == before, "roads and parks cannot use lot tiles")
+	var run_result: Dictionary = command(city, "home", [Vector2i(0,0), Vector2i(3,0), Vector2i(6,0)])
+	check(run_result.ok and run_result.cost == 2 * Balance.HOME_COST and run_result.anchors == [3, 6], "mixed repaint and new lots charge only the new lots")
+	check(city.lot_anchors.size() == 3 and city.occupancy.count(City.HOME) == 27, "a run of adjacent lots shares no tiles")
+	before = city.canonical()
+	check(command(city, "home", [Vector2i(3,0)]).ok and city.canonical() == before, "identical lot repaint is free and unchanged")
+	check(not command(city, "shop", [Vector2i(3,0)]).ok and city.canonical() == before, "a different zone on an existing lot needs clearing first")
+	var cleared: Dictionary = command(city, "clear", [Vector2i(1,2), Vector2i(7,1)])
+	check(cleared.ok and cleared.changed.size() == 18 and city.lot_anchors == PackedInt32Array([3]) and city.footprint_anchor.count(1) == 1, "a clear stroke removes each touched lot whole")
+	command(city, "road", [Vector2i(0,4), Vector2i(1,4)])
+	cleared = command(city, "clear", [Vector2i(0,4), Vector2i(4,2)])
+	check(cleared.ok and cleared.changed.size() == 10 and city.occupancy.count(City.ROAD) == 1 and city.lot_anchors.is_empty(), "clear works across roads and lots in one stroke")
+	# Stations are 4x4 footprints placed one per command.
+	city = land(16, 12)
+	var station: Dictionary = command(city, "power", [Vector2i(0,0)])
+	check(station.ok and station.cost == Balance.POWER_COST and city.occupancy.count(City.POWER) == 16 and city.station_anchors == PackedInt32Array([0]), "a station costs once and covers 4x4 tiles")
+	check(city.power.station_count == 1 and city.power.total_capacity == Balance.POWER_CAPACITY and city.budget.stations == 1, "capacity and upkeep count stations, not tiles")
+	before = city.canonical()
+	check(not command(city, "power", [Vector2i(13,0)]).ok and not command(city, "power", [Vector2i(2,2)]).ok and city.canonical() == before, "stations must fit inside the map and avoid other footprints")
+	check(not command(city, "power", [Vector2i(5,0), Vector2i(10,0)]).ok and city.canonical() == before, "one station per command")
+	check(command(city, "power", [Vector2i(0,0)]).ok and city.canonical() == before, "identical station repaint is free")
+	check(command(city, "clear", [Vector2i(3,3)]).ok and city.occupancy.count(City.POWER) == 0 and city.station_anchors.is_empty(), "clearing any station tile removes the whole station")
+	city = land(16, 12)
+	before = city.canonical()
+	check(not command(city, "home", [Vector2i(13,5)]).ok and not command(city, "power", [Vector2i(12,4)]).ok and city.canonical() == before, "lots and stations cannot cover the outside-link flag")
+	check(String(city.preview("home", [Vector2i(13,5)]).message).contains("outside-link"), "flag rejection explains the link rule")
+	print("PASS group: 3x3 lot and 4x4 station footprints")
+
 func test_access() -> void:
 	var city: City = fresh()
 	var gate := Vector2i(7,4)
 	check(city.access.root == gate and city.access.connected_roads.count(1) == 0, "link exists without free roads or service")
-	command(city,"road",[Vector2i(6,4),Vector2i(5,4),Vector2i(4,4)])
-	command(city,"home",[Vector2i(4,3),Vector2i(2,1),Vector2i(2,3)])
-	command(city,"road",[Vector2i(2,2)])
-	check(city.access.home_reason(city,Vector2i(4,3)) == "disconnected_road", "inactive root leaves neighbouring district unserved")
-	check(city.access.home_reason(city,Vector2i(1,1)) == "not_home", "open land is not a home zone")
+	command(city,"road",[Vector2i(6,4),Vector2i(5,4),Vector2i(4,4),Vector2i(1,4)])
+	command(city,"home",[Vector2i(4,1),Vector2i(0,5)])
+	check(city.access.home_reason(city,Vector2i(5,2)) == "disconnected_road", "inactive root leaves neighbouring lot unserved")
+	check(city.access.home_reason(city,Vector2i(3,0)) == "not_home", "open land is not a home zone")
 	command(city,"road",[gate])
 	check(city.access.connected_roads.count(1) == 4 and city.access.served_homes.count(1) == 1, "only the rooted district gets access")
-	check(city.access.home_reason(city,Vector2i(4,3)) == "connected", "home beside rooted road has access")
-	check(city.access.home_reason(city,Vector2i(2,1)) == "disconnected_road", "isolated district reason identifies disconnected road")
+	check(city.access.home_reason(city,Vector2i(4,1)) == "connected" and city.access.home_reason(city,Vector2i(6,3)) == "connected", "every tile of a lot reports the lot's access")
+	check(city.access.home_reason(city,Vector2i(1,6)) == "disconnected_road", "isolated district reason identifies disconnected road")
 	var snapshot: String = city.canonical()
 	var served: PackedByteArray = city.access.served_homes.duplicate()
 	city.preview("clear",[Vector2i(5,4)])
-	command(city,"home",[gate,Vector2i(3,3)])
+	command(city,"home",[Vector2i(2,3)])
 	check(city.canonical() == snapshot and city.access.served_homes == served, "preview and rejected stroke preserve access and money")
-	command(city,"clear",[Vector2i(5,4)])
-	check(city.access.connected_roads.count(1) == 2 and city.access.served_homes.count(1) == 0, "bridge demolition splits road and home service immediately")
+	command(city,"clear",[Vector2i(6,4)])
+	check(city.access.connected_roads.count(1) == 1 and city.access.served_homes.count(1) == 0, "removing the lot's only connected neighbour removes service immediately")
 	var restored: City = Codec.decode(city.canonical()).city
 	check(restored.access.connected_roads == city.access.connected_roads and restored.access.served_homes == city.access.served_homes, "disconnected network is reconstructed on load")
-	for item in [city,restored]: command(item,"road",[Vector2i(5,4)])
+	for item in [city,restored]: command(item,"road",[Vector2i(6,4)])
 	check(city.canonical() == restored.canonical() and city.access.served_homes == restored.access.served_homes and city.access.served_homes.count(1) == 1, "reconnection and save continuation agree")
+	command(city,"clear",[Vector2i(5,4)])
+	check(city.access.served_homes.count(1) == 1, "one remaining connected side road keeps a lot served")
+	command(city,"road",[Vector2i(5,4)])
 	command(city,"clear",[gate])
 	check(city.access.root == gate and city.access.connected_roads.count(1) == 0, "demolished root stays marked and deactivates all roads")
-	command(city,"home",[gate])
-	check(city.access.home_reason(city,gate) == "link_occupied", "home on marker explicitly explains blocked link")
-	command(city,"clear",[gate])
 	command(city,"road",[gate])
-	check(city.access.served_homes.count(1) == 1, "clearing blocked root and rebuilding restores service")
-	command(city,"home",[Vector2i(5,5)])
-	check(city.access.served_homes[city.index(Vector2i(5,5))] == 1, "new home gains access without a road edit")
-	command(city,"clear",[Vector2i(5,5)])
-	check(city.access.served_homes[city.index(Vector2i(5,5))] == 0, "home demolition removes derived service")
+	command(city,"home",[Vector2i(4,5)])
+	check(city.access.served_homes[city.index(Vector2i(4,5))] == 1 and city.access.served_homes.count(1) == 2, "a road between two lots serves both; new lot gains access without a road edit")
+	command(city,"clear",[Vector2i(5,6)])
+	check(city.access.served_homes[city.index(Vector2i(4,5))] == 0, "lot demolition removes derived service")
 
+	# Every side position of a lot carries access; corner-only contact never does.
+	var probe: City = fresh()
+	var lot := Vector2i(2,2)
+	var positions: PackedInt32Array = probe.perimeter(probe.index(lot), Balance.LOT_SIZE)
+	check(positions.size() == 12, "an interior 3x3 lot has twelve side positions")
+	var all_served: bool = true
+	for p in positions:
+		var c: City = ring_city()
+		command(c, "home", [lot])
+		command(c, "road", [c.cell_of(p)])
+		all_served = all_served and c.access.served_homes[c.index(lot)] == 1 and c.access.home_reason(c, Vector2i(3,3)) == "connected"
+	check(all_served, "a connected road at any of the twelve side positions serves the lot")
+	var corners_unserved: bool = true
+	for corner in [Vector2i(1,1), Vector2i(5,1), Vector2i(1,5), Vector2i(5,5)]:
+		var c: City = ring_city()
+		command(c, "home", [lot])
+		command(c, "road", [corner])
+		corners_unserved = corners_unserved and c.access.served_homes.count(1) == 0 and c.access.home_reason(c, lot) == "no_adjacent_road"
+	check(corners_unserved, "corner-only contact with a connected road does not serve the lot")
 	city = fresh()
 	command(city,"road",[gate,Vector2i(6,3),Vector2i(0,5),Vector2i(7,0)])
-	command(city,"home",[Vector2i(6,2),Vector2i(6,5),Vector2i(0,4)])
 	check(city.access.connected_roads.count(1) == 1, "diagonal, wrapped-row, and other-edge roads do not join root")
-	check(city.access.home_reason(city,Vector2i(6,5)) == "no_adjacent_road", "diagonal home needs a side-sharing road")
-	check(city.access.served_homes.count(1) == 0, "diagonal roads and homes cannot transmit service")
-	command(city,"home",[Vector2i(6,4),Vector2i(5,4)])
-	command(city,"road",[Vector2i(4,4)])
-	check(city.access.served_homes[city.index(Vector2i(6,4))] == 1 and city.access.served_homes[city.index(Vector2i(5,4))] == 0 and city.access.connected_roads.count(1) == 1, "homes do not relay access to other homes or roads")
+	city = fresh()
+	command(city,"road",[gate,Vector2i(6,4)])
+	command(city,"home",[Vector2i(3,3),Vector2i(0,3)])
+	check(city.access.served_homes[city.index(Vector2i(3,3))] == 1 and city.access.served_homes[city.index(Vector2i(0,3))] == 0 and city.access.connected_roads.count(1) == 2, "lots do not relay access to other lots or roads")
 
 	var loop: Array[Vector2i] = [gate,Vector2i(6,4),Vector2i(5,4),Vector2i(5,5),Vector2i(6,5),Vector2i(7,5)]
 	var a: City = fresh()
@@ -176,9 +237,9 @@ func test_access() -> void:
 			if x in [0,7] or y in [0,7]: city.terrain[city.index(Vector2i(x,y))] = City.WATER
 	city.rebuild_derived()
 	command(city,"home",[Vector2i(4,4)])
-	check(city.access.root == Vector2i(-1,-1) and city.access.home_reason(city,Vector2i(4,4)) == "no_outside_link", "water-only boundary is valid but explains unavailable access")
+	check(city.access.root == Vector2i(-1,-1) and city.access.home_reason(city,Vector2i(5,5)) == "no_outside_link", "water-only boundary is valid but explains unavailable access")
 	restored = Codec.decode(city.canonical()).city
-	check(restored.access.root == city.access.root and restored.access.served_homes == city.access.served_homes, "unusual legacy terrain loads without fabricating a link")
+	check(restored.access.root == city.access.root and restored.access.served_homes == city.access.served_homes, "unusual terrain loads without fabricating a link")
 	for dimensions in [Vector2i(8,128),Vector2i(128,8),Vector2i(64,64),Vector2i(128,128)]:
 		for map_seed in [0,91,198624]:
 			city.initialize(map_seed,dimensions.x,dimensions.y)
@@ -193,17 +254,27 @@ func test_access() -> void:
 
 	var fixture: String = FileAccess.get_file_as_string("res://tests/fixtures/m1-schema1.json").strip_edges()
 	var decoded: Dictionary = Codec.decode(fixture)
-	check(decoded.ok and decoded.city.canonical() == migrated_text(fixture), "pre-M2a fixture migrates with version fields and zero growth arrays")
+	check(decoded.ok and decoded.city.canonical() == migrated_text(fixture), "pre-M2a fixture migrates with version fields, cleared zones and zero arrays")
 	if decoded.ok:
 		city = decoded.city
-		check(city.access.connected_roads.count(1) == 3 and city.access.served_homes.count(1) == 1, "legacy roads derive connected and disconnected districts")
-		check(city.access.home_reason(city,Vector2i(5,3)) == "connected" and city.access.home_reason(city,Vector2i(2,1)) == "disconnected_road", "legacy zones receive accurate reasons")
+		check(city.access.connected_roads.count(1) == 3 and city.access.served_homes.count(1) == 0 and decoded.cleared_tiles == 2, "legacy roads keep their districts; both single-tile homes are cleared")
+		check(city.occupancy[city.index(Vector2i(5,3))] == City.EMPTY and city.occupancy[city.index(Vector2i(2,1))] == City.EMPTY, "former single-tile home plots are open land")
 		restored = Codec.decode(city.canonical()).city
 		for item in [city,restored]:
 			command(item,"clear",[Vector2i(6,4)])
 			Clock.advance(item,1_000_000,1)
-		check(city.canonical() == restored.canonical() and city.rng.randi() == restored.rng.randi() and city.access.served_homes == restored.access.served_homes, "legacy round trip preserves continued commands clock RNG and access")
-	print("PASS group: rooted road access, explanations, and M1 fixture")
+		check(city.canonical() == restored.canonical() and city.rng.randi() == restored.rng.randi() and city.access.connected_roads == restored.access.connected_roads, "legacy round trip preserves continued commands clock RNG and access")
+	print("PASS group: rooted road access around lots, explanations, and M1 fixture")
+
+## An 8x8 town whose road ring sits two tiles from a lot at (2,2), joined to the link.
+func ring_city() -> City:
+	var c: City = fresh()
+	var ring: Array[Vector2i] = [Vector2i(7,4)]
+	for i in range(7):
+		for cell in [Vector2i(i,0), Vector2i(i,6), Vector2i(0,i), Vector2i(6,i)]:
+			if not ring.has(cell): ring.append(cell)
+	command(c, "road", ring)
+	return c
 
 func test_clock() -> void:
 	var a: City = fresh()
@@ -238,17 +309,37 @@ func test_clock() -> void:
 	check(long_frame.pending_us == City.MAX_PENDING_US - 8 * Clock.STEP_US, "extreme stall is bounded without integer overflow")
 	print("PASS group: fixed clock")
 
+## Applies one named invalid-footprint mutation to a snapshot of the codec test town,
+## which has a single home lot anchored at (4,4) on an 8x8 map.
+func mutate_footprint(d: Dictionary, case: String, lot: int) -> void:
+	match case:
+		"single-tile station without a footprint": d.occupancy[0] = City.POWER
+		"orphan zone tile beside a lot": d.occupancy[lot - 1] = City.HOME
+		"lot without its anchor": d.footprint_anchor[lot] = 0
+		"anchor value out of range": d.footprint_anchor[lot] = 2
+		"anchor on open land": d.footprint_anchor[0] = 1
+		"misaligned anchor":
+			d.footprint_anchor[lot] = 0
+			d.footprint_anchor[lot + 1] = 1
+		"mixed IDs inside one lot": d.occupancy[lot + 2 * 8 + 2] = City.SHOP
+		"second anchor inside a lot": d.footprint_anchor[lot + 8 + 1] = 1
+		"development on a non-anchor lot tile": d.development[lot + 8 + 1] = 1
+		"footprint hanging off the map":
+			for y in range(1, 4):
+				for x in range(6, 8): d.occupancy[y * 8 + x] = City.HOME
+			d.footprint_anchor[8 + 6] = 1
+
 func test_codec() -> void:
 	var city: City = fresh()
 	command(city,"home",[Vector2i(4,4)])
 	Clock.advance(city,250_000,3)
 	city.rng.state = 9223372036854775001
 	var decoded: Dictionary = Codec.decode(city.canonical())
-	check(decoded.ok and decoded.city.canonical() == city.canonical(), "save round trip exact, including 64-bit state")
+	check(decoded.ok and decoded.city.canonical() == city.canonical(), "save round trip exact, including 64-bit state and lot anchors")
 	var restored: City = decoded.city
 	check(city.rng.randi() == restored.rng.randi(), "lossless random stream continuation")
 	for item in [city,restored]:
-		command(item,"road",[Vector2i(5,5)])
+		command(item,"road",[Vector2i(1,1)])
 		Clock.advance(item,1_100_000,3)
 	check(city.canonical() == restored.canonical(), "continued state after reload matches uninterrupted state")
 	for bad_text in ["", "{", "[]", "null", "{\"schema_version\":1}"]:
@@ -256,28 +347,38 @@ func test_codec() -> void:
 	check(not Codec.decode(" ".repeat(Codec.MAX_BYTES + 1)).ok, "oversize save rejected")
 	var mutations: Array = [
 		["schema_version",City.SCHEMA + 1], ["schema_version",1], ["schema_version",0], ["schema_version",true],
-		["simulation_version","future"], ["content_version","future"],
+		["simulation_version","future"], ["content_version","future"], ["simulation_version","m3a-1"],
 		["width",129], ["height",7], ["width",64.5], ["cash",-1],
 		["cash",1.5], ["cash",true], ["tick",-1], ["sequence",-1],
 		["pending_us",City.MAX_PENDING_US + 1], ["seed","abc"],
 		["random_state",9223372036854775001], ["random_state","9223372036854775808"],
-		["random_state","01"], ["occupancy",[]], ["terrain",{}]]
+		["random_state","01"], ["occupancy",[]], ["terrain",{}],
+		["footprint_anchor",null], ["footprint_anchor",[]], ["footprint_anchor",{}]]
 	var original: String = city.canonical()
 	for mutation in mutations:
 		var data: Dictionary = city.snapshot()
 		data[mutation[0]] = mutation[1]
 		check(not Codec.decode(JSON.stringify(data)).ok, "invalid field: %s = %s" % mutation)
 	var data: Dictionary = city.snapshot()
+	data.erase("footprint_anchor")
+	check(not Codec.decode(JSON.stringify(data)).ok, "current save without footprint anchors rejected")
+	data = city.snapshot()
 	data.terrain[0] = 2
 	check(not Codec.decode(JSON.stringify(data)).ok, "unknown terrain identifier")
 	data = city.snapshot()
 	data.occupancy[0] = 7
 	check(not Codec.decode(JSON.stringify(data)).ok, "unknown use identifier")
+	# D30 footprint validation: whole, separate, anchored, in-map footprints only.
+	var lot: int = city.index(Vector2i(4,4))
+	for case in ["single-tile station without a footprint", "orphan zone tile beside a lot", "lot without its anchor",
+			"anchor value out of range", "anchor on open land", "misaligned anchor", "mixed IDs inside one lot",
+			"second anchor inside a lot", "development on a non-anchor lot tile", "footprint hanging off the map"]:
+		data = city.snapshot()
+		mutate_footprint(data, case, lot)
+		check(not Codec.decode(JSON.stringify(data)).ok, "reject " + case)
 	data = city.snapshot()
 	data.occupancy[0] = City.POWER
-	check(Codec.decode(JSON.stringify(data)).ok, "schema 2 accepts power-station identifier")
-	data.erase("development")
-	data.erase("service_loss")
+	for field in ["development", "service_loss", "footprint_anchor", "last_budget", "project"]: data.erase(field)
 	data.schema_version = 1
 	data.simulation_version = "m1-1"
 	data.content_version = "m1-1"
@@ -351,16 +452,22 @@ func test_scene() -> void:
 	check(not main._is_world_position(main.top.get_global_rect().get_center()), "toolbar excluded from world picking")
 	main._select_tool("home")
 	main._extend_stroke(Vector2i(30,30))
+	check(main.stroke == [Vector2i(29,29)] and main.world.preview_cells.size() == 9, "home tool previews one 3x3 lot centred on the pointer")
+	main._extend_stroke(Vector2i(37,31))
+	check(main.stroke == [Vector2i(29,29), Vector2i(32,29), Vector2i(35,29)] and main.world.preview_cells.size() == 27, "dragging lays a row of adjacent lots along the dominant axis")
+	main._extend_stroke(Vector2i(30,30))
 	main._commit_stroke()
-	check(main.city.occupancy[main.city.index(Vector2i(30,30))] == City.HOME, "scene command uses authoritative model")
+	check(main.city.occupancy[main.city.index(Vector2i(30,30))] == City.HOME and main.city.lot_anchors.size() == 1, "scene command uses authoritative model")
 	main._select_tool("power")
-	main._extend_stroke(Vector2i(31,30))
-	main._extend_stroke(Vector2i(33,30))
-	check(main.stroke.size() == 1 and main.stroke[0] == Vector2i(33,30), "power tool previews exactly one station under the pointer")
+	main._extend_stroke(Vector2i(37,30))
+	main._extend_stroke(Vector2i(39,30))
+	check(main.stroke.size() == 1 and main.stroke[0] == Vector2i(38,29) and main.world.preview_cells.size() == 16, "power tool previews exactly one 4x4 station under the pointer")
 	main._commit_stroke()
-	check(main.city.occupancy[main.city.index(Vector2i(33,30))] == City.POWER and main.city.power.station_count == 1 and main.city.cash == Balance.STARTING_CASH - Balance.HOME_COST - Balance.POWER_COST, "scene places one paid station")
-	main._inspect_cell(Vector2i(33,30))
+	check(main.city.occupancy[main.city.index(Vector2i(39,30))] == City.POWER and main.city.power.station_count == 1 and main.city.cash == Balance.STARTING_CASH - Balance.HOME_COST - Balance.POWER_COST, "scene places one paid station")
+	main._inspect_cell(Vector2i(40,31))
 	check(main.power_label.text.contains("Supplies 20 units") and main.grid_label.text.begins_with("Power 0 / 20"), "inspector and toolbar report station capacity")
+	main._inspect_cell(Vector2i(31,31))
+	check(main.selection_label.text.contains("Home lot L0") and main.power_label.text.contains("lot"), "any tile of a lot inspects the lot")
 	main.queue_free()
 	await process_frame
 	print("PASS group: scene initialization and model binding")
@@ -391,15 +498,23 @@ func one(cell: Vector2i) -> Array[Vector2i]:
 	var out: Array[Vector2i] = [cell]
 	return out
 
+## Lot anchors in a row: x0, x0 + 3, ... (count lots) at y.
+func lots_row(y: int, x0: int, count: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for k in range(count): out.append(Vector2i(x0 + Balance.LOT_SIZE * k, y))
+	return out
+
 func reason(city: City, cell: Vector2i) -> String:
 	return city.power.home_reason(city, cell)
 
 func net(city: City, cell: Vector2i) -> int:
 	return city.power.network_of[city.index(cell)]
 
-## Expected migration: retain all old fields and add zero development/loss arrays.
+## Expected D30 migration: version fields change, single-tile zones and stations
+## become open land, growth/footprint arrays are zero, and every other value stays.
 func migrated_text(legacy: String) -> String:
 	var data: Dictionary = JSON.parse_string(legacy)
+	var schema: int = int(data.schema_version)
 	data.schema_version = City.SCHEMA
 	data.simulation_version = City.SIMULATION
 	data.content_version = City.CONTENT
@@ -408,134 +523,149 @@ func migrated_text(legacy: String) -> String:
 	zeros.fill(0)
 	for field in ["width", "height", "cash", "tick", "sequence", "pending_us"]: data[field] = int(data[field])
 	data.terrain = Array(PackedByteArray(data.terrain))
-	data.occupancy = Array(PackedByteArray(data.occupancy))
-	data.development = Array(PackedByteArray(data.get("development", zeros)))
-	data.service_loss = Array(PackedByteArray(data.get("service_loss", zeros)))
+	var occupancy: PackedByteArray = PackedByteArray(data.occupancy)
+	for i in range(occupancy.size()):
+		if City.is_zone(occupancy[i]) or occupancy[i] == City.POWER: occupancy[i] = City.EMPTY
+	data.occupancy = Array(occupancy)
+	data.development = zeros.duplicate()
+	data.service_loss = zeros.duplicate()
+	data.footprint_anchor = zeros.duplicate()
 	data.last_budget = data.get("last_budget", {})
 	for key in data.last_budget: data.last_budget[key] = int(data.last_budget[key])
-	data.project = {"completed": false, "park_index": -1}
+	if schema >= 5: data.project = {"completed": data.project.completed, "park_index": int(data.project.park_index)}
+	else: data.project = {"completed": false, "park_index": -1}
 	return JSON.stringify(data, "", true)
+
+## Count of single-tile zone and station tiles that D30 migration clears.
+func legacy_footprint_tiles(legacy: String) -> int:
+	var data: Dictionary = JSON.parse_string(legacy)
+	var count: int = 0
+	for value in data.occupancy:
+		if City.is_zone(int(value)) or int(value) == City.POWER: count += 1
+	return count
 
 func test_power() -> void:
 	# One network: exact capacity accounting and nearest-first shortage ties.
-	var city: City = land(12, 8)
-	command(city, "road", row(4, 1, 10))
-	command(city, "home", join(row(3, 1, 10), row(5, 1, 10)))
+	var city: City = land(40, 12)
+	command(city, "road", row(4, 4, 33))
+	var upper: Array[Vector2i] = lots_row(1, 4, 10)
+	var lower: Array[Vector2i] = lots_row(5, 4, 10)
+	command(city, "home", join(upper, lower))
 	check(city.power.station_count == 0 and city.power.total_capacity == 0 and city.power.powered_homes == 0, "no free power source exists")
-	check(reason(city, Vector2i(4, 3)) == "no_source", "plots explain that no power station exists")
-	check(net(city, Vector2i(1, 4)) == net(city, Vector2i(10, 4)) and net(city, Vector2i(4, 3)) == -1, "roads form one network; home plots are not network tiles")
+	check(reason(city, Vector2i(5, 2)) == "no_source", "lots explain that no power station exists")
+	check(net(city, Vector2i(4, 4)) == net(city, Vector2i(33, 4)) and net(city, Vector2i(5, 2)) == -1, "roads form one network; lot tiles are not network tiles")
 	var before_cash: int = city.cash
-	var built: Dictionary = command(city, "power", one(Vector2i(0, 4)))
+	var built: Dictionary = command(city, "power", one(Vector2i(0, 3)))
 	check(built.ok and built.record.cost == Balance.POWER_COST and city.cash == before_cash - Balance.POWER_COST, "station charges its exact price once")
-	check(city.power.total_capacity == Balance.POWER_CAPACITY and city.power.total_used == 20 and city.power.powered_homes == 20 and city.power.short_homes == 0, "twenty plots exactly fill one station")
-	check(city.access.connected_roads.count(1) == 0 and reason(city, Vector2i(4, 3)) == "powered" and city.access.home_reason(city, Vector2i(4, 3)) == "disconnected_road", "power works on a road network without outside access")
-	command(city, "home", one(Vector2i(0, 3)))
-	check(reason(city, Vector2i(0, 3)) == "powered", "plot beside a station draws power directly")
-	check(reason(city, Vector2i(10, 3)) == "powered" and reason(city, Vector2i(10, 5)) == "shortage", "equal-distance shortage tie resolves by row-major plot order")
+	check(city.power.total_capacity == Balance.POWER_CAPACITY and city.power.total_used == 20 and city.power.powered_homes == 20 and city.power.short_homes == 0, "twenty lots exactly fill one station")
+	check(city.access.connected_roads.count(1) == 0 and reason(city, Vector2i(5, 2)) == "powered" and city.access.home_reason(city, Vector2i(5, 2)) == "disconnected_road", "power works on a road network without outside access")
+	command(city, "home", one(Vector2i(0, 0)))
+	check(reason(city, Vector2i(1, 1)) == "powered", "lot beside a station draws power directly")
+	check(reason(city, Vector2i(31, 1)) == "powered" and reason(city, Vector2i(31, 5)) == "shortage", "equal-distance shortage tie resolves by anchor order")
 	check(city.power.short_homes == 1 and city.power.network_short[net(city, Vector2i(5, 4))] == 1 and city.power.total_used == 20 and city.power.network_used[net(city, Vector2i(5, 4))] == 20, "shortage counted without exceeding capacity")
 	var states: PackedByteArray = city.power.home_state.duplicate()
-	var other: City = land(12, 8)
-	command(other, "home", one(Vector2i(0, 3)))
-	var homes: Array[Vector2i] = join(row(5, 1, 10), row(3, 1, 10))
+	var other: City = land(40, 12)
+	command(other, "home", one(Vector2i(0, 0)))
+	var homes: Array[Vector2i] = join(lower, upper)
 	homes.reverse()
 	command(other, "home", homes)
-	command(other, "power", one(Vector2i(0, 4)))
-	var roads: Array[Vector2i] = row(4, 1, 10)
+	command(other, "power", one(Vector2i(0, 3)))
+	var roads: Array[Vector2i] = row(4, 4, 33)
 	roads.reverse()
 	command(other, "road", roads)
-	check(other.occupancy == city.occupancy and other.power.home_state == states and other.power.home_network == city.power.home_network, "allocation ignores command history and stroke order")
-	# Station on the east end: nearest-first and row-major order disagree here.
-	var east: City = land(12, 8)
-	command(east, "road", row(4, 0, 9))
-	command(east, "power", one(Vector2i(10, 4)))
-	command(east, "home", join(join(row(3, 0, 9), row(5, 0, 9)), one(Vector2i(10, 3))))
-	check(reason(east, Vector2i(10, 3)) == "powered" and reason(east, Vector2i(9, 5)) == "powered" and reason(east, Vector2i(0, 3)) == "powered" and reason(east, Vector2i(0, 5)) == "shortage", "the farthest plot is short, not the last plot in row-major order")
+	check(other.occupancy == city.occupancy and other.footprint_anchor == city.footprint_anchor and other.power.home_state == states and other.power.home_network == city.power.home_network, "allocation ignores command history and stroke order")
+	# Station on the east end: nearest-first and anchor order disagree here.
+	var east: City = land(40, 12)
+	command(east, "road", row(4, 2, 31))
+	command(east, "power", one(Vector2i(32, 3)))
+	command(east, "home", join(join(lots_row(1, 2, 10), lots_row(5, 2, 10)), one(Vector2i(32, 0))))
+	check(reason(east, Vector2i(32, 0)) == "powered" and reason(east, Vector2i(29, 5)) == "powered" and reason(east, Vector2i(2, 1)) == "powered" and reason(east, Vector2i(2, 5)) == "shortage", "the farthest lot is short, not the last lot in anchor order")
 
 	# Rejected or unaffordable commands spend nothing and leave power unchanged.
 	var snapshot: String = city.canonical()
-	var attempts: Array = [["power", [Vector2i(2, 6), Vector2i(3, 6)]], ["power", [Vector2i(4, 4)]], ["power", [Vector2i(4, 3)]],
-		["power", [Vector2i(11, 4)]], ["power", [Vector2i(12, 0)]], ["home", [Vector2i(0, 4)]], ["road", [Vector2i(0, 4)]]]
+	var attempts: Array = [["power", [Vector2i(10, 8), Vector2i(20, 8)]], ["power", [Vector2i(4, 4)]], ["power", [Vector2i(5, 2)]],
+		["power", [Vector2i(36, 6)]], ["power", [Vector2i(37, 0)]], ["power", [Vector2i(40, 0)]], ["home", [Vector2i(0, 3)]], ["road", [Vector2i(0, 4)]]]
 	for attempt in attempts:
 		var cells: Array[Vector2i] = []
 		cells.assign(attempt[1])
 		check(not command(city, attempt[0], cells).ok and city.canonical() == snapshot and city.power.home_state == states, "rejected %s %s keeps funds, map, and power" % [attempt[0], attempt[1]])
-	var pair: Array[Vector2i] = [Vector2i(2, 6), Vector2i(3, 6)]
-	check(String(city.preview("power", one(Vector2i(11, 4))).message).contains("outside-link") and String(city.preview("power", pair).message).contains("one facility"), "station rejections explain the link and one-at-a-time rules")
-	other.terrain[other.index(Vector2i(5, 7))] = City.WATER
+	var pair: Array[Vector2i] = [Vector2i(10, 8), Vector2i(20, 8)]
+	check(String(city.preview("power", one(Vector2i(36, 6))).message).contains("outside-link") and String(city.preview("power", pair).message).contains("one facility"), "station rejections explain the link and one-at-a-time rules")
+	other.terrain[other.index(Vector2i(22, 10))] = City.WATER
 	other.rebuild_derived()
 	snapshot = other.canonical()
-	check(not command(other, "power", one(Vector2i(5, 7))).ok and other.canonical() == snapshot, "station on water rejected")
+	check(not command(other, "power", one(Vector2i(20, 8))).ok and other.canonical() == snapshot, "station with a water tile rejected")
 	city.cash = Balance.POWER_COST - 1
 	snapshot = city.canonical()
-	check(not command(city, "power", one(Vector2i(5, 6))).ok and city.canonical() == snapshot and city.power.home_state == states, "unaffordable station rejected without partial spending")
+	check(not command(city, "power", one(Vector2i(16, 8))).ok and city.canonical() == snapshot and city.power.home_state == states, "unaffordable station rejected without partial spending")
 	city.cash = Balance.POWER_COST
-	check(command(city, "power", one(Vector2i(5, 6))).ok and city.cash == 0, "exactly affordable station")
-	check(city.power.total_capacity == 40 and city.power.short_homes == 0 and reason(city, Vector2i(10, 5)) == "powered" and city.power.home_network[city.index(Vector2i(5, 5))] == net(city, Vector2i(5, 6)), "a second network relieves the shortage through a shared plot")
+	check(command(city, "power", one(Vector2i(16, 8))).ok and city.cash == 0, "exactly affordable station")
+	check(city.power.total_capacity == 40 and city.power.short_homes == 0 and reason(city, Vector2i(31, 5)) == "powered" and city.power.home_network[city.index(Vector2i(16, 5))] == net(city, Vector2i(16, 8)), "a second network relieves the shortage through lots it touches")
 	snapshot = city.canonical()
-	check(command(city, "power", one(Vector2i(5, 6))).ok and city.canonical() == snapshot, "repeating a station is a free no-op")
-	check(command(city, "clear", one(Vector2i(5, 6))).ok and city.cash == 0 and city.occupancy[city.index(Vector2i(5, 6))] == City.EMPTY, "station removal is free with no refund")
+	check(command(city, "power", one(Vector2i(16, 8))).ok and city.canonical() == snapshot, "repeating a station is a free no-op")
+	check(command(city, "clear", one(Vector2i(18, 10))).ok and city.cash == 0 and city.occupancy[city.index(Vector2i(16, 8))] == City.EMPTY and city.occupancy.count(City.POWER) == 16, "station removal is free with no refund and removes the whole footprint")
 	check(city.power.home_state == states and city.power.station_count == 1, "removing a source restores the shortage immediately")
 
 	# Bridge and source removal, then reconnection.
 	city.cash = Balance.STARTING_CASH
-	command(city, "clear", one(Vector2i(6, 4)))
-	check(reason(city, Vector2i(7, 3)) == "disconnected" and reason(city, Vector2i(5, 3)) == "powered" and city.power.short_homes == 0, "bridge removal disconnects the far district and frees capacity")
-	check(reason(city, Vector2i(6, 3)) == "no_adjacent_network" and not city.power.carries_power(city.index(Vector2i(7, 4))) and net(city, Vector2i(7, 4)) != net(city, Vector2i(5, 4)), "split network without a station carries no power")
-	command(city, "road", one(Vector2i(6, 4)))
+	command(city, "clear", one(Vector2i(20, 4)))
+	check(reason(city, Vector2i(22, 1)) == "disconnected" and reason(city, Vector2i(19, 1)) == "powered" and city.power.short_homes == 0, "bridge removal disconnects the far district and frees capacity")
+	check(not city.power.carries_power(city.index(Vector2i(25, 4))) and net(city, Vector2i(25, 4)) != net(city, Vector2i(10, 4)), "split network without a station carries no power")
+	command(city, "road", one(Vector2i(20, 4)))
 	check(city.power.home_state == states, "rebuilding the bridge restores the exact allocation")
-	command(city, "clear", one(Vector2i(0, 4)))
-	check(city.power.station_count == 0 and city.power.total_used == 0 and reason(city, Vector2i(4, 3)) == "no_source", "removing the only station explains the missing source")
-	command(city, "power", one(Vector2i(0, 4)))
+	command(city, "clear", one(Vector2i(1, 5)))
+	check(city.power.station_count == 0 and city.power.total_used == 0 and reason(city, Vector2i(5, 2)) == "no_source", "removing the only station explains the missing source")
+	command(city, "power", one(Vector2i(0, 3)))
 	check(city.power.home_state == states, "rebuilding the station restores supply")
 
-	# Relay rules: stations join roads for power only; diagonals and homes carry nothing.
-	var relay: City = fresh()
-	command(relay, "road", [Vector2i(7, 4), Vector2i(6, 4)])
-	command(relay, "power", one(Vector2i(5, 4)))
-	command(relay, "road", one(Vector2i(4, 4)))
-	command(relay, "home", [Vector2i(4, 3), Vector2i(6, 3)])
-	check(net(relay, Vector2i(7, 4)) == net(relay, Vector2i(4, 4)), "a station relays power between the roads it touches")
-	check(relay.access.connected_roads[relay.index(Vector2i(4, 4))] == 0 and relay.access.home_reason(relay, Vector2i(4, 3)) == "disconnected_road" and reason(relay, Vector2i(4, 3)) == "powered", "a station does not relay road access")
-	check(relay.access.home_reason(relay, Vector2i(6, 3)) == "connected" and reason(relay, Vector2i(6, 3)) == "powered", "connected plot reports both conditions separately")
-	command(relay, "power", one(Vector2i(1, 1)))
-	command(relay, "road", [Vector2i(2, 2), Vector2i(3, 1)])
-	command(relay, "home", [Vector2i(2, 1), Vector2i(4, 1)])
-	check(net(relay, Vector2i(2, 2)) != net(relay, Vector2i(1, 1)) and not relay.power.carries_power(relay.index(Vector2i(2, 2))), "a diagonal road does not join a station")
-	check(reason(relay, Vector2i(2, 1)) == "powered" and reason(relay, Vector2i(4, 1)) == "disconnected", "home plots do not relay power")
+	# Relay rules: stations join roads for power only; diagonals and lots carry nothing.
+	var relay: City = land(16, 12)
+	command(relay, "road", join(one(Vector2i(15, 6)), column(14, 6, 11)))
+	command(relay, "power", one(Vector2i(10, 5)))
+	command(relay, "road", one(Vector2i(9, 6)))
+	command(relay, "home", [Vector2i(6, 5), Vector2i(11, 9)])
+	check(net(relay, Vector2i(15, 6)) == net(relay, Vector2i(9, 6)), "a station relays power between the roads it touches")
+	check(relay.access.connected_roads[relay.index(Vector2i(9, 6))] == 0 and relay.access.home_reason(relay, Vector2i(7, 6)) == "disconnected_road" and reason(relay, Vector2i(7, 6)) == "powered", "a station does not relay road access")
+	check(relay.access.home_reason(relay, Vector2i(12, 10)) == "connected" and reason(relay, Vector2i(12, 10)) == "powered", "connected lot reports both conditions separately")
+	command(relay, "power", one(Vector2i(0, 0)))
+	command(relay, "road", [Vector2i(4, 4), Vector2i(7, 3)])
+	command(relay, "home", [Vector2i(4, 0), Vector2i(7, 0), Vector2i(0, 9)])
+	check(net(relay, Vector2i(4, 4)) != net(relay, Vector2i(0, 0)) and not relay.power.carries_power(relay.index(Vector2i(4, 4))), "a diagonal road does not join a station")
+	check(reason(relay, Vector2i(5, 1)) == "powered" and reason(relay, Vector2i(8, 1)) == "disconnected", "lots do not relay power")
+	check(reason(relay, Vector2i(1, 10)) == "no_adjacent_network", "a lot with no road or station beside it explains that")
 
 	# Equal distance through two networks resolves by network order, whatever the build order.
 	for flipped in [false, true]:
-		var tie: City = land(8, 8)
-		var steps: Array = [["power", Vector2i(1, 3)], ["road", Vector2i(2, 3)], ["road", Vector2i(4, 3)], ["power", Vector2i(5, 3)], ["home", Vector2i(3, 3)]]
+		var tie: City = land(16, 8)
+		var steps: Array = [["power", Vector2i(0, 2)], ["road", Vector2i(4, 3)], ["road", Vector2i(5, 3)], ["road", Vector2i(9, 3)], ["road", Vector2i(10, 3)], ["power", Vector2i(11, 2)], ["home", Vector2i(6, 2)]]
 		if flipped: steps.reverse()
 		for step in steps: command(tie, step[0], one(step[1]))
-		check(tie.power.home_network[tie.index(Vector2i(3, 3))] == net(tie, Vector2i(2, 3)) and net(tie, Vector2i(2, 3)) < net(tie, Vector2i(4, 3)), "equal-distance networks resolve by network order (reversed build %s)" % flipped)
+		check(tie.power.home_network[tie.index(Vector2i(6, 2))] == net(tie, Vector2i(5, 3)) and net(tie, Vector2i(5, 3)) < net(tie, Vector2i(9, 3)), "equal-distance networks resolve by network order (reversed build %s)" % flipped)
 
-	# A full nearer network spills a later plot to a farther network with room.
-	var spill: City = land(16, 12)
-	command(spill, "power", one(Vector2i(1, 1)))
-	command(spill, "road", column(2, 1, 10))
-	homes = join(column(3, 1, 10), column(1, 2, 10))
-	homes.append(Vector2i(2, 0))
-	command(spill, "home", homes)
-	command(spill, "road", row(11, 3, 14))
-	command(spill, "power", one(Vector2i(15, 11)))
-	command(spill, "home", one(Vector2i(2, 11)))
-	var near: int = net(spill, Vector2i(2, 5))
-	var far: int = net(spill, Vector2i(3, 11))
-	check(near != far and reason(spill, Vector2i(2, 11)) == "powered" and spill.power.home_network[spill.index(Vector2i(2, 11))] == far, "plot uses a farther network with room when the nearer one is full")
+	# A full nearer network spills a later lot to a farther network with room.
+	var spill: City = land(48, 24)
+	command(spill, "power", one(Vector2i(0, 4)))
+	command(spill, "road", row(5, 4, 36))
+	command(spill, "home", join(lots_row(2, 4, 10), lots_row(6, 4, 10)))
+	var far_road: Array[Vector2i] = join(join(row(1, 35, 47), column(47, 2, 20)), row(20, 10, 46))
+	command(spill, "road", far_road)
+	command(spill, "power", one(Vector2i(6, 19)))
+	command(spill, "home", one(Vector2i(34, 2)))
+	var near: int = net(spill, Vector2i(10, 5))
+	var far: int = net(spill, Vector2i(35, 1))
+	check(near != far and reason(spill, Vector2i(35, 3)) == "powered" and spill.power.home_network[spill.index(Vector2i(34, 2))] == far, "lot uses a farther network with room when the nearer one is full")
 	check(spill.power.network_used[near] == 20 and spill.power.network_used[far] == 1 and spill.power.total_used == 21, "per-network and total accounting agree")
-	command(spill, "clear", one(Vector2i(15, 11)))
-	check(reason(spill, Vector2i(2, 11)) == "shortage" and spill.power.home_network[spill.index(Vector2i(2, 11))] == near and spill.power.network_short[near] == 1, "losing the spare network leaves the plot short on the full network")
+	command(spill, "clear", one(Vector2i(7, 20)))
+	check(reason(spill, Vector2i(34, 2)) == "shortage" and spill.power.home_network[spill.index(Vector2i(34, 2))] == near and spill.power.network_short[near] == 1, "losing the spare network leaves the lot short on the full network")
 
 	# Save continuation; derived power is reconstructed and never serialized.
 	var decoded: Dictionary = Codec.decode(spill.canonical())
 	check(decoded.ok and decoded.migrated_from == 0 and decoded.city.power.home_state == spill.power.home_state and decoded.city.power.network_used == spill.power.network_used, "reload reconstructs the power allocation")
 	var keys: Array = spill.snapshot().keys()
 	keys.sort()
-	check(keys == ["cash", "content_version", "development", "height", "last_budget", "occupancy", "pending_us", "project", "random_state", "schema_version", "seed", "sequence", "service_loss", "simulation_version", "terrain", "tick", "width"], "power and access are absent from saves")
+	check(keys == ["cash", "content_version", "development", "footprint_anchor", "height", "last_budget", "occupancy", "pending_us", "project", "random_state", "schema_version", "seed", "sequence", "service_loss", "simulation_version", "terrain", "tick", "width"], "power and access are absent from saves")
 	for item: City in [spill, decoded.city]:
-		command(item, "power", one(Vector2i(15, 11)))
+		command(item, "power", one(Vector2i(6, 19)))
 		Clock.advance(item, 2_000_000, 3)
 	check(spill.canonical() == decoded.city.canonical() and spill.power.home_state == decoded.city.power.home_state and spill.rng.randi() == decoded.city.rng.randi(), "continued commands after reload match the uninterrupted city")
 	states = spill.power.home_state.duplicate()
@@ -545,57 +675,56 @@ func test_power() -> void:
 	for i in range(20): Clock.advance(spill, 1_000_000, 3)
 	check(spill.power.home_state == states and spill.tick > 0, "clock ticks never change power")
 
-	# Bounded at the 128x128 ceiling: 64 road networks, eight sourced.
+	# Bounded at the 128x128 ceiling: 22 road networks, six sourced.
 	var big := City.new()
 	big.initialize(5, 128, 128)
 	big.terrain.fill(City.LAND)
 	big.rebuild_derived()
 	big.cash = Balance.MAX_CASH
 	var road_cells: Array[Vector2i] = []
-	var home_cells: Array[Vector2i] = []
-	for y in range(128):
-		for x in range(1, 128):
-			if y % 2 == 0: road_cells.append(Vector2i(x, y))
-			else: home_cells.append(Vector2i(x, y))
+	var lot_cells: Array[Vector2i] = []
+	for m in range(22):
+		road_cells.append_array(row(6 * m, 0, 127))
+		# The last road (row 126) has no room for a lot band below it.
+		if m < 21: lot_cells.append_array(lots_row(6 * m + 1, 4, 41))
 	command(big, "road", road_cells)
-	command(big, "home", home_cells)
-	for y in range(0, 128, 16): command(big, "power", one(Vector2i(0, y)))
+	command(big, "home", lot_cells)
+	for m in range(0, 22, 4): command(big, "power", one(Vector2i(0, 6 * m + 1)))
 	var started: int = Time.get_ticks_usec()
 	big.rebuild_derived()
 	var elapsed: int = Time.get_ticks_usec() - started
-	check(big.power.network_stations.size() == 64 and big.power.total_capacity == 160 and big.power.total_used == 160, "max map labels every network and caps supply")
-	check(big.power.powered_homes == 160 and big.power.short_homes == 127 + 7 * 254 - 160, "max map shortage count is exact")
+	check(big.lot_anchors.size() == 861 and big.power.network_stations.size() == 22 and big.power.total_capacity == 120 and big.power.total_used == 120, "max map labels every network and caps supply")
+	check(big.power.powered_homes == 120 and big.power.short_homes == 6 * 21, "max map shortage count is exact")
 	big.occupancy.fill(City.ROAD)
-	big.occupancy[0] = City.POWER
+	big.footprint_anchor.fill(0)
+	big.development.fill(0)
+	big.service_loss.fill(0)
+	for y in range(4):
+		for x in range(4): big.occupancy[big.index(Vector2i(x, y))] = City.POWER
+	big.footprint_anchor[0] = 1
 	big.rebuild_derived()
-	check(big.power.network_stations.size() == 1 and big.power.distance[big.index(Vector2i(127, 127))] == 254, "full-map iterative search reaches the far corner")
+	check(big.power.network_stations.size() == 1 and big.power.distance[big.index(Vector2i(127, 127))] == 248, "full-map iterative search reaches the far corner")
 	print("INFO power rebuild 128x128 striped city: %d us (local headless editor runtime; not a performance claim)" % elapsed)
-	print("PASS group: power networks, capacity, nearest-first allocation")
+	print("PASS group: power networks, 4x4 stations, capacity, nearest-first lot allocation")
 
 func test_migration() -> void:
 	check(FileAccess.get_sha256("res://tests/fixtures/m1-schema1.json") == "f954b5c782f32d240e54912baea00ac6960b599fe5aa90f4eed96efeceadbb83", "M1 fixture bytes preserved")
 	check(FileAccess.get_sha256("res://tests/fixtures/m2a-schema1.json") == "a85895efbc23707538a8c97399a7cf9bd831bfeb21b8182144b68653d82f0c93", "M2a fixture bytes preserved")
 	var legacy: String = FileAccess.get_file_as_string("res://tests/fixtures/m2a-schema1.json")
 	var decoded: Dictionary = Codec.decode(legacy.strip_edges())
-	check(decoded.ok and decoded.migrated_from == 1 and decoded.city.canonical() == migrated_text(legacy.strip_edges()), "M2a fixture migrates with version fields and zero growth arrays")
+	check(decoded.ok and decoded.migrated_from == 1 and decoded.city.canonical() == migrated_text(legacy.strip_edges()), "M2a fixture migrates with version fields, cleared zones and zero arrays")
 	var city: City = decoded.city
-	check(city.access.root == Vector2i(9, 4) and city.access.connected_roads.count(1) == 6 and city.access.served_homes.count(1) == 4, "migrated M2a city derives the access recorded by unchanged M2a code")
-	var expected: Dictionary = {Vector2i(2, 4): "no_adjacent_road", Vector2i(3, 2): "disconnected_road", Vector2i(4, 0): "disconnected_road",
-		Vector2i(5, 4): "connected", Vector2i(7, 3): "connected", Vector2i(7, 5): "connected", Vector2i(8, 3): "connected"}
-	var same: bool = true
-	for cell: Vector2i in expected: same = same and city.access.home_reason(city, cell) == expected[cell]
-	check(same, "migrated M2a home reasons match the unchanged M2a results")
-	check(city.power.station_count == 0 and reason(city, Vector2i(7, 3)) == "no_source", "legacy city gains no fabricated power")
+	check(decoded.cleared_tiles == 7 and city.occupancy.count(City.HOME) == 0 and city.occupancy.count(City.ROAD) == 10, "all seven single-tile homes are cleared; all ten roads remain")
+	check(city.access.root == Vector2i(9, 4) and city.access.connected_roads.count(1) == 6 and city.access.served_homes.count(1) == 0, "migrated M2a roads derive the same connected district")
+	check(city.power.station_count == 0 and city.lot_anchors.is_empty(), "legacy city gains no fabricated power or lots")
 	var restored: City = Codec.decode(city.canonical()).city
-	check(Codec.decode(city.canonical()).migrated_from == 0 and restored.canonical() == city.canonical(), "migrated city round-trips as schema 4")
-	for item: City in [city, restored]:
-		command(item, "power", one(Vector2i(7, 1)))
-	check(reason(city, Vector2i(3, 2)) == "powered" and city.access.home_reason(city, Vector2i(3, 2)) == "disconnected_road" and reason(city, Vector2i(7, 3)) == "disconnected", "station powers the legacy isolated district while road access stays missing")
+	check(Codec.decode(city.canonical()).migrated_from == 0 and restored.canonical() == city.canonical(), "migrated city round-trips in the current schema")
 	for item: City in [city, restored]:
 		command(item, "road", one(Vector2i(6, 2)))
+		command(item, "home", one(Vector2i(7, 0)))
 		Clock.advance(item, 1_000_000, 1)
-	check(reason(city, Vector2i(7, 3)) == "powered" and city.access.home_reason(city, Vector2i(3, 2)) == "connected" and city.cash == 971500 - Balance.POWER_COST - Balance.ROAD_COST, "rebuilt legacy bridge joins access and power")
-	check(city.canonical() == restored.canonical() and city.power.home_state == restored.power.home_state and city.rng.randi() == restored.rng.randi(), "legacy continuation matches after a schema-4 reload")
+	check(city.lot_anchors.size() == 1 and city.access.home_reason(city, Vector2i(8, 1)) == "connected" and city.cash == 971500 - Balance.ROAD_COST - Balance.HOME_COST, "a new lot on cleared legacy land joins the rebuilt network")
+	check(city.canonical() == restored.canonical() and city.rng.randi() == restored.rng.randi(), "legacy continuation matches after a reload")
 
 	# Store-level migration: loading writes nothing; first save preserves the original bytes.
 	var files := FaultFiles.new()
@@ -610,11 +739,11 @@ func test_migration() -> void:
 	files.fault = "preserve_copy"
 	check(not store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(path) == legacy and not files.exists(preserved), "failed preservation leaves the earlier save untouched")
 	files.fault = ""
-	check(store.save_city(loaded.city, path).ok and int(store.load_city(path).schema) == City.SCHEMA, "migrated city saves as schema 4")
+	check(store.save_city(loaded.city, path).ok and int(store.load_city(path).schema) == City.SCHEMA, "migrated city saves in the current schema")
 	check(preserved.get_file() == "manual.schema1.json" and FileAccess.get_file_as_string(preserved) == legacy, "original earlier-format bytes kept beside the save")
 	check(FileAccess.get_file_as_string(path + ".bak") == legacy, "previous-good backup holds the earlier save")
-	command(loaded.city, "power", one(Vector2i(7, 1)))
-	check(store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(preserved) == legacy and int(store.load_city(path + ".bak").schema) == City.SCHEMA, "later saves rotate schema 4 and never overwrite the preserved original")
+	command(loaded.city, "road", one(Vector2i(6, 2)))
+	check(store.save_city(loaded.city, path).ok and FileAccess.get_file_as_string(preserved) == legacy and int(store.load_city(path + ".bak").schema) == City.SCHEMA, "later saves rotate the current schema and never overwrite the preserved original")
 
 	# Recovery from an earlier-format backup when the primary is corrupt.
 	var recover_path: String = base.path_join("recover_%d/manual.json" % Time.get_ticks_usec())
@@ -640,14 +769,12 @@ func test_migration() -> void:
 	var mismatched: Dictionary = loaded.city.snapshot()
 	mismatched.simulation_version = "m1-1"
 	mismatched.content_version = "m1-1"
-	check(not Codec.decode(JSON.stringify(mismatched)).ok, "schema 2 with schema-1 version strings refused")
-	# Current-format sample for a future migration: exact schema-2 round trip with a station.
+	check(not Codec.decode(JSON.stringify(mismatched)).ok, "current schema with schema-1 version strings refused")
 	check(FileAccess.get_sha256("res://tests/fixtures/m2b-schema2.json") == "27dbbaefca8ec3e1419d61b0e278c855cd8392c81d76b553128cf9c4c2b8c37a", "M2b schema-2 fixture bytes preserved")
 	var current_text: String = FileAccess.get_file_as_string("res://tests/fixtures/m2b-schema2.json").strip_edges()
 	var current: Dictionary = Codec.decode(current_text)
-	check(current.ok and current.migrated_from == 2 and current.city.canonical() == migrated_text(current_text), "M2b fixture migrates preserving all earlier fields")
+	check(current.ok and current.migrated_from == 2 and current.city.canonical() == migrated_text(current_text), "M2b fixture migrates preserving every value except cleared footprints")
 	if current.ok:
 		var sample: City = current.city
-		check(sample.power.station_count == 1 and sample.power.total_used == 4 and sample.power.short_homes == 0, "M2b fixture derives its recorded supply")
-		check(reason(sample, Vector2i(8, 1)) == "powered" and sample.access.home_reason(sample, Vector2i(8, 1)) == "no_adjacent_road" and reason(sample, Vector2i(7, 3)) == "disconnected" and sample.access.home_reason(sample, Vector2i(7, 3)) == "connected", "M2b fixture keeps power and road access independent")
-	print("PASS group: schema-1 migration and preserved originals")
+		check(current.cleared_tiles == legacy_footprint_tiles(current_text) and current.cleared_tiles == 10 and sample.power.station_count == 0 and sample.occupancy.count(City.POWER) == 0, "M2b single-tile station and homes are cleared, not reinterpreted")
+	print("PASS group: earlier-format migration and preserved originals")

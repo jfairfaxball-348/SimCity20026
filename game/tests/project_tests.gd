@@ -4,13 +4,21 @@ const Codec = preload("res://scripts/persistence/save_codec.gd")
 const Store = preload("res://scripts/persistence/save_store.gd")
 const Clock = preload("res://scripts/sim/simulation_clock.gd")
 var t: SceneTree
-const PARK := Vector2i(5, 2)
+var growth = preload("res://tests/growth_tests.gd").new()
+## The M2e specification's feasibility layout: three home lots around one park.
+const PARK := Vector2i(10, 10)
+const LOT_A := Vector2i(6, 8)
+const LOT_B := Vector2i(11, 8)
+const LOT_C := Vector2i(9, 12)
+const ROOT := Vector2i(15, 11)
+const STATION := Vector2i(12, 12)
+const M2E_FIXTURE_SHA: String = "c6bbc25000b43e4084be8e318f48fab74ca0418982fab17868210f25cd8b41f4"
 
 func town() -> City:
-	var c: City = t.fresh()
-	c.apply_command("road", t.row(4, 1, 7))
-	c.apply_command("power", [Vector2i(1, 5)])
-	c.apply_command("home", [Vector2i(4, 3), Vector2i(5, 3), Vector2i(6, 3)])
+	var c: City = t.land(16, 22)
+	c.apply_command("road", t.row(11, 6, 15))
+	c.apply_command("power", [STATION])
+	c.apply_command("home", [LOT_A, LOT_B, LOT_C])
 	c.apply_command("park", [PARK])
 	return c
 
@@ -27,29 +35,33 @@ func same_sim(a: City, b: City) -> bool:
 
 func run(tester: SceneTree) -> void:
 	t = tester
+	growth.t = t
 	var c: City = town()
 	var i: int = c.index(PARK)
 	var before: String = c.canonical()
-	t.check(c.project_homes(i) == 0 and not c.complete_project(PARK).ok and c.canonical() == before, "empty home plots do not qualify; failure atomic")
+	t.check(c.cash == 922500 and c.lot_anchors.size() == 3, "the specified three-lot square layout is buildable")
+	for lot in [LOT_A, LOT_B, LOT_C]:
+		t.check(c.distance_to_footprint(PARK, c.index(lot)) <= 3 and c.access.home_reason(c, lot) == "connected", "lot %s touches the street and lies within three side-steps of the park" % lot)
+	t.check(c.project_homes(i) == 0 and not c.complete_project(PARK).ok and c.canonical() == before, "empty home lots do not qualify; failure atomic")
 	days(c, 5)
-	t.check(c.project_homes(i) == 3 and not c.project.completed, "three level-one homes qualify without automatic completion")
-	c.apply_command("clear", [Vector2i(7, 4)])
+	t.check(c.project_homes(i) == 3 and not c.project.completed, "three level-one home lots qualify without automatic completion")
+	c.apply_command("clear", [ROOT])
 	before = c.canonical()
 	t.check(c.project_homes(i) == 0 and not c.complete_project(PARK).ok and c.canonical() == before, "road loss invalidates stale completion immediately during decline grace")
-	c.apply_command("road", [Vector2i(7, 4)])
+	c.apply_command("road", [ROOT])
 	t.check(c.project_homes(i) == 3, "road restoration immediately restores eligibility")
-	c.apply_command("clear", [Vector2i(1, 5)])
-	t.check(c.project_homes(i) == 0, "power loss immediately blocks standing developed homes")
-	c.apply_command("power", [Vector2i(1, 5)])
+	c.apply_command("clear", [Vector2i(14, 14)])
+	t.check(c.project_homes(i) == 0, "power loss immediately blocks standing developed lots")
+	c.apply_command("power", [STATION])
 	t.check(c.project_homes(i) == 3, "power restoration restores eligibility")
-	c.development[c.index(Vector2i(6, 3))] = 0
-	c.development[c.index(Vector2i(4, 3))] = 2
-	c.development[c.index(Vector2i(5, 3))] = 2
+	c.development[c.index(LOT_C)] = 0
+	c.development[c.index(LOT_A)] = 2
+	c.development[c.index(LOT_B)] = 2
 	c.rebuild_derived()
-	t.check(c.project_homes(i) == 2 and not c.complete_project(PARK).ok, "two level-two plots are insufficient")
-	c.development[c.index(Vector2i(6, 3))] = 1
+	t.check(c.project_homes(i) == 2 and not c.complete_project(PARK).ok, "two level-two lots are insufficient")
+	c.development[c.index(LOT_C)] = 1
 	c.rebuild_derived()
-	for cell in [Vector2i(-1, -1), Vector2i(8, 8), Vector2i(4, 3)]:
+	for cell in [Vector2i(-1, -1), Vector2i(16, 22), Vector2i(7, 9)]:
 		before = c.canonical()
 		t.check(not c.complete_project(cell).ok and c.canonical() == before, "invalid completion target is atomic %s" % cell)
 	c.cash = 0
@@ -64,10 +76,10 @@ func run(tester: SceneTree) -> void:
 	days(c, 90)
 	days(paired, 90)
 	t.check(same_sim(c, paired), "completion has no simulation effect over three months")
-	c.apply_command("clear", [Vector2i(7, 4)])
+	c.apply_command("clear", [ROOT])
 	days(c, 20)
 	t.check(c.project.completed and c.project.park_index == i and c.project_homes(i) == 0, "completion survives later service loss and decline")
-	t.check(Codec.decode(c.canonical()).city.canonical() == c.canonical(), "completed history loads without currently qualifying homes")
+	t.check(Codec.decode(c.canonical()).city.canonical() == c.canonical(), "completed history loads without currently qualifying lots")
 	c.apply_command("clear", [PARK])
 	t.check(c.project.completed and c.project.park_index == -1 and Codec.decode(c.canonical()).city.canonical() == c.canonical(), "clearing anchor retains completion and round-trips")
 	c.cash = 10000
@@ -86,44 +98,52 @@ func run(tester: SceneTree) -> void:
 	t.check(FileAccess.get_sha256(fixture) == "805fb299a49c14babfa7d96a375026c435037d5db546f89b01565e743cf489ef", "schema-5 completed fixture hash")
 	var fixture_text: String = FileAccess.get_file_as_string(fixture).strip_edges()
 	var loaded: Dictionary = Codec.decode(fixture_text)
-	t.check(loaded.ok and loaded.migrated_from == 0 and loaded.city.canonical() == fixture_text, "schema-5 fixture exact round trip")
+	t.check(loaded.ok and loaded.migrated_from == 5 and loaded.cleared_tiles == t.legacy_footprint_tiles(fixture_text) and loaded.city.canonical() == t.migrated_text(fixture_text), "schema-5 fixture migrates keeping completion and its park")
 	if loaded.ok:
 		var saved: City = loaded.city
 		saved.advance_day()
-		t.check(saved.tick == 60 and saved.cash == 934900 and saved.pending_us == 234567 and saved.project == {"completed": true, "park_index": 21}, "schema-5 fixture next settlement preserves completion and fractional time")
-	print("PASS group: project eligibility, atomic completion, lifetime and schema 5")
+		t.check(saved.tick == 60 and saved.cash == 938500 and saved.pending_us == 234567 and saved.project == {"completed": true, "park_index": 21}, "migrated schema-5 fixture settles grant minus road and park upkeep and keeps completion")
+	var current: String = "res://tests/fixtures/m2e-schema6.json"
+	t.check(FileAccess.get_sha256(current) == M2E_FIXTURE_SHA, "schema-6 lot fixture hash")
+	var current_text: String = FileAccess.get_file_as_string(current).strip_edges()
+	var current_loaded: Dictionary = Codec.decode(current_text)
+	t.check(current_loaded.ok and current_loaded.migrated_from == 0 and current_loaded.city.canonical() == current_text, "schema-6 lot fixture exact round trip")
+	if current_loaded.ok:
+		var lots: City = current_loaded.city
+		var opening: int = lots.cash
+		t.check(lots.tick == 59 and lots.lot_anchors.size() == 3 and lots.station_anchors.size() == 1 and lots.growth.population == 12 and lots.last_budget.tick == 30 and lots.project.completed, "schema-6 fixture holds developed lots, a 4x4 station, a park, a ledger and a completed project")
+		lots.advance_day()
+		t.check(lots.tick == 60 and lots.cash == opening + 4400 and lots.pending_us == 234567 and lots.project == {"completed": true, "park_index": i}, "schema-6 fixture continues to an exact $44 settlement keeping completion and fractional time")
+	print("PASS group: project eligibility with lots, atomic completion, lifetime and saves")
 
 func test_geometry() -> void:
-	var c: City = t.fresh()
-	c.apply_command("road", t.row(4, 0, 7))
-	c.apply_command("power", [Vector2i(7, 5)])
+	var c: City = t.land(16, 16)
+	c.apply_command("road", t.join(t.column(3, 0, 8), t.row(8, 4, 15)))
+	c.apply_command("power", [Vector2i(4, 4)])
 	c.apply_command("park", [Vector2i(0, 0)])
-	c.apply_command("home", [Vector2i(0, 3), Vector2i(1, 3)])
-	c.development[c.index(Vector2i(0, 3))] = 1
-	c.development[c.index(Vector2i(1, 3))] = 2
+	c.apply_command("home", [Vector2i(0, 3), Vector2i(4, 0)])
+	var near: int = c.index(Vector2i(0, 3))
+	c.development[near] = 1
+	c.development[c.index(Vector2i(4, 0))] = 2
 	c.rebuild_derived()
-	t.check(c.project_homes(0) == 1, "corner-clipped radius includes three and excludes four side-steps")
-	c.apply_command("park", [Vector2i(6, 1)])
-	t.check(c.project_homes(c.index(Vector2i(6, 1))) == 0, "disjoint parks cannot pool homes")
-	c.occupancy[c.index(Vector2i(0, 3))] = City.SHOP
+	t.check(c.growth.serviced(c, near) and c.growth.serviced(c, c.index(Vector2i(4, 0))), "both geometry lots have road access and power")
+	t.check(c.project_homes(0) == 1, "a lot with a tile at three side-steps counts; a lot whose nearest tile is four away does not")
+	c.apply_command("park", [Vector2i(14, 0)])
+	t.check(c.project_homes(c.index(Vector2i(14, 0))) == 0, "disjoint parks cannot pool lots")
+	for tile in c.footprint_cells(near): c.occupancy[tile] = City.SHOP
 	c.rebuild_derived()
-	t.check(c.project_homes(0) == 0, "developed shop excluded")
-	c.occupancy[c.index(Vector2i(0, 3))] = City.WORKSHOP
+	t.check(c.project_homes(0) == 0, "developed shop lot excluded")
+	for tile in c.footprint_cells(near): c.occupancy[tile] = City.WORKSHOP
 	c.rebuild_derived()
-	t.check(c.project_homes(0) == 0, "developed workshop excluded")
-	# Capacity allocation displaces a developed home; park does not protect it.
-	c = t.land(32, 8)
-	c.apply_command("road", t.row(4, 0, 31))
-	c.apply_command("power", [Vector2i(0, 5)])
-	c.apply_command("home", t.row(3, 10, 29))
-	c.apply_command("park", [Vector2i(29, 2)])
-	c.development[c.index(Vector2i(29, 3))] = 2
-	c.rebuild_derived()
-	t.check(c.project_homes(c.index(Vector2i(29, 2))) == 1, "distant supplied developed home qualifies")
-	c.apply_command("shop", [Vector2i(1, 3)])
-	t.check(c.project_homes(c.index(Vector2i(29, 2))) == 0, "nearest-first power displacement removes project eligibility")
-	c.apply_command("power", [Vector2i(31, 5)])
-	t.check(c.project_homes(c.index(Vector2i(29, 2))) == 1, "added capacity restores project eligibility")
+	t.check(c.project_homes(0) == 0, "developed workshop lot excluded")
+	# Capacity allocation displaces a developed lot; a park does not protect it.
+	c = growth.displacement_town()
+	c.apply_command("park", [Vector2i(66, 0)])
+	t.check(c.project_homes(c.index(Vector2i(66, 0))) == 1, "distant supplied developed lot qualifies")
+	c.apply_command("shop", [Vector2i(0, 1)])
+	t.check(c.project_homes(c.index(Vector2i(66, 0))) == 0, "nearest-first power displacement removes project eligibility")
+	c.apply_command("power", [Vector2i(68, 5)])
+	t.check(c.project_homes(c.index(Vector2i(66, 0))) == 1, "added capacity restores project eligibility")
 
 func test_saves() -> void:
 	var c: City = town()
@@ -137,7 +157,7 @@ func test_saves() -> void:
 	Clock.advance(b, 600000, 1)
 	t.check(c.canonical() == b.canonical() and c.tick == 60, "completed project continuation crosses month with fractional frame partition")
 	var data: Dictionary = c.snapshot()
-	for invalid in [null, {}, {"completed": 1, "park_index": -1}, {"completed": false, "park_index": c.index(PARK)}, {"completed": true, "park_index": true}, {"completed": true, "park_index": 1.5}, {"completed": true, "park_index": 64}, {"completed": true, "park_index": -2}, {"completed": true, "park_index": 0}, {"completed": true, "park_index": -1, "extra": 0}]:
+	for invalid in [null, {}, {"completed": 1, "park_index": -1}, {"completed": false, "park_index": c.index(PARK)}, {"completed": true, "park_index": true}, {"completed": true, "park_index": 1.5}, {"completed": true, "park_index": 352}, {"completed": true, "park_index": -2}, {"completed": true, "park_index": 0}, {"completed": true, "park_index": -1, "extra": 0}]:
 		data.project = invalid
 		t.check(not Codec.decode(JSON.stringify(data)).ok, "invalid project record rejected %s" % str(invalid))
 	data.erase("project")
@@ -149,18 +169,25 @@ func test_saves() -> void:
 		var old: Dictionary = JSON.parse_string(text)
 		old.project = {"completed": false, "park_index": -1}
 		t.check(not Codec.decode(JSON.stringify(old)).ok, "legacy schema rejects hidden project: " + fixture)
-	var legacy: String = FileAccess.get_file_as_string("res://tests/fixtures/m2d-schema4.json")
+	var schema5: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://tests/fixtures/m3a-schema5.json"))
+	var zeros: Array = []
+	zeros.resize(schema5.occupancy.size())
+	zeros.fill(0)
+	schema5.footprint_anchor = zeros
+	t.check(not Codec.decode(JSON.stringify(schema5)).ok, "schema 5 rejects hidden footprint data")
 	var files = t.FaultFiles.new()
 	var store := Store.new(files)
 	var base: String = OS.get_environment("CITY_TEST_DIR")
 	if base.is_empty(): base = "user://tests"
-	for backup in [false, true]:
-		var path: String = base.path_join("project_%d_%s/manual.json" % [Time.get_ticks_usec(), str(backup)])
-		files.write_text(path, "{broken" if backup else legacy)
-		if backup: files.write_text(path + ".bak", legacy)
-		if backup: store.save_city(c, path)
-		files.fault = "preserve_copy"
-		var primary: String = FileAccess.get_file_as_string(path)
-		t.check(not store.save_city(c, path).ok and FileAccess.get_file_as_string(path) == primary and (not backup or FileAccess.get_file_as_string(path + ".bak") == legacy), "schema-4 preservation failure retains primary/backup %s" % str(backup))
-		files.fault = ""
-		t.check(store.save_city(c, path).ok and FileAccess.get_file_as_string(Store.preserved_path(path, 4)) == legacy, "schema-4 bytes preserved before replacement %s" % str(backup))
+	for source in [["m2d-schema4", 4], ["m3a-schema5", 5]]:
+		var legacy: String = FileAccess.get_file_as_string("res://tests/fixtures/%s.json" % source[0])
+		for backup in [false, true]:
+			var path: String = base.path_join("project_%d_%d_%s/manual.json" % [source[1], Time.get_ticks_usec(), str(backup)])
+			files.write_text(path, "{broken" if backup else legacy)
+			if backup: files.write_text(path + ".bak", legacy)
+			if backup: store.save_city(c, path)
+			files.fault = "preserve_copy"
+			var primary: String = FileAccess.get_file_as_string(path)
+			t.check(not store.save_city(c, path).ok and FileAccess.get_file_as_string(path) == primary and (not backup or FileAccess.get_file_as_string(path + ".bak") == legacy), "schema-%d preservation failure retains primary/backup %s" % [source[1], str(backup)])
+			files.fault = ""
+			t.check(store.save_city(c, path).ok and FileAccess.get_file_as_string(Store.preserved_path(path, source[1])) == legacy, "schema-%d bytes preserved before replacement %s" % [source[1], str(backup)])

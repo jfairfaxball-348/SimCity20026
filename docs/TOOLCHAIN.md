@@ -1,6 +1,6 @@
 # Toolchain and local commands
 
-Verified through **5 November 2026**. This document describes executed local tooling; the broader platform comparison remains in [Platform decision](PLATFORM_DECISION.md).
+Verified through **6 November 2026**. This document describes executed local tooling; the broader platform comparison remains in [Platform decision](PLATFORM_DECISION.md).
 
 ## Exact pin and provenance
 
@@ -44,7 +44,7 @@ Run from the repo root:
 - **Run:** launches the game through the pinned editor runtime.
 - **Export:** imports and makes an unsigned x64 Windows release EXE/PCK, adds notices/README, writes `BUILD.json` with SHA256 file hashes and the game version/save schema read from `project.godot` and `city_state.gd`.
 - **Verify:** Test + Export, input/layout/save checks against the exported PCK, then headless startup of the actual release EXE. It does not replace native UI checks.
-- **Package:** validates the existing export against its manifest and an explicit file allowlist, then creates `builds/citybuilder-<game version>-windows-x64.zip` (currently `0.6.0-m3a`) and a SHA256 sidecar. It does not rebuild or upload the game. Exercise the export before packaging.
+- **Package:** validates the existing export against its manifest and an explicit file allowlist, then creates `builds/citybuilder-<game version>-windows-x64.zip` (currently `0.7.0-m2e`) and a SHA256 sidecar. It does not rebuild or upload the game. Exercise the export before packaging.
 
 Setup and project scripts stop on failures. Do not bypass checksum/version errors by using another editor silently. Local archives/tools, `.godot` caches, builds/logs, and export credentials are ignored. Keep Godot `.uid` source sidecars in Git.
 
@@ -81,3 +81,7 @@ CI is not configured or executed. Keep local verification reproducible; adopt a 
 ## M3a checkpoint, 5 November 2026
 
 Game 0.6.0-m3a, schema 5 / m3a-1. Final verification passed 418 source / 360 packed checks and actual EXE headless startup. Native Windows tests exercised project construction/completion, largest-text actions, save/restart/byte-identical resave, demolition/reload and final scrollable Help. Both original profile files were restored with matching hashes and count. [M3a evidence](sessions/2026-11-05-m3a.md) separates the initial native completion run from the final Help-only rebuild and subsequent native checks. The final distribution README and its manifest entry were refreshed without changing EXE/PCK bytes before packaging. Earlier M2d records above remain historical evidence.
+
+## M2e checkpoint, 6 November 2026
+
+Game 0.7.0-m2e, schema 6 / m2e-1: 3x3 zone lots and 4x4 power stations. Final verification under Windows PowerShell 5.1 passed 479 source / 415 packed checks and actual EXE headless startup. PowerShell 7 was not on this session's PATH and was not used. Computer-use tools were unavailable, so the actual EXE was driven through posted window messages to its own window (`builds/validation/m2e/native/`, ignored), with `PrintWindow` captures and no cursor movement. A smoke rerun used the final export. The tested process resolved `%APPDATA%/OriginalCityBuilder`; its absent `saves` folder was restored afterwards. Seven fixtures are hash-checked. See [M2e evidence](sessions/2026-11-06-m2e.md).

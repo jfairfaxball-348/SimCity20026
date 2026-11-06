@@ -24,11 +24,15 @@ func rebuild(city: RefCounted) -> void:
 			var neighbour: Vector2i = cell + direction
 			if not city.inside(neighbour): continue
 			var i: int = city.index(neighbour)
-			if city.is_zone(city.occupancy[i]):
-				served_homes[i] = 1
-			elif city.occupancy[i] == city.ROAD and connected_roads[i] == 0:
+			if city.occupancy[i] == city.ROAD and connected_roads[i] == 0:
 				connected_roads[i] = 1
 				queue.append(neighbour)
+	# D30: a lot (marked at its anchor) is served by any connected road beside it.
+	for anchor in city.lot_anchors:
+		for n in city.perimeter(anchor):
+			if connected_roads[n] != 0:
+				served_homes[anchor] = 1
+				break
 
 func _find_root(city: RefCounted) -> Vector2i:
 	var preferred := Vector2i(city.width - 1, city.height / 2)
@@ -46,14 +50,16 @@ func _find_root(city: RefCounted) -> Vector2i:
 				best_distance = distance
 	return chosen
 
+## Reason for the lot covering this cell (any of its tiles may be given).
 func home_reason(city: RefCounted, cell: Vector2i) -> String:
 	if not city.inside(cell) or not city.is_zone(city.occupancy[city.index(cell)]):
 		return "not_home"
+	var anchor: int = city.anchor_at(cell)
+	if anchor < 0: return "not_home"
 	if root.x < 0: return "no_outside_link"
-	if cell == root: return "link_occupied"
-	if served_homes[city.index(cell)] != 0: return "connected"
-	for direction in DIRECTIONS:
-		var neighbour: Vector2i = cell + direction
-		if city.inside(neighbour) and city.occupancy[city.index(neighbour)] == city.ROAD:
+	if city.footprint_owner[city.index(root)] == anchor: return "link_occupied"
+	if served_homes[anchor] != 0: return "connected"
+	for n in city.perimeter(anchor):
+		if city.occupancy[n] == city.ROAD:
 			return "disconnected_road"
 	return "no_adjacent_road"

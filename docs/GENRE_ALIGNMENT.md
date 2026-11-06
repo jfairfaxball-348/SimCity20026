@@ -38,7 +38,7 @@ Relaxed play (U05) stays the default. A candidate that conflicts with it (for ex
 
 ## Effect on the plan
 
-- [M2e](M2E_SPEC.md) (3x3 lots and 4x4 stations) remains the next implementation session. U18 also sets a standing preference: when choosing between options, prefer whichever is closest to the original game, within the rights boundary above.
-- After M2e, the owner chooses whether the [M3b guide](M3B_SPEC.md) or the first chosen system comes next.
+- [M2e](M2E_SPEC.md) (3x3 lots and 4x4 stations) is implemented and locally verified. U18 also sets a standing preference: when choosing between options, prefer whichever is closest to the original game, within the rights boundary above.
+- Next, the owner chooses whether the [M3b guide](M3B_SPEC.md) (the default) or the first chosen system comes next.
 - If several systems are chosen, the product brief's positioning, "a small, readable city simulation about making welcoming neighbourhoods", and its first-release exclusions need an owner revision.
 - The "Conditions and notes" column records the earlier study proposals for context. Under U17 the owner may override any of them except the rights boundary.

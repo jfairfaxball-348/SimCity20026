@@ -78,7 +78,7 @@ func _label_networks(city: RefCounted, count: int) -> void:
 		while head < queue.size():
 			var i: int = queue[head]
 			head += 1
-			if city.occupancy[i] == city.POWER:
+			if city.occupancy[i] == city.POWER and city.footprint_anchor[i] != 0:
 				stations += 1
 			for direction in DIRECTIONS:
 				var n: int = _neighbour(city, i, direction)
@@ -109,15 +109,14 @@ func _measure_distances(city: RefCounted, count: int) -> void:
 				queue.append(n)
 
 func _allocate(city: RefCounted, count: int) -> void:
-	# Plots touching a sourced network are served by (nearest distance, plot index).
+	# D30: lots (state kept at their anchors) touching a sourced network through
+	# any perimeter tile are served by (nearest distance, anchor index).
 	var order: Array[int] = []
-	for i in range(count):
-		if not city.is_zone(city.occupancy[i]): continue
+	for i in city.lot_anchors:
 		var nearest: int = NONE
 		var touches: bool = false
-		for direction in DIRECTIONS:
-			var n: int = _neighbour(city, i, direction)
-			if n == NONE or network_of[n] == NONE: continue
+		for n in city.perimeter(i):
+			if network_of[n] == NONE: continue
 			touches = true
 			if distance[n] != NONE and (nearest == NONE or distance[n] + 1 < nearest):
 				nearest = distance[n] + 1
@@ -132,9 +131,8 @@ func _allocate(city: RefCounted, count: int) -> void:
 		var chosen_distance: int = 0
 		var nearest_network: int = NONE
 		var nearest_distance: int = 0
-		for direction in DIRECTIONS:
-			var n: int = _neighbour(city, i, direction)
-			if n == NONE or network_of[n] == NONE or distance[n] == NONE: continue
+		for n in city.perimeter(i):
+			if network_of[n] == NONE or distance[n] == NONE: continue
 			var network: int = network_of[n]
 			var steps: int = distance[n] + 1
 			if nearest_network == NONE or steps < nearest_distance or (steps == nearest_distance and network < nearest_network):
@@ -163,11 +161,14 @@ func network_at(city: RefCounted, cell: Vector2i) -> int:
 func carries_power(i: int) -> bool:
 	return network_of[i] != NONE and network_stations[network_of[i]] > 0
 
+## Reason for the lot covering this cell (any of its tiles may be given).
 func home_reason(city: RefCounted, cell: Vector2i) -> String:
 	if not city.inside(cell) or not city.is_zone(city.occupancy[city.index(cell)]):
 		return "not_home"
-	match home_state[city.index(cell)]:
+	var anchor: int = city.anchor_at(cell)
+	if anchor < 0: return "not_home"
+	match home_state[anchor]:
 		POWERED: return "powered"
 		SHORTAGE: return "shortage"
 	if station_count == 0: return "no_source"
-	return "disconnected" if home_state[city.index(cell)] == DISCONNECTED else "no_adjacent_network"
+	return "disconnected" if home_state[anchor] == DISCONNECTED else "no_adjacent_network"

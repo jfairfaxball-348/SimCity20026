@@ -49,9 +49,17 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, VIEW), Color("2d4644"))
 	var first: Vector2i = Vector2i((origin / TILE).floor())
 	var last: Vector2i = Vector2i(((origin + VIEW / zoom) / TILE).ceil())
+	# Ground first, then each visible lot/station once over its whole footprint (D30).
+	var anchors: Dictionary = {}
 	for y in range(maxi(0, first.y), mini(city.height, last.y + 1)):
 		for x in range(maxi(0, first.x), mini(city.width, last.x + 1)):
 			_draw_cell(Vector2i(x, y))
+			var owner: int = city.footprint_owner[city.index(Vector2i(x, y))]
+			if owner >= 0: anchors[owner] = true
+	var ordered: Array = anchors.keys()
+	ordered.sort()
+	for anchor in ordered:
+		_draw_footprint(int(anchor))
 	_draw_outside_link()
 	var cells: Array[Vector2i] = preview_cells.duplicate()
 	if cells.is_empty() and city.inside(hover):
@@ -79,8 +87,8 @@ func _draw_cell(cell: Vector2i) -> void:
 	match city.occupancy[i]:
 		City.ROAD:
 			_draw_road(cell, at, z)
-		City.POWER:
-			_draw_station(at, rect, z)
+		City.POWER, City.HOME, City.SHOP, City.WORKSHOP:
+			pass # drawn once per footprint in _draw_footprint
 		City.PARK:
 			# Original pocket garden: pale path, rectangular bench, rounded tree crown.
 			draw_rect(rect.grow(-z), Color("4c795b"))
@@ -94,8 +102,6 @@ func _draw_cell(cell: Vector2i) -> void:
 					draw_line(at + flower * z, at + (flower + Vector2(0, 2)) * z, Color("dce8ab"), z)
 					draw_rect(Rect2(at + (flower - Vector2.ONE) * z, Vector2(3, 3) * z), Color("edb6a3"))
 					draw_rect(Rect2(at + flower * z, Vector2.ONE * z), Color("fff0bb"))
-		City.HOME, City.SHOP, City.WORKSHOP:
-			_draw_zone(i, at, rect, z)
 		_:
 			if variation < 13:
 				# Decorative shrubs, with no collision or simulation role.
@@ -107,7 +113,12 @@ func _draw_cell(cell: Vector2i) -> void:
 	if grid_visible:
 		draw_line(at, at + Vector2(16, 0) * z, Color(0.22, 0.33, 0.24, 0.13), z)
 		draw_line(at, at + Vector2(0, 16) * z, Color(0.22, 0.33, 0.24, 0.13), z)
-	if access_visible and (city.occupancy[i] == City.ROAD or City.is_zone(city.occupancy[i])):
+	if city.occupancy[i] == City.ROAD:
+		_draw_marks(i, at, z)
+
+## Road access (+/-) and power (bolt/x) marks. Lots carry one set at their anchor.
+func _draw_marks(i: int, at: Vector2, z: float) -> void:
+	if access_visible:
 		var connected: bool = city.access.connected_roads[i] != 0 or city.access.served_homes[i] != 0
 		var mark: Vector2 = at + Vector2(11, 4) * z
 		draw_rect(Rect2(mark - Vector2(3, 3) * z, Vector2(7, 7) * z), Color("304842"))
@@ -117,6 +128,18 @@ func _draw_cell(cell: Vector2i) -> void:
 			draw_line(mark - Vector2(0, 2) * z, mark + Vector2(0, 2) * z, color, z)
 	if power_visible:
 		_draw_power_mark(i, at, z)
+
+func _draw_footprint(anchor: int) -> void:
+	var kind: int = city.occupancy[anchor]
+	var size: int = City.footprint_size(kind)
+	var at: Vector2 = tile_rect(Vector2i(anchor % city.width, anchor / city.width)).position
+	var z: float = float(zoom)
+	var rect := Rect2(at, Vector2.ONE * TILE * size * z)
+	if kind == City.POWER:
+		_draw_station(at, rect, z)
+	else:
+		_draw_lot(anchor, at, rect, z)
+		_draw_marks(anchor, at, z)
 
 func _draw_power_mark(i: int, at: Vector2, z: float) -> void:
 	# Shape, not colour alone: a bolt means supplied, a cross means an unpowered plot.
@@ -133,19 +156,58 @@ func _draw_power_mark(i: int, at: Vector2, z: float) -> void:
 		draw_line(mark + Vector2(-2, -2) * z, mark + Vector2(2, 2) * z, color, z)
 		draw_line(mark + Vector2(-2, 2) * z, mark + Vector2(2, -2) * z, color, z)
 
-func _draw_zone(i: int, at: Vector2, rect: Rect2, z: float) -> void:
+## D30: one original code-drawn building per 3x3 lot. Zone families keep distinct
+## silhouettes (pitched roof, awning, sawtooth roof) as well as colours.
+func _draw_lot(i: int, at: Vector2, rect: Rect2, z: float) -> void:
 	var kind: int = city.occupancy[i]
 	var level: int = city.development[i]
 	var color := Color("577c62") if kind == City.HOME else Color("557f94") if kind == City.SHOP else Color("9a7954")
+	var wall := Color("e3d9b5")
+	var dark := Color("4b575a")
+	var ink := Color("6e5552")
 	draw_rect(rect.grow(-z), color)
 	draw_rect(rect.grow(-2 * z), Color("d4d3a8"), false, z)
-	# Empty zones have distinct symbols: roof, awning, sawtooth roof.
+	if level == 0:
+		# An empty parcel shows its zone symbol on the middle tile.
+		_draw_zone_symbol(kind, 0, at + Vector2(16, 16) * z, z)
+		return
+	var p := func(x: float, y: float) -> Vector2: return at + Vector2(x, y) * z
+	match kind:
+		City.HOME:
+			var top: float = 22.0 if level == 1 else 15.0
+			draw_rect(Rect2(p.call(12, top), Vector2(24, 40 - top) * z), wall)
+			draw_colored_polygon(PackedVector2Array([p.call(9, top), p.call(24, top - 10), p.call(39, top)]), Color("a5604c"))
+			draw_polyline(PackedVector2Array([p.call(9, top), p.call(24, top - 10), p.call(39, top)]), ink, z)
+			draw_rect(Rect2(p.call(22, 32), Vector2(4, 8) * z), dark)
+			var rows: Array = [26] if level == 1 else [19, 27]
+			for y in rows:
+				for x in [15, 29]: draw_rect(Rect2(p.call(x, y), Vector2(4, 4) * z), dark)
+		City.SHOP:
+			var top: float = 21.0 if level == 1 else 10.0
+			draw_rect(Rect2(p.call(8, top), Vector2(32, 40 - top) * z), wall)
+			var band: float = 21.0 if level == 1 else 23.0
+			for x in range(6, 42, 6):
+				draw_rect(Rect2(p.call(x, band - 4), Vector2(6, 5) * z), Color("c9775a") if (x / 6) % 2 == 0 else Color("efe3c0"))
+			for x in [11, 27]: draw_rect(Rect2(p.call(x, band + 4), Vector2(10, 7) * z), Color("8fb3b5"))
+			draw_rect(Rect2(p.call(22, 31), Vector2(4, 9) * z), dark)
+			if level == 2:
+				for x in [12, 22, 32]: draw_rect(Rect2(p.call(x, 13), Vector2(4, 4) * z), dark)
+		_:
+			var top: float = 22.0 if level == 1 else 16.0
+			draw_rect(Rect2(p.call(6, top), Vector2(36, 40 - top) * z), Color("d8cfa6"))
+			var teeth: PackedVector2Array = PackedVector2Array()
+			for x in range(6, 42, 9):
+				teeth.append(p.call(x, top))
+				teeth.append(p.call(x + 9, top - 7))
+				teeth.append(p.call(x + 9, top))
+			draw_polyline(teeth, ink, z)
+			draw_rect(Rect2(p.call(18, 30), Vector2(12, 10) * z), Color("6e6a5c"))
+			if level == 2:
+				draw_rect(Rect2(p.call(34, top - 14), Vector2(4, 8) * z), Color("8c6f4e"))
+				for x in [9, 36]: draw_rect(Rect2(p.call(x, top + 4), Vector2(3, 3) * z), dark)
+
+func _draw_zone_symbol(kind: int, level: int, at: Vector2, z: float) -> void:
 	var roof_y: int = 6 if level < 2 else 3
-	if level > 0:
-		draw_rect(Rect2(at + Vector2(3, roof_y + 2) * z, Vector2(10, 11 - roof_y) * z), Color("e3d9b5"))
-		draw_rect(Rect2(at + Vector2(7, 10) * z, Vector2(2, 3) * z), Color("4b575a"))
-		if level == 2:
-			for x in [4, 10]: draw_rect(Rect2(at + Vector2(x, 7) * z, Vector2(2, 2) * z), Color("4b575a"))
 	var ink := Color("eeddb5") if level == 0 else Color("6e5552")
 	if kind == City.HOME:
 		draw_polyline(PackedVector2Array([at + Vector2(3, roof_y + 2) * z, at + Vector2(8, roof_y - 1) * z, at + Vector2(13, roof_y + 2) * z]), ink, z)
@@ -161,13 +223,18 @@ func _draw_bolt(center: Vector2, z: float, color: Color) -> void:
 	draw_polyline(points, color, z)
 
 func _draw_station(at: Vector2, rect: Rect2, z: float) -> void:
-	# An original squat generating hall with a chimney and a bolt sign.
+	# D30: an original 4x4 generating hall with two chimneys and a large bolt sign.
 	draw_rect(rect.grow(-z), Color("3f5257"))
-	draw_rect(Rect2(at + Vector2(10, 1) * z, Vector2(2, 4) * z), Color("8c6f4e"))
-	draw_rect(Rect2(at + Vector2(2, 4) * z, Vector2(12, 2) * z), Color("8c6f4e"))
-	draw_rect(Rect2(at + Vector2(3, 6) * z, Vector2(10, 7) * z), Color("d8cfa6"))
-	draw_rect(Rect2(at + Vector2(3, 13) * z, Vector2(10, 1) * z), Color("a59c7a"))
-	_draw_bolt(at + Vector2(8, 9) * z, z, Color("c7902f"))
+	draw_rect(rect.grow(-2 * z), Color("6d7f7d"), false, z)
+	for chimney in [Rect2(14, 4, 5, 16), Rect2(44, 8, 5, 12)]:
+		draw_rect(Rect2(at + chimney.position * z, chimney.size * z), Color("8c6f4e"))
+		draw_rect(Rect2(at + chimney.position * z, Vector2(chimney.size.x, 2) * z), Color("b8a27a"))
+	draw_rect(Rect2(at + Vector2(6, 19) * z, Vector2(52, 5) * z), Color("8c6f4e"))
+	draw_rect(Rect2(at + Vector2(8, 24) * z, Vector2(48, 32) * z), Color("d8cfa6"))
+	draw_rect(Rect2(at + Vector2(8, 56) * z, Vector2(48, 2) * z), Color("a59c7a"))
+	draw_rect(Rect2(at + Vector2(27, 46) * z, Vector2(10, 10) * z), Color("4b575a"))
+	draw_rect(Rect2(at + Vector2(25, 28) * z, Vector2(14, 14) * z), Color("3f5257"))
+	_draw_bolt(at + Vector2(32, 35) * z, 2 * z, Color("f2d36b"))
 
 func _draw_outside_link() -> void:
 	if city.access.root.x < 0: return

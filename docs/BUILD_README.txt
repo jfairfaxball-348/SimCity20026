@@ -1,14 +1,18 @@
-UNTITLED CITY BUILDER - M3a NEIGHBOURHOOD PROJECT (0.6.0-m3a)
+UNTITLED CITY BUILDER - M2e ZONE LOTS (0.7.0-m2e)
 
 Run citybuilder.exe. Keep citybuilder.pck beside it.
-Local development checkpoint; monthly economy, a pocket park, and one optional project.
+Local development checkpoint; 3x3 zone lots, 4x4 power stations, a monthly
+economy, a pocket park, and one optional project.
 
-1 Roads ($10) / 2 Homes / 6 Shops / 7 Workshops ($25 per plot)
-P Power station ($500, 20 plots) / 8 Park ($100) / 3 Clear (free)
+1 Roads ($10 per tile) / 2 Homes / 6 Shops / 7 Workshops ($25 per 3x3 lot)
+P Power station (4x4, $500, 20 lots) / 8 Park ($100) / 3 Clear (free)
+Zone tools centre a 3x3 lot on the pointer; drag to lay a straight row or
+column of lots. Clear any tile of a lot or station to remove all of it.
 B Budget: expected income/upkeep and latest actual settlement.
-J Project: choose a park with three developed, serviced home plots within
-3 side-steps. Complete it once to add cosmetic flowers; no new growth or
-income benefit. Clear the park freely; completion remains, flowers do not.
+J Project: choose a park with three developed, serviced home lots that each
+have a tile within 3 side-steps. Complete it once to add cosmetic flowers;
+no new growth or income benefit. Clear the park freely; completion remains,
+flowers do not.
 Left drag: preview a stroke; release to build. Right click/Escape: cancel.
 Invalid strokes never partially apply. Identical repainting is free.
 WASD/arrows/middle drag: pan. Wheel/+/-: zoom. Home: outside link.
@@ -17,12 +21,13 @@ Space: pause/resume. 4: normal speed. 5: fast speed.
 Ctrl+S: save. Ctrl+L: load. F6: display and text settings.
 
 Lay a road on the east-edge gold flag. Join streets along shared sides.
-Place zones beside connected streets and a station beside the network.
-Each zone requests one power unit even when empty. Stations supply the
-nearest plots first; new nearer plots can displace grown buildings.
-Power works without the outside link; growth needs both services.
+A lot needs a connected road beside any of its sides; corners do not count.
+Place a station beside the network. Each lot requests one power unit even
+when empty. Stations supply the nearest lots first; new nearer lots can
+displace grown buildings. Power works without the outside link; growth
+needs both services. Stations carry power but never road access.
 
-Every five days, eligible plots can gain one of two development levels.
+Every five days, eligible lots can gain one of two development levels.
 A home level holds 4 residents; shops/workshops provide 2/4 jobs per level.
 Starter demand supports 12 residents before jobs exist. Residents create
 business demand; jobs support more homes. HUD demand H/S/W counts level
@@ -31,11 +36,11 @@ first, then map order. Satisfied demand stops new growth without evicting existi
 Two growth checks without road access or power lose one level. Reconnect
 or add capacity to stop decline; normal demand allows recovery.
 
-Parks cover homes within 3 side-steps; overlap does not stack. They give
-priority within existing growth demand/caps, not extra capacity or demand.
-Parks need no services and carry neither road access nor power.
+Parks cover lots with a tile within 3 side-steps; overlap does not stack.
+They give priority within existing growth demand/caps, not extra capacity
+or demand. Parks need no services and carry neither road access nor power.
 Every 30 days after growth: $100 grant + $2 per serviced resident + $4 per
-serviced job, minus $1 per road, $60 per station, $10 per park. Unserved
+serviced job, minus $1 per road tile, $60 per station, $10 per park. Unserved
 buildings pay no tax. All facilities pay upkeep, even disconnected ones.
 A negative net is a deficit. Reduce it by clearing surplus facilities free
 or restoring services. Cash never falls below zero; unpaid costs are visibly
@@ -45,14 +50,12 @@ Time starts paused. Construction works while paused. Unfocused windows and
 dialogs suspend time. Save manually; after restarting, press Load.
 Saves: %APPDATA%/OriginalCityBuilder/saves/manual.json
 The previous valid save is manual.json.bak; failed loads leave the city intact.
-Formats 1 and 2 load with empty development; format 3 retains development. Loading changes no files.
-Saving preserves older primary/backup bytes once as manual.schema1.json or
-manual.schema2.json / manual.schema3.json / manual.schema4.json before replacement.
-Schema 5 stores project completion and its park anchor; formats 1-4 start
-incomplete. Format 4 retains its last budget; earlier formats start without
-budget history.
-No retroactive charges. Older builds cannot read format 5;
-use the preserved older-format copy to roll back.
+Format 6 stores lot and station anchors. Earlier formats (1-5) load with
+their old single-tile zones and stations cleared; roads, parks, funds, time,
+budget history and project completion are kept. Loading changes no files.
+Saving preserves older primary/backup bytes once as manual.schema1.json to
+manual.schema5.json before replacement. No retroactive charges. Older builds
+cannot read format 6; use the preserved older-format copy to roll back.
 
 Windows x64, tested on the development machine. Other hardware, Windows DPI
 variants, other operating systems, and controllers remain unverified.

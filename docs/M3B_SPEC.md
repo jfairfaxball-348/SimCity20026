@@ -10,7 +10,7 @@ During this session the owner decided that homes, shops and workshops become 3x3
 - Step 2's text becomes "Zone a home lot (2) beside a road joined to the flag."
 - Step 3's text becomes "Place a power station (P) touching that street. It powers 20 lots."
 - Show centres on the target lot's footprint, and the bracket marker outlines the whole 3x3 footprint.
-- The version follows whatever M2e delivers. The guide still adds no save change and takes the next minor game version, keeping M2e's schema and simulation/content versions.
+- M2e delivered game 0.7.0-m2e, schema 6, simulation/content `m2e-1`. The guide adds no save change: it becomes game `0.8.0-m3b` and keeps schema 6 and `m2e-1`, so 0.7.0-m2e and 0.8.0-m3b read each other's saves.
 
 The other rules stay as written.
 

@@ -8,14 +8,15 @@ static func inputs(city: RefCounted) -> Dictionary:
 	for i in range(city.width * city.height):
 		match city.occupancy[i]:
 			city.ROAD: data.roads += 1
-			city.POWER: data.stations += 1
 			city.PARK: data.parks += 1
-			city.HOME:
-				if city.growth.serviced(city, i): data.residents += city.development[i] * Balance.RESIDENTS_PER_LEVEL
-			city.SHOP:
-				if city.growth.serviced(city, i): data.jobs += city.development[i] * Balance.SHOP_JOBS_PER_LEVEL
-			city.WORKSHOP:
-				if city.growth.serviced(city, i): data.jobs += city.development[i] * Balance.WORKSHOP_JOBS_PER_LEVEL
+	# D30: one station and one lot per anchor, never per tile.
+	data.stations = city.station_anchors.size()
+	for i in city.lot_anchors:
+		if not city.growth.serviced(city, i): continue
+		match city.occupancy[i]:
+			city.HOME: data.residents += city.development[i] * Balance.RESIDENTS_PER_LEVEL
+			city.SHOP: data.jobs += city.development[i] * Balance.SHOP_JOBS_PER_LEVEL
+			city.WORKSHOP: data.jobs += city.development[i] * Balance.WORKSHOP_JOBS_PER_LEVEL
 	return data
 
 static func totals(data: Dictionary) -> Dictionary:

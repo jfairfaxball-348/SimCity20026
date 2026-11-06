@@ -18,8 +18,7 @@ func refresh(city: RefCounted) -> void:
 	var count: int = city.width * city.height
 	planned.resize(count)
 	planned.fill(0)
-	for i in range(count):
-		if city.is_zone(city.occupancy[i]): levels[city.occupancy[i]] += city.development[i]
+	for i in city.lot_anchors: levels[city.occupancy[i]] += city.development[i]
 	population = levels[city.HOME] * Balance.RESIDENTS_PER_LEVEL
 	jobs = levels[city.SHOP] * Balance.SHOP_JOBS_PER_LEVEL + levels[city.WORKSHOP] * Balance.WORKSHOP_JOBS_PER_LEVEL
 	demand[city.HOME] = maxi(0, mini(2 * count, Balance.STARTER_HOME_LEVELS + jobs / 2) - levels[city.HOME])
@@ -32,10 +31,10 @@ func refresh(city: RefCounted) -> void:
 	# Covered homes first, then all other zones; row-major within each group.
 	# Reservation still uses only the prior state, with shared per-type budgets.
 	for priority in [true, false]:
-		for i in range(count):
+		for i in city.lot_anchors:
 			var kind: int = city.occupancy[i]
-			if not city.is_zone(kind) or city.development[i] >= Balance.MAX_LEVEL: continue
-			var preferred: bool = kind == city.HOME and city.amenity.covered[i] != 0
+			if city.development[i] >= Balance.MAX_LEVEL: continue
+			var preferred: bool = kind == city.HOME and city.amenity.lot_covered[i] != 0
 			if preferred != priority: continue
 			if remaining[kind] > 0 and serviced(city, i):
 				planned[i] = 1
@@ -44,8 +43,7 @@ func refresh(city: RefCounted) -> void:
 func advance_round(city: RefCounted) -> void:
 	var next_levels: PackedByteArray = city.development.duplicate()
 	var next_loss: PackedByteArray = city.service_loss.duplicate()
-	for i in range(city.width * city.height):
-		if not city.is_zone(city.occupancy[i]): continue
+	for i in city.lot_anchors:
 		if serviced(city, i):
 			next_loss[i] = 0
 			next_levels[i] += planned[i]
@@ -58,8 +56,11 @@ func advance_round(city: RefCounted) -> void:
 	city.service_loss = next_loss
 	refresh(city)
 
+## i may be any tile of a lot; the lot's anchor holds its state (D30).
 func reason(city: RefCounted, i: int) -> String:
 	if not city.is_zone(city.occupancy[i]): return "not_zone"
+	i = city.footprint_owner[i]
+	if i < 0: return "not_zone"
 	if not serviced(city, i): return "declining" if city.development[i] > 0 else "services"
 	if city.development[i] >= Balance.MAX_LEVEL: return "full"
 	if demand[city.occupancy[i]] == 0: return "demand"

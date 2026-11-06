@@ -26,6 +26,9 @@ const STATION_UPKEEP: int = 6_000
 const PARK_UPKEEP: int = 1_000
 const PARK_COST: int = 10_000
 const PARK_RADIUS: int = 3
+## D30 footprints: zones are square lots; power stations are larger squares.
+const LOT_SIZE: int = 3
+const STATION_SIZE: int = 4
 
 static func cost(kind: String) -> int:
 	match kind:

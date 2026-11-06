@@ -1,6 +1,6 @@
 # M2e: three-by-three zone lots and four-by-four power stations
 
-Scoped 6 November 2026 after owner design notes during the M3b scoping session (U16, U18, U19). **Specified, not implemented.** This is proposed D30. Adopt these rules in Decisions before writing implementation code. M2e comes before the M3b guide; see [M3b](M3B_SPEC.md#dependency-on-m2e).
+Scoped 6 November 2026 after owner design notes during the M3b scoping session (U16, U18, U19). **Implemented and locally tested 6 November 2026** (D30, adopted before model changes); see [M2e evidence](sessions/2026-11-06-m2e.md). The rules below were specified before implementation. One presentation deviation: the sidebar keeps its "$25" labels because "$25/lot" would crowd the largest-text sidebar; tooltips, Help, the preview ("1 lot: $25.00") and the README state the per-lot price. M2e comes before the M3b guide; see [M3b](M3B_SPEC.md#dependency-on-m2e).
 
 ## Owner requirement and intent
 

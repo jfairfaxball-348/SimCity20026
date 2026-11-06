@@ -18,13 +18,14 @@ const WORKSHOP: int = 5
 const PARK: int = 6
 const MAX_TICK: int = 1_000_000_000
 const MAX_PENDING_US: int = 3_600_000_000
-const SCHEMA: int = 5
-const SIMULATION: String = "m3a-1"
-const CONTENT: String = "m3a-1"
+const SCHEMA: int = 6
+const SIMULATION: String = "m2e-1"
+const CONTENT: String = "m2e-1"
 ## Supported earlier format (M1/M2a): IDs 0..2 only, migrated in memory (D20).
 const LEGACY_SCHEMA: int = 1
 const LEGACY_VERSION: String = "m1-1"
 const TOOLS: Dictionary = {"road": ROAD, "home": HOME, "shop": SHOP, "workshop": WORKSHOP, "power": POWER, "park": PARK, "clear": EMPTY}
+const NO_LOT: int = -1
 
 var width: int = 64
 var height: int = 64
@@ -33,11 +34,18 @@ var terrain: PackedByteArray = PackedByteArray()
 var occupancy: PackedByteArray = PackedByteArray()
 var development: PackedByteArray = PackedByteArray()
 var service_loss: PackedByteArray = PackedByteArray()
+## D30: 1 on the top-left tile of every zone lot and power station, otherwise 0.
+var footprint_anchor: PackedByteArray = PackedByteArray()
 var cash: int = Balance.STARTING_CASH
 var tick: int = 0
 var pending_us: int = 0
 var sequence: int = 0
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+## Derived: anchor index owning each footprint tile, or NO_LOT. Rebuilt, never saved.
+var footprint_owner: PackedInt32Array = PackedInt32Array()
+## Derived row-major anchor lists.
+var lot_anchors: PackedInt32Array = PackedInt32Array()
+var station_anchors: PackedInt32Array = PackedInt32Array()
 var access: Access = Access.new()
 var power: Power = Power.new()
 var growth: Growth = Growth.new()
@@ -65,6 +73,8 @@ func initialize(map_seed: int = 198624, map_width: int = 64, map_height: int = 6
 	development.fill(0)
 	service_loss.resize(width * height)
 	service_loss.fill(0)
+	footprint_anchor.resize(width * height)
+	footprint_anchor.fill(0)
 	# An original seeded shoreline. The central starting ground is always connected.
 	for y in range(height):
 		var shoreline: int = clampi(width / 10 + y / 14 + rng.randi_range(-1, 1), 1, width - 1)
@@ -75,15 +85,80 @@ func initialize(map_seed: int = 198624, map_width: int = 64, map_height: int = 6
 func rebuild_derived() -> void:
 	# Terrain is immutable in play. Call after initialization/validated decoding,
 	# or from fixture setup after changing terrain. Commands own occupancy edits.
-	# Access first: power placement rules read the outside-link root.
+	# Footprints first; access next because power placement rules read the root.
+	rebuild_footprints()
 	access.rebuild(self)
 	power.rebuild(self)
 	amenity.rebuild(self)
 	growth.refresh(self)
 	budget = Economy.inputs(self)
 
+func rebuild_footprints() -> void:
+	var count: int = width * height
+	footprint_owner.resize(count)
+	footprint_owner.fill(NO_LOT)
+	lot_anchors.resize(0)
+	station_anchors.resize(0)
+	for i in range(count):
+		if footprint_anchor[i] == 0: continue
+		var size: int = footprint_size(occupancy[i])
+		for cell in footprint_cells(i, size):
+			footprint_owner[cell] = i
+		if occupancy[i] == POWER: station_anchors.append(i)
+		else: lot_anchors.append(i)
+
 static func is_zone(kind: int) -> bool:
 	return kind in [HOME, SHOP, WORKSHOP]
+
+## D30: zones occupy LOT_SIZE squares, stations STATION_SIZE squares, the rest one tile.
+static func footprint_size(kind: int) -> int:
+	if is_zone(kind): return Balance.LOT_SIZE
+	if kind == POWER: return Balance.STATION_SIZE
+	return 1
+
+static func is_footprint_kind(kind: int) -> bool:
+	return footprint_size(kind) > 1
+
+func is_lot_anchor(i: int) -> bool:
+	return footprint_anchor[i] != 0 and is_zone(occupancy[i])
+
+## Anchor index of the lot or station covering this cell, or NO_LOT.
+func anchor_at(cell: Vector2i) -> int:
+	return footprint_owner[index(cell)] if inside(cell) else NO_LOT
+
+func footprint_cells(anchor: int, size: int = -1) -> PackedInt32Array:
+	if size < 0: size = footprint_size(occupancy[anchor])
+	var out: PackedInt32Array = PackedInt32Array()
+	var x0: int = anchor % width
+	var y0: int = anchor / width
+	for y in range(y0, mini(height, y0 + size)):
+		for x in range(x0, mini(width, x0 + size)):
+			out.append(y * width + x)
+	return out
+
+## Side-sharing neighbours outside the footprint, in row-major order; corners excluded.
+func perimeter(anchor: int, size: int = -1) -> PackedInt32Array:
+	if size < 0: size = footprint_size(occupancy[anchor])
+	var x0: int = anchor % width
+	var y0: int = anchor / width
+	var out: PackedInt32Array = PackedInt32Array()
+	if y0 > 0:
+		for x in range(x0, x0 + size): out.append((y0 - 1) * width + x)
+	for y in range(y0, y0 + size):
+		if x0 > 0: out.append(y * width + x0 - 1)
+		if x0 + size < width: out.append(y * width + x0 + size)
+	if y0 + size < height:
+		for x in range(x0, x0 + size): out.append((y0 + size) * width + x)
+	return out
+
+## Manhattan distance from a tile to the nearest tile of a footprint.
+func distance_to_footprint(cell: Vector2i, anchor: int, size: int = -1) -> int:
+	if size < 0: size = footprint_size(occupancy[anchor])
+	var x0: int = anchor % width
+	var y0: int = anchor / width
+	var dx: int = maxi(0, maxi(x0 - cell.x, cell.x - (x0 + size - 1)))
+	var dy: int = maxi(0, maxi(y0 - cell.y, cell.y - (y0 + size - 1)))
+	return dx + dy
 
 func advance_day() -> void:
 	tick += 1
@@ -100,6 +175,11 @@ func inside(cell: Vector2i) -> bool:
 func index(cell: Vector2i) -> int:
 	return cell.y * width + cell.x
 
+func cell_of(i: int) -> Vector2i:
+	return Vector2i(i % width, i / width)
+
+## For zone and power tools, cells are footprint anchors (top-left tiles). For
+## clear, any tile of a lot or station selects the whole footprint (D30).
 func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	if not TOOLS.has(kind):
 		return _failure("Unknown construction tool.")
@@ -114,25 +194,61 @@ func preview(kind: String, cells: Array[Vector2i]) -> Dictionary:
 		return _failure("Place one facility at a time.")
 	var indices: Array = unique.keys()
 	indices.sort()
-	var changed: Array[int] = []
 	var target: int = TOOLS[kind]
-	for raw_index in indices:
-		var i: int = int(raw_index)
-		if terrain[i] == WATER:
-			return _failure("Water cannot be built on or cleared.")
-		if occupancy[i] == target:
-			continue
-		if kind != "clear" and occupancy[i] != EMPTY:
-			return _failure("Clear the existing road, zone, or station first.")
-		if kind in ["power", "park"] and access.root.x >= 0 and i == index(access.root):
-			return _failure("Keep the outside-link flag free for its road.")
-		changed.append(i)
-	var charge: int = changed.size() * Balance.cost(kind)
+	var changed: Array[int] = []
+	var anchors: Array[int] = []
+	if is_footprint_kind(target):
+		var size: int = footprint_size(target)
+		var claimed: Dictionary = {}
+		var noun: String = "station" if target == POWER else "lot"
+		for raw_index in indices:
+			var a: int = int(raw_index)
+			var origin: Vector2i = cell_of(a)
+			if not inside(origin + Vector2i(size - 1, size - 1)):
+				return _failure("Keep the whole %s inside the map." % noun)
+			if footprint_anchor[a] != 0 and occupancy[a] == target:
+				continue # identical repaint: free and unchanged
+			for i in footprint_cells(a, size):
+				if terrain[i] == WATER:
+					return _failure("Water cannot be built on or cleared.")
+				if occupancy[i] != EMPTY:
+					return _failure("Clear the existing road, zone, or station first.")
+				if access.root.x >= 0 and i == index(access.root):
+					return _failure("Keep the outside-link flag free for its road.")
+				if claimed.has(i):
+					return _failure("Lots in one stroke cannot overlap.")
+				claimed[i] = true
+				changed.append(i)
+			anchors.append(a)
+	else:
+		var expanded: Dictionary = {}
+		for raw_index in indices:
+			var i: int = int(raw_index)
+			if terrain[i] == WATER:
+				return _failure("Water cannot be built on or cleared.")
+			if kind == "clear" and footprint_owner[i] != NO_LOT:
+				for tile in footprint_cells(footprint_owner[i]): expanded[tile] = true
+			else:
+				expanded[i] = true
+		var tiles: Array = expanded.keys()
+		tiles.sort()
+		for raw_index in tiles:
+			var i: int = int(raw_index)
+			if occupancy[i] == target:
+				continue
+			if kind != "clear" and occupancy[i] != EMPTY:
+				return _failure("Clear the existing road, zone, or station first.")
+			if kind == "park" and access.root.x >= 0 and i == index(access.root):
+				return _failure("Keep the outside-link flag free for its road.")
+			changed.append(i)
+	changed.sort()
+	var units: int = anchors.size() if is_footprint_kind(target) else changed.size()
+	var charge: int = units * Balance.cost(kind)
 	if charge > cash:
 		return _failure("Not enough funds for the whole stroke.", charge)
 	if sequence >= MAX_TICK and not changed.is_empty():
 		return _failure("This prototype has reached its command limit.")
-	return {"ok": true, "message": "", "cost": charge, "changed": changed, "target": target}
+	return {"ok": true, "message": "", "cost": charge, "changed": changed, "anchors": anchors, "target": target}
 
 func apply_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	var result: Dictionary = preview(kind, cells)
@@ -148,16 +264,23 @@ func apply_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 		occupancy[int(i)] = int(result.target)
 		development[int(i)] = 0
 		service_loss[int(i)] = 0
+		footprint_anchor[int(i)] = 0
+	for a in result.anchors:
+		footprint_anchor[int(a)] = 1
 	cash -= int(result.cost)
 	sequence += 1
 	rebuild_derived()
 	# Restoration breaks consecutive loss immediately, even while time is paused.
-	for i in range(width * height):
+	for i in lot_anchors:
 		if service_loss[i] != 0 and growth.serviced(self, i): service_loss[i] = 0
+	var recorded: Array = result.anchors.duplicate() if is_footprint_kind(int(result.target)) else changed.duplicate()
 	result["record"] = {"tick": tick, "sequence": sequence, "kind": kind,
-		"indices": changed.duplicate(), "cost": result.cost}
+		"indices": recorded, "cost": result.cost}
+	var built: int = result.anchors.size()
 	if kind == "power":
-		result.message = "Power station built · %s · supplies up to %d plots on its network." % [Balance.money(int(result.cost)), Balance.POWER_CAPACITY / Balance.HOME_POWER_DEMAND]
+		result.message = "Power station built · %s · supplies up to %d lots on its network." % [Balance.money(int(result.cost)), Balance.POWER_CAPACITY / Balance.HOME_POWER_DEMAND]
+	elif is_footprint_kind(int(result.target)):
+		result.message = "%d lot%s · %s" % [built, "" if built == 1 else "s", Balance.money(int(result.cost))]
 	else:
 		result.message = "%d tile%s · %s" % [changed.size(), "" if changed.size() == 1 else "s", Balance.money(int(result.cost))]
 	return result
@@ -167,6 +290,7 @@ func snapshot() -> Dictionary:
 		"content_version": CONTENT, "width": width, "height": height,
 		"seed": str(seed_value), "random_state": str(rng.state),
 		"terrain": Array(terrain), "occupancy": Array(occupancy),
+		"footprint_anchor": Array(footprint_anchor),
 		"development": Array(development), "service_loss": Array(service_loss),
 		"last_budget": last_budget.duplicate(), "project": project.duplicate(),
 		"cash": cash, "tick": tick, "pending_us": pending_us, "sequence": sequence}
@@ -175,26 +299,23 @@ func canonical() -> String:
 	return JSON.stringify(snapshot(), "", true)
 
 func _failure(message: String, cost: int = 0) -> Dictionary:
-	return {"ok": false, "message": message, "cost": cost, "changed": []}
+	return {"ok": false, "message": message, "cost": cost, "changed": [], "anchors": []}
 
-## D28: count distinct developed homes for this park, never pooled coverage.
+## D28/D30: count distinct developed, serviced home lots with a tile within the
+## park radius of this park; coverage never pools between parks.
 func project_homes(park_index: int) -> int:
 	if park_index < 0 or park_index >= occupancy.size() or occupancy[park_index] != PARK: return 0
-	var center := Vector2i(park_index % width, park_index / width)
+	var center: Vector2i = cell_of(park_index)
 	var count: int = 0
-	for dy in range(-Balance.PARK_RADIUS, Balance.PARK_RADIUS + 1):
-		var reach: int = Balance.PARK_RADIUS - absi(dy)
-		for dx in range(-reach, reach + 1):
-			var cell := center + Vector2i(dx, dy)
-			if not inside(cell): continue
-			var i: int = index(cell)
-			if occupancy[i] == HOME and development[i] > 0 and growth.serviced(self, i): count += 1
+	for a in lot_anchors:
+		if occupancy[a] == HOME and development[a] > 0 and growth.serviced(self, a) and distance_to_footprint(center, a) <= Balance.PARK_RADIUS:
+			count += 1
 	return count
 
 func complete_project(cell: Vector2i) -> Dictionary:
 	if project.completed: return _failure("This town has already completed its project.")
 	if not inside(cell) or occupancy[index(cell)] != PARK: return _failure("Choose an existing pocket park.")
-	if project_homes(index(cell)) < 3: return _failure("This park needs three developed homes with road access and power within 3 side-steps.")
+	if project_homes(index(cell)) < 3: return _failure("This park needs three developed home lots with road access and power within 3 side-steps.")
 	if sequence >= MAX_TICK: return _failure("This prototype has reached its command limit.")
 	project = {"completed": true, "park_index": index(cell)}
 	sequence += 1
