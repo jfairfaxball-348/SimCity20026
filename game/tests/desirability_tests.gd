@@ -125,7 +125,7 @@ func test_held() -> void:
 		days(item, 17)
 		item.apply_command("park", [Vector2i(11, 1)])
 		days(item, 23)
-	t.check(a.canonical() == b.canonical() and a.canonical().contains("\"schema_version\":8"), "schema-8 save/load continuation matches the uninterrupted town")
+	t.check(a.canonical() == b.canonical() and a.canonical().contains("\"schema_version\":9"), "schema-9 save/load continuation matches the uninterrupted town")
 
 func test_with_leaving() -> void:
 	var c: City = growth.town()
@@ -160,7 +160,7 @@ func test_fixture() -> void:
 	t.check(FileAccess.get_sha256(FIXTURE) == FIXTURE_SHA, "schema-8 fixture hash")
 	var text: String = FileAccess.get_file_as_string(FIXTURE).strip_edges()
 	var loaded: Dictionary = Codec.decode(text)
-	t.check(loaded.ok and loaded.migrated_from == 0 and loaded.city.canonical() == text, "schema-8 fixture exact round trip")
+	t.check(loaded.ok and loaded.migrated_from == 8 and loaded.cleared_tiles == 0 and loaded.city.canonical() == t.migrated_text(text), "schema-8 fixture migrates with every value kept")
 	if not loaded.ok: return
 	var c: City = loaded.city
 	var rescued: int = at(c, 13, 3)

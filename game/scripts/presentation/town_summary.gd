@@ -26,7 +26,7 @@ static func build(city: City) -> Array:
 			var state: int = city.power.home_state[a]
 			if state == city.power.SHORTAGE: short.append(a)
 			elif state != city.power.POWERED: no_power.append(a)
-			if city.occupancy[a] == City.HOME and city.growth.serviced(city, a) and city.desirability.cap(city, a) < Balance.MAX_LEVEL and city.development[a] >= Balance.HELD_LEVEL:
+			if (city.occupancy[a] == City.HOME or city.occupancy[a] == City.SHOP) and city.growth.serviced(city, a) and city.desirability.cap(city, a) < Balance.MAX_LEVEL and city.development[a] >= Balance.HELD_LEVEL:
 				held.append(a)
 		var link_missing: bool = root_index >= 0 and city.occupancy[root_index] != City.ROAD
 		if link_missing and not no_access.is_empty():
@@ -38,6 +38,10 @@ static func build(city: City) -> Array:
 		if not held.is_empty():
 			var item: Dictionary = _lots("held", held, city)
 			item.levels = held.size()
+			# D36: name the type when every held lot is one type.
+			var kinds: Dictionary = {}
+			for a in held: kinds[city.occupancy[a]] = true
+			item.zone = int(kinds.keys()[0]) if kinds.size() == 1 else -1
 			blockers.append(item)
 		if city.tax_rate > Balance.TAX_STANDARD:
 			var surplus: int = 0
@@ -99,7 +103,7 @@ static func describe(item: Dictionary, city: City) -> String:
 		"access": return "%s without road access%s. Join a road beside each lot to streets that reach the gold flag." % [_plural(item.count, "lot"), _built(item)]
 		"no_power": return "%s without power%s. Place a power plant (P) beside their street, or join the street to a powered one." % [_plural(item.count, "lot"), _built(item)]
 		"short": return "%s short of power%s. Each power plant supplies %d lots: add a plant on that network." % [_plural(item.count, "lot"), _built(item), Balance.POWER_CAPACITY / Balance.HOME_POWER_DEMAND]
-		"held": return "%s held at level 1 by nearby industry. Add a park within 3 steps, or keep industrial lots 3+ steps away." % _plural(item.count, "residential lot")
+		"held": return "%s held at level 1 by low land value from nearby industry. Add a park within 3 steps, or keep industrial lots 3+ steps away." % _plural(item.count, (ZONE_NAMES[int(item.zone)] + " lot") if int(item.zone) >= 0 else "lot")
 		"leaving": return "%s leaving because the tax rate is %d%% (above %d%%). Lower it in Budget to keep them." % [_plural(item.count, "level"), city.tax_rate, Balance.TAX_STANDARD]
 		"no_room":
 			var name: String = ZONE_NAMES[int(item.zone)]

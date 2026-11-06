@@ -38,3 +38,5 @@ Under M2f (D32) the six earlier schemas still migrate as described above. Schema
 - **Tests.** They check its hash, exact round trip, the rescued and held homes, and the continuation.
 
 Under M2g (D33) schema 7 migrates with every value kept, and all eight earlier hashes are unchanged.
+
+**R2a (schema 9).** `r2a-schema9.json`, SHA256 `a9684518451dc8dad85b0026e4b0cf2371c82e7d5f2406d17a37ac53d0081ab4`. Captured by the R2a model (`builds/validation/r2a/capture_fixture.gd`, ignored): seed 91, 24x12 all land; road (4..23,6), 4x4 plant at (0,5), six residential lots from (4,3), commercial lots at (4,7) and (16,7), industrial lots at (13,7) and (19,7). After 59 days and 234567 pending microseconds: 40 residents / 18 jobs, 921400 cents, sequence 5, ledger at tick 30. The commercial lot at (16,7) is held at level 1 (trade +2, industry −4); the industrial lot nearest the link, (19,7), grew first and is at level 2. The next tick settles exactly 17200 cents. Under R2a the schema-8 fixture migrates with every value kept; all nine earlier hashes are unchanged.

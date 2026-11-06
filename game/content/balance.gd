@@ -46,6 +46,11 @@ const NUISANCE_PER_WORKSHOP: int = 2
 const NUISANCE_RADIUS: int = 2
 const NUISANCE_COUNT_LIMIT: int = 3
 const HELD_LEVEL: int = 1
+## D36: a commercial lot gains per developed residential lot within the customer
+## radius, counted up to a limit.
+const CUSTOMER_BONUS: int = 1
+const CUSTOMER_RADIUS: int = 3
+const CUSTOMER_COUNT_LIMIT: int = 2
 ## D30 footprints: zones are square lots; power stations are larger squares.
 const LOT_SIZE: int = 3
 const STATION_SIZE: int = 4

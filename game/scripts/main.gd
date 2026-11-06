@@ -190,7 +190,7 @@ func _build_ui() -> void:
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.custom_minimum_size.y = 30
 		match kind:
-			"park": button.tooltip_text = "One park; $10/month. Residential lots within 3 side-steps gain +2 desirability: they grow first and it offsets one nearby industrial lot. Overlap does not stack."
+			"park": button.tooltip_text = "One park; $10/month. Residential and commercial lots within 3 side-steps gain +2 land value: they grow first and it offsets one nearby industrial lot. Overlap does not stack."
 			"clear": button.tooltip_text = "Clear is free, with no refund."
 			"power": button.tooltip_text = "One 4x4 power plant per placement. It supplies %d zone lots through the roads it touches, including empty lots." % Balance.POWER_CAPACITY
 			"road": button.tooltip_text = "Price per tile; identical repainting is free."
@@ -330,12 +330,12 @@ func _build_dialogs() -> void:
 	for mode in ArtKit.MODES:
 		arts.add_child(_button(ArtKit.LABELS[mode], func(): _set_art(mode)))
 	column.add_child(_button("Toggle grid  [G]", func(): world.grid_visible = not world.grid_visible; world.queue_redraw()))
-	column.add_child(_button("Desirability overlay  [V]", _toggle_desirability))
+	column.add_child(_button("Land value overlay  [V]", _toggle_desirability))
 	column.add_child(_button("Center view  [Home]", _center_camera))
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_text = _label("1 Roads · 2 Residential · 6 Commercial · 7 Industrial\nP Power plant · 8 Park · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced residential lots.\nZones are 3x3 lots; power plants are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV desirability overlay.\nDemand meter: R residential, C commercial, I industrial.\nDates run in 30-day months from 1 Jan 1950.\n\nJoin roads from the gold flag; zone beside them.\nAdd a power plant: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nResidential desirability: park within 3 +2, water within 3 +1,\neach developed industrial lot within 2 steps −2 (up to 3).\nHigher grows first; below 0 a lot stops at level 1.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
+	help_text = _label("1 Roads · 2 Residential · 6 Commercial · 7 Industrial\nP Power plant · 8 Park · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced residential lots.\nZones are 3x3 lots; power plants are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV land value overlay.\nDemand meter: R residential, C commercial, I industrial.\nDates run in 30-day months from 1 Jan 1950.\n\nJoin roads from the gold flag; zone beside them.\nAdd a power plant: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nLand value: park within 3 +2, water within 3 +1,\neach developed industrial lot within 2 steps −2 (up to 3).\nCommercial: +1 per developed residential lot within 3 (up to 2).\nResidential and commercial: higher grows first;\nbelow 0 a lot stops at level 1.\nIndustry ignores land value: nearest the link (by road) grows first.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
 	add_child(help_dialog)
 	help_dialog.add_button("Show first steps", false, "guide")
 	help_dialog.custom_action.connect(func(action: String):
@@ -648,7 +648,7 @@ func _growth_text(cell: Vector2i) -> String:
 	if city.inside(cell) and city.occupancy[city.index(cell)] == City.PARK:
 		if city.project.completed and int(city.project.park_index) == city.index(cell):
 			return "Project completed. Flowers only; park priority unchanged. Upkeep $10/month."
-		return "Residential lots within 3 steps gain +2 desirability: they grow first and it offsets one industrial lot. No extra demand. Upkeep $10/month."
+		return "Residential and commercial lots within 3 steps gain +2 land value: they grow first and it offsets one industrial lot. No extra demand. Upkeep $10/month."
 	if not city.inside(cell) or not City.is_zone(city.occupancy[city.index(cell)]):
 		return "Next growth: %s. Zones need road access, power and demand." % Calendar.date(next_day - 1)
 	var i: int = city.anchor_at(cell)
@@ -657,7 +657,7 @@ func _growth_text(cell: Vector2i) -> String:
 	var prefix: String = "%s · next check %s\n" % [wanted, Calendar.date(next_day - 1)]
 	match city.growth.reason(city, i):
 		"growing": return prefix + "Ready to gain one level."
-		"queued": return prefix + "Waiting turn; park-side lots first, then map order."
+		"queued": return prefix + ("Waiting turn; nearer the link grows first." if kind == City.WORKSHOP else "Waiting turn; higher land value grows first.")
 		"demand": return prefix + "Demand met. More residents support jobs; jobs support residents."
 		"full": return prefix + "Fully developed (level 2)."
 		"leaving": return prefix + "High taxes: loses a level next check. Lower the rate to keep it."
@@ -702,12 +702,15 @@ func _update_legend(cell: Vector2i = inspected_cell) -> void:
 	parts.append("bolt/× power" if world.power_visible else "power marks hidden (E)")
 	legend_label.text = "Marks: " + " · ".join(parts)
 	if world.desirability_visible:
-		legend_label.text = "Overlay: + attracts · hatching deters (V)"
-	# D33: a home lot's legend line lists its desirability parts instead.
+		legend_label.text = "Land value: + raises · hatching lowers (V)"
+	# D33/D36: a lot's legend line lists its land-value parts, or industry's freight.
 	var a: int = city.anchor_at(cell)
-	if a >= 0 and city.occupancy[a] == City.HOME:
+	if a >= 0 and (city.occupancy[a] == City.HOME or city.occupancy[a] == City.SHOP):
 		var lot_parts: String = city.desirability.parts(city, a)
-		legend_label.text = "Desirability %s: %s" % [Meter.signed(city.desirability.lot_score[a]), "no park, water or industry nearby" if lot_parts.is_empty() else lot_parts]
+		legend_label.text = "Land value %s: %s" % [Meter.signed(city.desirability.lot_score[a]), "nothing nearby" if lot_parts.is_empty() else lot_parts]
+	elif a >= 0 and city.occupancy[a] == City.WORKSHOP:
+		var steps: int = city.desirability.lot_freight[a]
+		legend_label.text = ("Freight %d road step%s · ignores land value" % [steps, "" if steps == 1 else "s"]) if steps >= 0 else "Freight: not joined to the link · ignores land value"
 
 func _toggle_access() -> void:
 	world.access_visible = not world.access_visible
@@ -720,7 +723,7 @@ func _toggle_desirability() -> void:
 	world.desirability_visible = not world.desirability_visible
 	world.queue_redraw()
 	_update_legend()
-	_status("Desirability overlay on: + marks attract residents (park +2, water +1); hatching deters (each developed industrial lot within 2 steps −2). Residential lots below 0 stop at level 1." if world.desirability_visible else "Desirability overlay off (V).")
+	_status("Land value overlay on: + marks raise it (park +2, water +1); hatching lowers it (each developed industrial lot within 2 steps −2). Residential and commercial lots below 0 stop at level 1." if world.desirability_visible else "Land value overlay off (V).")
 
 func _toggle_power() -> void:
 	world.power_visible = not world.power_visible

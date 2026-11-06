@@ -61,7 +61,7 @@ func run(tester: SceneTree) -> void:
 	var grown: City = growth.town()
 	days(grown, 40)
 	items = pure(grown)
-	t.check(kinds(items) == ["held", "no_room"] and int(item(items, "held").count) == 2 and int(item(items, "held").example) == grown.index(Vector2i(13, 3)), "a grown town reports its two held homes first, then the unusable home demand")
+	t.check(kinds(items) == ["held", "no_room"] and int(item(items, "held").count) == 2 and int(item(items, "held").example) == grown.index(Vector2i(16, 3)) and "2 residential lots held" in String(item(items, "held").text), "a grown town reports its two held homes first, then the unusable home demand")
 	t.check("2 residential lots held at level 1" in String(item(items, "held").text) and "2 residential levels wanted" in String(item(items, "no_room").text), "held and no-room texts give counts and remedies")
 	# Leaving under high taxes (D32).
 	grown.set_tax_rate(25)

@@ -19,9 +19,9 @@ const WORKSHOP: int = 5
 const PARK: int = 6
 const MAX_TICK: int = 1_000_000_000
 const MAX_PENDING_US: int = 3_600_000_000
-const SCHEMA: int = 8
-const SIMULATION: String = "m2g-1"
-const CONTENT: String = "m2g-1"
+const SCHEMA: int = 9
+const SIMULATION: String = "r2a-1"
+const CONTENT: String = "r2a-1"
 ## Supported earlier format (M1/M2a): IDs 0..2 only, migrated in memory (D20).
 const LEGACY_SCHEMA: int = 1
 const LEGACY_VERSION: String = "m1-1"

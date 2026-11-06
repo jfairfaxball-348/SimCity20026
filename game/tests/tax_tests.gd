@@ -134,8 +134,8 @@ func test_leaving() -> void:
 	var marked: Array[int] = []
 	for a in anchors:
 		if city.growth.leaving[a] != 0: marked.append(a)
-	t.check(marked == [anchors[0], anchors[1], anchors[2], anchors[5]], "the four level-2 home lots leave first, later map order first")
-	t.check(city.growth.reason(city, anchors[5]) == "leaving" and city.growth.reason(city, anchors[3]) == "surplus", "inspector reasons distinguish leaving and surplus lots")
+	t.check(marked == [anchors[0], anchors[1], anchors[2], anchors[3]], "the four level-2 home lots leave first, later map order first")
+	t.check(city.growth.reason(city, anchors[3]) == "leaving" and city.growth.reason(city, anchors[5]) == "surplus", "inspector reasons distinguish leaving and surplus lots")
 	while city.tick % Balance.GROWTH_DAYS != Balance.GROWTH_DAYS - 1: days(city, 1)
 	var levels_before: int = home_levels(city)
 	days(city, 1)

@@ -1,6 +1,6 @@
 extends RefCounted
-## Bounded aggregate growth (D22) with tax appeal and leaving (D32) and home
-## desirability (D33). Plans use only the prior completed state.
+## Bounded aggregate growth (D22) with tax appeal and leaving (D32) and land
+## value (D33/D36). Plans use only the prior completed state.
 const Balance = preload("res://content/balance.gd")
 var population: int = 0
 var jobs: int = 0
@@ -11,7 +11,7 @@ var planned: PackedByteArray = PackedByteArray()
 var surplus: PackedInt32Array = PackedInt32Array()
 ## D32: 1 on lots that lose one level to high taxes next round.
 var leaving: PackedByteArray = PackedByteArray()
-## D33: 1 on serviced level-2 homes held back by nuisance; they drop one level next round.
+## D33/D36: 1 on serviced level-2 residential/commercial lots held back by land value; they drop one level next round.
 var dropping: PackedByteArray = PackedByteArray()
 
 func serviced(city: RefCounted, i: int) -> bool:
@@ -35,11 +35,11 @@ func refresh(city: RefCounted) -> void:
 	for i in city.lot_anchors: levels[city.occupancy[i]] += city.development[i]
 	population = levels[city.HOME] * Balance.RESIDENTS_PER_LEVEL
 	jobs = levels[city.SHOP] * Balance.SHOP_JOBS_PER_LEVEL + levels[city.WORKSHOP] * Balance.WORKSHOP_JOBS_PER_LEVEL
-	var drops: int = 0
+	var drops: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, 0, 0])
 	for i in city.lot_anchors:
 		if city.development[i] > city.desirability.cap(city, i) and serviced(city, i):
 			dropping[i] = 1
-			drops += 1
+			drops[city.occupancy[i]] += 1
 	var rate: int = city.tax_rate
 	var targets: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, 0, 0])
 	targets[city.HOME] = mini(2 * count, Balance.appealed(Balance.STARTER_HOME_LEVELS + jobs / 2, rate))
@@ -49,23 +49,30 @@ func refresh(city: RefCounted) -> void:
 	for kind in [city.HOME, city.SHOP, city.WORKSHOP]:
 		demand[kind] = maxi(0, targets[kind] - levels[kind])
 		if rate > Balance.TAX_STANDARD: surplus[kind] = maxi(0, levels[kind] - targets[kind])
-		# Nuisance drops count towards a type's leaving for the round (D33).
-		var already: int = drops if kind == city.HOME else 0
+		# Land-value drops count towards a type's leaving for the round (D33/D36).
+		var already: int = drops[kind]
 		if surplus[kind] > 0: _plan_leaving(city, kind, maxi(0, mini(surplus[kind], Balance.LEAVE_LIMIT) - already))
 	var remaining: PackedInt32Array = demand.duplicate()
 	for kind in [city.HOME, city.SHOP, city.WORKSHOP]:
 		remaining[kind] = mini(remaining[kind], Balance.GROWTH_LIMIT)
-	# D33: homes by desirability (higher first), then map order; businesses in map
-	# order. Budgets are per type, so the two groups never compete. Reservation still
-	# uses only the prior state.
-	var homes: Array = []
-	var others: Array = []
+	# D33/D36: residential and commercial lots by land value (higher first), industry
+	# by freight steps to the outside link (fewer first); map order breaks ties.
+	# Budgets are per type, so the groups never compete. Reservation still uses only
+	# the prior state.
+	var valued: Array = []
+	var industry: Array = []
 	for i in city.lot_anchors:
-		if city.occupancy[i] == city.HOME: homes.append(i)
-		else: others.append(i)
+		if city.occupancy[i] == city.WORKSHOP: industry.append(i)
+		else: valued.append(i)
 	var scores: PackedInt32Array = city.desirability.lot_score
-	homes.sort_custom(func(a, b): return scores[a] > scores[b] or (scores[a] == scores[b] and a < b))
-	for i in homes + others:
+	valued.sort_custom(func(a, b): return scores[a] > scores[b] or (scores[a] == scores[b] and a < b))
+	var freight: PackedInt32Array = city.desirability.lot_freight
+	var far: int = city.width * city.height
+	industry.sort_custom(func(a, b):
+		var fa: int = freight[a] if freight[a] >= 0 else far
+		var fb: int = freight[b] if freight[b] >= 0 else far
+		return fa < fb or (fa == fb and a < b))
+	for i in valued + industry:
 		var kind: int = city.occupancy[i]
 		if city.development[i] >= city.desirability.cap(city, i): continue
 		if remaining[kind] > 0 and serviced(city, i):

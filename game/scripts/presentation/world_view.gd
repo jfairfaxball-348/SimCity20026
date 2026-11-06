@@ -13,7 +13,7 @@ var zoom: int = 1
 var grid_visible: bool = true
 var access_visible: bool = true
 var power_visible: bool = true
-## D33: desirability overlay (off by default, never saved).
+## D33/D36: land value overlay (off by default, never saved).
 var desirability_visible: bool = false
 ## D29: the First steps target, outlined with corner brackets while the card is shown.
 var guide_target: Vector2i = Vector2i(-1, -1)

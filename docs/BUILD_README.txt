@@ -1,4 +1,4 @@
-UNTITLED CITY BUILDER - R1 TERMS AND CALENDAR (0.12.0-r1)
+UNTITLED CITY BUILDER - R2a LAND VALUE (0.13.0-r2a)
 
 Run citybuilder.exe. Keep citybuilder.pck beside it. A First steps card at
 the bottom left of the map shows one next step at a time (Show centres on
@@ -6,7 +6,7 @@ it; Hide closes it for the session; F1 or Help > Show first steps returns).
 Local development checkpoint; 3x3 residential, commercial and industrial
 lots, 4x4 power plants, a calendar from 1 Jan 1950, a monthly
 economy with an adjustable tax rate, a demand meter, neighbourhood
-desirability with a map overlay, a town summary, a pocket park, and one
+land value for every zone with a map overlay, a town summary, a pocket park, and one
 optional project.
 
 1 Roads ($10 per tile) / 2 Residential / 6 Commercial / 7 Industrial
@@ -24,7 +24,7 @@ flowers do not.
 Left drag: preview a stroke; release to build. Right click/Escape: cancel.
 Invalid strokes never partially apply. Identical repainting is free.
 WASD/arrows/middle drag: pan. Wheel/+/-: zoom. Home: outside link.
-R: road marks (+/-). E: power marks (bolt/x). V: desirability overlay.
+R: road marks (+/-). E: power marks (bolt/x). V: land value overlay.
 Hover a tile to inspect.
 Space: pause/resume. 4: normal speed. 5: fast speed.
 Ctrl+S: save. Ctrl+L: load. F6: display and text settings.
@@ -44,17 +44,22 @@ A residential level holds 4 residents; commercial/industrial levels provide
 2/4 jobs.
 Starter demand supports 12 residents before jobs exist. Residents create
 business demand; jobs support more residents. The R/C/I meter in the top bar
-shows levels the town welcomes (up, +) or that will leave (down, -). At most eight additions per type per round, park-covered residential lots
-first, then map order. Satisfied demand stops new growth without evicting existing buildings.
+shows levels the town welcomes (up, +) or that will leave (down, -). At most eight additions per type per round:
+residential and commercial lots with higher land value first, industry
+nearest the outside link first, then map order. Satisfied demand stops new growth without evicting existing buildings.
 Two growth checks without road access or power lose one level. Reconnect
 or add capacity to stop decline; normal demand allows recovery.
 
-Residential desirability: a park within 3 side-steps +2 (no stacking), water within
+Land value: a park within 3 side-steps +2 (no stacking), water within
 3 +1, each developed industrial lot within 2 side-steps -2 (up to three).
-Industry across a one-tile road counts. Higher-scoring lots grow first;
-below 0 a residential lot stops at level 1, and a level-2 lot drops one
-level at the next check. Add a park or move industry away and it regrows.
-V shows the field: + attracts, hatching deters, smoke marks industry.
+Industry across a one-tile road counts. Commercial lots also gain trade:
++1 per developed residential lot within 3 side-steps (up to +2).
+Residential and commercial lots with higher value grow first; below 0 a
+lot stops at level 1, and a level-2 lot drops one level at the next check.
+Add a park, move industry away or grow residents nearby and it regrows.
+Industry ignores land value and is not deterred by other industry; the
+industrial lot with the fewest road steps to the gold flag grows first.
+V shows the field: + raises, hatching lowers, smoke marks industry.
 Parks cover lots with a tile within 3 side-steps; overlap does not stack.
 They add no extra capacity or demand. Parks need no services and carry neither road access nor power.
 Tax rate (Budget): each point charges 20 cents per serviced resident and
@@ -74,14 +79,14 @@ derived from elapsed days and never saved. Time starts paused. Construction work
 dialogs suspend time. Save manually; after restarting, press Load.
 Saves: %APPDATA%/OriginalCityBuilder/saves/manual.json
 The previous valid save is manual.json.bak; failed loads leave the city intact.
-Format 8 (unchanged since 0.9.0-m2g; the guide and calendar save nothing) stores the same fields as format 7: the tax
-rate and lot and power plant anchors; desirability is derived, never saved.
-Format 7 saves load unchanged; format 6 saves load at the standard 10% rate. Earlier formats (1-5) load with
+Format 9 (0.13.0-r2a; the guide and calendar save nothing) stores the same fields as formats 7
+and 8: the tax rate and lot and power plant anchors; land value and freight are derived, never saved.
+Format 8 and 7 saves load unchanged; format 6 saves load at the standard 10% rate. Earlier formats (1-5) load with
 their old single-tile zones and power stations cleared; roads, parks, funds, time,
 budget history and project completion are kept. Loading changes no files.
 Saving preserves older primary/backup bytes once as manual.schema1.json to
-manual.schema7.json before replacement. No retroactive charges. Older builds
-cannot read format 8; use the preserved older-format copy to roll back.
+manual.schema8.json before replacement. No retroactive charges. Older builds
+cannot read format 9; use the preserved older-format copy to roll back.
 
 Windows x64, tested on the development machine. Other hardware, Windows DPI
 variants, other operating systems, and controllers remain unverified.

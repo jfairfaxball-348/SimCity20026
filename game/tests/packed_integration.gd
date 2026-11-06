@@ -165,9 +165,9 @@ func run() -> void:
 				main.power_label.text = LONGEST_POWER
 				main.selection_label.text = "TILE 127, 127 · Residential lot L2 · 8 residents"
 				main.scope_label.text = "Demand −32768 (taxes) · next check 30 Dec 2779727\nLoses a level in 2 check(s) unless services return."
-				main.legend_label.text = "Desirability −3: park +2, water +1, industry −6"
+				main.legend_label.text = "Land value −1: park +2, water +1, trade +2, industry −6"
 				await frames()
-				check(main.scope_label.get_global_rect().end.y <= main.inspector.get_global_rect().end.y and main.inspector.get_global_rect().end.y < main.bottom.position.y, "inspector text fits %s text %d cell %s" % [resolution,amount,cell])
+				check(main.scope_label.get_global_rect().end.y <= main.inspector.get_global_rect().end.y and main.inspector.get_global_rect().end.y < main.bottom.position.y, "inspector text fits %s text %d cell %s (inspector %s, lines sel %d acc %d pow %d leg %d scope %d)" % [resolution,amount,cell,main.inspector.get_global_rect(),main.selection_label.get_line_count(),main.access_label.get_line_count(),main.power_label.get_line_count(),main.legend_label.get_line_count(),main.scope_label.get_line_count()])
 				check(main.power_label.get_global_rect().end.y <= main.legend_label.get_global_rect().position.y and main.inspector.size.y <= 320.5, "power reason does not overlap marks legend %s text %d cell %s" % [resolution,amount,cell])
 			# The longest migration message must fit the status bar.
 			main._status("Earlier format 5 loaded; 16384 old single-tile zone/power tiles cleared for 3x3 lots and 4x4 power plants, tax rate set to the standard 10%. Nothing written; saving keeps the original as manual.schema5.json.")
@@ -399,6 +399,7 @@ func run() -> void:
 	await summary_flow(isolated)
 	await guide_flow(isolated)
 	await calendar_flow(isolated)
+	await landvalue_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -445,10 +446,11 @@ func growth_flow(isolated: IsolatedStore) -> void:
 	main._inspect_cell(Vector2i(43, 30))
 	check(main.city.growth.population == 12 and main.city.growth.jobs == 0 and "L1" in main.selection_label.text and "Demand met" in main.scope_label.text, "pack bootstrap updates residents, lot level, and demand explanation")
 	await growth_days(35)
-	# D33: the two homes across the street from developed workshops are held at level 1.
+	# D33/D36: industry nearest the link grows first, so the two homes across the street
+	# from those developed workshops are held at level 1.
 	check(main.city.growth.population == 40 and main.city.growth.jobs == 18 and "Residents 40" in main.population_label.text and main.demand_meter.summary() == "R +2 · C 0 · I 0" and "Tax 10%" in main.demand_label.text, "shipped growth settles at 40 / 18 with matching HUD and the held homes' demand")
-	main._inspect_cell(Vector2i(52, 30))
-	check(main.city.growth.reason(main.city, main.city.index(Vector2i(52, 30))) == "held" and "Desirability −2: industry −2" in main.legend_label.text and "Held at L1" in main.scope_label.text, "shipped inspector explains a home held by a workshop across the street")
+	main._inspect_cell(Vector2i(58, 30))
+	check(main.city.growth.reason(main.city, main.city.index(Vector2i(58, 30))) == "held" and "Land value −2: industry −2" in main.legend_label.text and "Held at L1" in main.scope_label.text, "shipped inspector explains a home held by a workshop across the street")
 	await key(KEY_S, true)
 	var saved: String = main.city.canonical()
 	await fresh_scene(isolated)
@@ -506,7 +508,7 @@ func economy_flow(isolated: IsolatedStore) -> void:
 	check("3 side-steps" in main.access_label.text and "Upkeep $10/month" in main.scope_label.text, "shipped park inspector explains coverage effect and upkeep")
 	await growth_days(5)
 	main._inspect_cell(Vector2i(58, 30))
-	check(main.city.development[main.city.index(Vector2i(57, 29))] == 1 and main.city.development[main.city.index(Vector2i(54, 29))] == 1 and "Desirability +2: park +2" in main.legend_label.text, "shipped park changes which lots receive starter growth")
+	check(main.city.development[main.city.index(Vector2i(57, 29))] == 1 and main.city.development[main.city.index(Vector2i(54, 29))] == 1 and "Land value +2: park +2" in main.legend_label.text, "shipped park changes which lots receive starter growth")
 	await growth_days(25)
 	check(main.city.last_budget.tick == 30 and City.Economy.totals(main.city.last_budget).net == 3200 and main.city.cash == 906200, "shipped month: $124 income minus $92 upkeep gives $32")
 	await key(KEY_B)
@@ -724,7 +726,7 @@ func tax_flow(isolated: IsolatedStore) -> void:
 ## D33 / M2g: the shipped overlay, held home, park rescue and schema-7 migration.
 func desirability_flow(isolated: IsolatedStore) -> void:
 	await fresh_scene(isolated)
-	check(not main.world.desirability_visible and not "Overlay" in main.legend_label.text, "the desirability overlay starts off")
+	check(not main.world.desirability_visible and not "+ raises" in main.legend_label.text, "the land value overlay starts off")
 	var roads: Array[Vector2i] = []
 	for x in range(42, 64): roads.append(Vector2i(x, 32))
 	project_command("road", roads)
@@ -737,7 +739,7 @@ func desirability_flow(isolated: IsolatedStore) -> void:
 	main._refresh_metrics()
 	await key(KEY_V)
 	main._inspect_cell(Vector2i(45, 40))
-	check(main.world.desirability_visible and "Overlay: + attracts" in main.legend_label.text and "Desirability overlay on" in main.status_label.text, "V turns the overlay on with a legend and status explanation")
+	check(main.world.desirability_visible and "+ raises" in main.legend_label.text and "Land value overlay on" in main.status_label.text, "V turns the overlay on with a legend and status explanation")
 	var home: int = main.city.index(Vector2i(51, 29))
 	main._inspect_cell(Vector2i(52, 30))
 	check(main.city.desirability.tile_score[home] == -2 and "Drops to L1 next check" in main.scope_label.text, "shipped inspector warns that a level-2 home beside a developed workshop will drop")
@@ -747,14 +749,14 @@ func desirability_flow(isolated: IsolatedStore) -> void:
 	await key(KEY_8)
 	await click(screen_cell(Vector2i(52, 27)))
 	main._inspect_cell(Vector2i(52, 30))
-	check(main.city.occupancy[main.city.index(Vector2i(52, 27))] == City.PARK and main.city.desirability.lot_score[home] == 0 and "Desirability 0: park +2, industry −2" in main.legend_label.text, "a park placed by pointer offsets the workshop")
+	check(main.city.occupancy[main.city.index(Vector2i(52, 27))] == City.PARK and main.city.desirability.lot_score[home] == 0 and "Land value 0: park +2, industry −2" in main.legend_label.text, "a park placed by pointer offsets the workshop")
 	await growth_days(5)
 	check(main.city.development[home] == 2, "the rescued home regrows to level 2 in the shipped game")
 	main._open_settings()
 	await frames()
 	var toggle: Button = null
 	for child in main.settings.find_children("*", "Button", true, false):
-		if "Desirability overlay" in (child as Button).text: toggle = child
+		if "Land value overlay" in (child as Button).text: toggle = child
 	check(toggle != null and main.settings.size.y <= 720 and main.settings.get_ok_button().get_global_rect().end.y <= 720, "display dialog with the overlay toggle fits 720p")
 	if toggle != null:
 		toggle.pressed.emit()
@@ -764,7 +766,7 @@ func desirability_flow(isolated: IsolatedStore) -> void:
 	await key(KEY_V)
 	await key(KEY_S, true)
 	var saved: String = FileAccess.get_file_as_string(isolated.test_path)
-	check(not "desirab" in saved and int(JSON.parse_string(saved).schema_version) == 8, "overlay state is never saved; saves are schema 8")
+	check(not "desirab" in saved and int(JSON.parse_string(saved).schema_version) == City.SCHEMA, "overlay state is never saved; saves are the current schema")
 	var seven_path: String = (get_script() as Script).resource_path.get_base_dir().path_join("fixtures/m2f-schema7.json")
 	var seven: String = FileAccess.get_file_as_string(seven_path)
 	await fresh_scene(isolated)
@@ -772,7 +774,7 @@ func desirability_flow(isolated: IsolatedStore) -> void:
 	await key(KEY_L, true)
 	check(main.city.tax_rate == 14 and "Earlier format 7" in main.status_label.text and "every lot kept" in main.status_label.text and not "standard 10%" in main.status_label.text, "UI schema-7 load keeps every lot and its own tax rate")
 	await key(KEY_S, true)
-	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 7)) == seven and int(isolated.load_city(main.SAVE_PATH).schema) == 8, "UI save preserves schema-7 bytes and writes schema 8")
+	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 7)) == seven and int(isolated.load_city(main.SAVE_PATH).schema) == City.SCHEMA, "UI save preserves schema-7 bytes and writes the current schema")
 
 ## D34 / M2h: the shipped summary dialog, its actions and its read-only guarantee.
 func summary_flow(isolated: IsolatedStore) -> void:
@@ -962,7 +964,41 @@ func calendar_flow(isolated: IsolatedStore) -> void:
 	check(main.city.tick == 360 and main.day_label.text.begins_with("1 Jan 1951"), "twelve 30-day months make a year: tick 360 is 1 Jan 1951")
 	await key(KEY_S, true)
 	var saved: String = FileAccess.get_file_as_string(isolated.test_path)
-	check(not saved.is_empty() and not "1951" in saved and not "Jan" in saved and int(JSON.parse_string(saved).schema_version) == 8, "the save stays schema 8 and stores no date")
+	check(not saved.is_empty() and not "1951" in saved and not "Jan" in saved and int(JSON.parse_string(saved).schema_version) == City.SCHEMA, "the save is the current schema and stores no date")
+
+## D36 / R2a: a held commercial lot and industry ordered by freight in the shipped game.
+func landvalue_flow(isolated: IsolatedStore) -> void:
+	await fresh_scene(isolated)
+	var roads: Array[Vector2i] = []
+	for x in range(42, 64): roads.append(Vector2i(x, 32))
+	project_command("road", roads)
+	project_command("power", [Vector2i(38, 31)])
+	project_command("home", lots_row(29, 42, 6))
+	project_command("shop", [Vector2i(42, 33), Vector2i(54, 33)])
+	project_command("workshop", [Vector2i(51, 33), Vector2i(57, 33)])
+	await growth_days(20)
+	var near_link: int = main.city.index(Vector2i(57, 33))
+	var far: int = main.city.index(Vector2i(51, 33))
+	check(main.city.development[near_link] == 2 and main.city.development[far] == 0, "shipped industry nearest the link grows first")
+	await growth_days(39)
+	var shop: int = main.city.index(Vector2i(54, 33))
+	check(main.city.development[shop] == 1 and main.city.growth.reason(main.city, shop) == "held", "a commercial lot between two industrial lots is held at level 1")
+	main._inspect_cell(Vector2i(55, 34))
+	await frames()
+	check("Commercial lot L1" in main.selection_label.text and "Land value −2: trade +2, industry −4" in main.legend_label.text and "Held at L1 by industry" in main.scope_label.text, "the inspector explains the held commercial lot")
+	main._inspect_cell(Vector2i(58, 34))
+	await frames()
+	check("Industrial lot L2" in main.selection_label.text and "Freight 4 road steps · ignores land value" in main.legend_label.text, "the inspector gives an industrial lot its freight steps")
+	main._open_summary()
+	await frames()
+	var held: Dictionary = {}
+	for entry in main.summary_items:
+		if String(entry.kind) == "held": held = entry
+	check(int(held.get("count", 0)) == 3 and "3 lots held at level 1" in String(held.get("text", "")), "the summary counts held residential and commercial lots together")
+	main.summary_dialog.hide()
+	await key(KEY_V)
+	check(main.world.desirability_visible and main.city.desirability.tile_score[main.city.index(Vector2i(55, 34))] == -2, "V shows the commercial lot's land value")
+	await key(KEY_V)
 
 func project_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	return main.city.apply_command(kind, cells)

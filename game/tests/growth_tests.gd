@@ -52,9 +52,10 @@ func run(tester: SceneTree) -> void:
 	days(city, 5)
 	t.check(city.growth.population == 24 and city.growth.jobs == 6 and city.development[HOME_A] == 2, "jobs support home upgrades, one level per lot per round")
 	days(city, 25)
-	# D33: the homes across the street from the two developed workshops are held at level 1.
+	# D33/D36: industry nearest the link grows first (x 19 and 16), so the homes across
+	# the street from those two developed workshops are held at level 1.
 	t.check(city.growth.population == 40 and city.growth.jobs == 18 and city.development.count(2) == 6, "serviced mixed lot town settles at 40 residents / 18 jobs with two homes held beside workshops")
-	t.check(city.growth.reason(city, HOME_D) == "held" and city.growth.reason(city, HOME_D + 3) == "held" and city.development[HOME_D] == 1, "homes across from developed workshops are held at level 1")
+	t.check(city.growth.reason(city, HOME_D + 3) == "held" and city.growth.reason(city, HOME_D + 6) == "held" and city.development[HOME_D + 6] == 1 and city.development[HOME_D] == 2, "homes across from the developed workshops nearest the link are held at level 1")
 	t.check(city.growth.demand[City.HOME] == 2 and city.growth.demand[City.SHOP] == 0 and city.growth.demand[City.WORKSHOP] == 0, "equilibrium leaves only the home demand that held lots cannot use")
 	var levels: PackedByteArray = city.development.duplicate()
 	days(city, 100)
