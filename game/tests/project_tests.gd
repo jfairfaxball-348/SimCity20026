@@ -107,7 +107,7 @@ func run(tester: SceneTree) -> void:
 	t.check(FileAccess.get_sha256(current) == M2E_FIXTURE_SHA, "schema-6 lot fixture hash")
 	var current_text: String = FileAccess.get_file_as_string(current).strip_edges()
 	var current_loaded: Dictionary = Codec.decode(current_text)
-	t.check(current_loaded.ok and current_loaded.migrated_from == 0 and current_loaded.city.canonical() == current_text, "schema-6 lot fixture exact round trip")
+	t.check(current_loaded.ok and current_loaded.migrated_from == 6 and current_loaded.cleared_tiles == 0 and current_loaded.city.canonical() == t.migrated_text(current_text), "schema-6 lot fixture migrates unchanged at the standard tax rate")
 	if current_loaded.ok:
 		var lots: City = current_loaded.city
 		var opening: int = lots.cash
@@ -179,7 +179,7 @@ func test_saves() -> void:
 	var store := Store.new(files)
 	var base: String = OS.get_environment("CITY_TEST_DIR")
 	if base.is_empty(): base = "user://tests"
-	for source in [["m2d-schema4", 4], ["m3a-schema5", 5]]:
+	for source in [["m2d-schema4", 4], ["m3a-schema5", 5], ["m2e-schema6", 6]]:
 		var legacy: String = FileAccess.get_file_as_string("res://tests/fixtures/%s.json" % source[0])
 		for backup in [false, true]:
 			var path: String = base.path_join("project_%d_%d_%s/manual.json" % [source[1], Time.get_ticks_usec(), str(backup)])

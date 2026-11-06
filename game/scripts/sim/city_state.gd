@@ -18,9 +18,9 @@ const WORKSHOP: int = 5
 const PARK: int = 6
 const MAX_TICK: int = 1_000_000_000
 const MAX_PENDING_US: int = 3_600_000_000
-const SCHEMA: int = 6
-const SIMULATION: String = "m2e-1"
-const CONTENT: String = "m2e-1"
+const SCHEMA: int = 7
+const SIMULATION: String = "m2f-1"
+const CONTENT: String = "m2f-1"
 ## Supported earlier format (M1/M2a): IDs 0..2 only, migrated in memory (D20).
 const LEGACY_SCHEMA: int = 1
 const LEGACY_VERSION: String = "m1-1"
@@ -37,6 +37,8 @@ var service_loss: PackedByteArray = PackedByteArray()
 ## D30: 1 on the top-left tile of every zone lot and power station, otherwise 0.
 var footprint_anchor: PackedByteArray = PackedByteArray()
 var cash: int = Balance.STARTING_CASH
+## D32: town tax rate in whole percent.
+var tax_rate: int = Balance.TAX_STANDARD
 var tick: int = 0
 var pending_us: int = 0
 var sequence: int = 0
@@ -60,6 +62,7 @@ func initialize(map_seed: int = 198624, map_width: int = 64, map_height: int = 6
 	seed_value = map_seed
 	rng.seed = seed_value
 	cash = Balance.STARTING_CASH
+	tax_rate = Balance.TAX_STANDARD
 	tick = 0
 	pending_us = 0
 	sequence = 0
@@ -285,6 +288,20 @@ func apply_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 		result.message = "%d tile%s · %s" % [changed.size(), "" if changed.size() == 1 else "s", Balance.money(int(result.cost))]
 	return result
 
+## D32: ordered, validated and free; the current rate is a no-op without a sequence step.
+func set_tax_rate(rate: Variant) -> Dictionary:
+	if typeof(rate) != TYPE_INT or rate < Balance.TAX_MIN or rate > Balance.TAX_MAX:
+		return _failure("Choose a whole tax rate from %d%% to %d%%." % [Balance.TAX_MIN, Balance.TAX_MAX])
+	if rate == tax_rate:
+		return {"ok": true, "cost": 0, "changed": [], "anchors": [], "message": "Tax rate unchanged at %d%%." % tax_rate}
+	if sequence >= MAX_TICK: return _failure("This prototype has reached its command limit.")
+	tax_rate = rate
+	sequence += 1
+	growth.refresh(self)
+	budget = Economy.inputs(self)
+	return {"ok": true, "cost": 0, "changed": [], "anchors": [], "message": "",
+		"record": {"tick": tick, "sequence": sequence, "kind": "tax_rate", "indices": [], "cost": 0, "rate": rate}}
+
 func snapshot() -> Dictionary:
 	return {"schema_version": SCHEMA, "simulation_version": SIMULATION,
 		"content_version": CONTENT, "width": width, "height": height,
@@ -293,7 +310,7 @@ func snapshot() -> Dictionary:
 		"footprint_anchor": Array(footprint_anchor),
 		"development": Array(development), "service_loss": Array(service_loss),
 		"last_budget": last_budget.duplicate(), "project": project.duplicate(),
-		"cash": cash, "tick": tick, "pending_us": pending_us, "sequence": sequence}
+		"cash": cash, "tax_rate": tax_rate, "tick": tick, "pending_us": pending_us, "sequence": sequence}
 
 func canonical() -> String:
 	return JSON.stringify(snapshot(), "", true)

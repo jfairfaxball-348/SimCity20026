@@ -19,8 +19,18 @@ const DECLINE_ROUNDS: int = 2
 const MAX_CASH: int = 1_000_000_000_000
 const MONTH_DAYS: int = 30
 const MONTH_GRANT: int = 10_000
+## D32: resident/job tax at the standard rate; each percentage point is a tenth of it.
 const RESIDENT_TAX: int = 200
 const JOB_TAX: int = 400
+const TAX_MIN: int = 0
+const TAX_MAX: int = 25
+const TAX_STANDARD: int = 10
+const RESIDENT_TAX_PER_POINT: int = RESIDENT_TAX / TAX_STANDARD
+const JOB_TAX_PER_POINT: int = JOB_TAX / TAX_STANDARD
+## D32 appeal: percent change in demand targets per point below the standard rate.
+const APPEAL_PER_POINT: int = 4
+## D32: most levels of one type that leave per growth round above the standard rate.
+const LEAVE_LIMIT: int = 4
 const ROAD_UPKEEP: int = 100
 const STATION_UPKEEP: int = 6_000
 const PARK_UPKEEP: int = 1_000
@@ -38,6 +48,14 @@ static func cost(kind: String) -> int:
 		"power": return POWER_COST
 		"park": return PARK_COST
 	return 0
+
+## D32: demand-target multiplier in percent (140 at 0%, 100 at 10%, 40 at 25%).
+static func appeal(rate: int) -> int:
+	return 100 + APPEAL_PER_POINT * (TAX_STANDARD - rate)
+
+## Rounds half up: value x appeal percent, in integers.
+static func appealed(value: int, rate: int) -> int:
+	return (value * appeal(rate) + 50) / 100
 
 static func money(cents: int) -> String:
 	return ("−" if cents < 0 else "") + "$%d.%02d" % [absi(cents) / 100, absi(cents) % 100]

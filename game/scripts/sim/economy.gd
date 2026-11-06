@@ -1,10 +1,10 @@
 extends RefCounted
-## D25: integer monthly accounting. No hidden debt or service cuts.
+## D25/D32: integer monthly accounting at the town's tax rate. No hidden debt or service cuts.
 const Balance = preload("res://content/balance.gd")
 
 static func inputs(city: RefCounted) -> Dictionary:
 	var data: Dictionary = {"tick": city.tick, "opening_cash": city.cash,
-		"residents": 0, "jobs": 0, "roads": 0, "stations": 0, "parks": 0}
+		"residents": 0, "jobs": 0, "roads": 0, "stations": 0, "parks": 0, "tax_rate": city.tax_rate}
 	for i in range(city.width * city.height):
 		match city.occupancy[i]:
 			city.ROAD: data.roads += 1
@@ -20,7 +20,8 @@ static func inputs(city: RefCounted) -> Dictionary:
 	return data
 
 static func totals(data: Dictionary) -> Dictionary:
-	var income: int = Balance.MONTH_GRANT + int(data.residents) * Balance.RESIDENT_TAX + int(data.jobs) * Balance.JOB_TAX
+	var rate: int = int(data.get("tax_rate", Balance.TAX_STANDARD))
+	var income: int = Balance.MONTH_GRANT + int(data.residents) * Balance.RESIDENT_TAX_PER_POINT * rate + int(data.jobs) * Balance.JOB_TAX_PER_POINT * rate
 	var expenses: int = int(data.roads) * Balance.ROAD_UPKEEP + int(data.stations) * Balance.STATION_UPKEEP + int(data.parks) * Balance.PARK_UPKEEP
 	var raw_cash: int = int(data.opening_cash) + income - expenses
 	return {"income": income, "expenses": expenses, "net": income - expenses,

@@ -7,6 +7,7 @@ const World = preload("res://scripts/presentation/world_view.gd")
 const Style = preload("res://scripts/presentation/ui_style.gd")
 const Bindings = preload("res://scripts/input/input_bindings.gd")
 const ArtKit = preload("res://scripts/presentation/art_kit.gd")
+const Meter = preload("res://scripts/presentation/demand_meter.gd")
 const SAVE_PATH: String = "user://saves/manual.json"
 const SIZES: Array[Vector2i] = [Vector2i(1280,720), Vector2i(1366,768), Vector2i(1920,1080), Vector2i(1280,800)]
 const PAN_VECTORS: Dictionary = {"pan_left": Vector2.LEFT, "pan_right": Vector2.RIGHT, "pan_up": Vector2.UP, "pan_down": Vector2.DOWN}
@@ -38,6 +39,8 @@ var day_label: Label
 var grid_label: Label
 var population_label: Label
 var demand_label: Label
+## D32: glanceable H/S/W demand meter in the top bar.
+var demand_meter: Meter
 var selection_label: Label
 var inspector: PanelContainer
 var access_label: Label
@@ -55,6 +58,10 @@ var settings: AcceptDialog
 var budget_dialog: AcceptDialog
 var budget_text: Label
 var budget_button: Button
+## D32: Budget dialog tax row.
+var tax_label: Label
+var tax_note: Label
+var tax_buttons: Dictionary = {}
 var project_dialog: AcceptDialog
 var project_choice: OptionButton
 var project_text: Label
@@ -115,8 +122,10 @@ func _build_ui() -> void:
 	population_label = _label("", 18)
 	demand_label = _label("", 14, Style.MUTED)
 	heading.add_child(population_label)
+	demand_meter = Meter.new()
+	heading.add_child(demand_meter)
 	heading.add_child(demand_label)
-	demand_label.tooltip_text = "Demand is available level additions: H homes, S shops, W workshops. Growth is checked every five days."
+	demand_label.tooltip_text = "Tax rate and this month's forecast net (income minus upkeep). Open Budget [B] to change the rate."
 	cash_label = _label("", 21)
 	cash_label.custom_minimum_size.x = 178
 	var funds := VBoxContainer.new()
@@ -291,7 +300,7 @@ func _build_dialogs() -> void:
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_text = _label("1 Roads · 2 Homes · 6 Shops · 7 Workshops\nP Station · 8 Park · 3 Clear · B Budget\nJ Project: a square with three serviced home lots.\nZones are 3x3 lots; stations are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\n\nJoin roads from the gold flag; zone beside them.\nAdd a station: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nParks prioritize homes within 3 side-steps; no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
+	help_text = _label("1 Roads · 2 Homes · 6 Shops · 7 Workshops\nP Station · 8 Park · 3 Clear · B Budget\nJ Project: a square with three serviced home lots.\nZones are 3x3 lots; stations are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\n\nJoin roads from the gold flag; zone beside them.\nAdd a station: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nParks prioritize homes within 3 side-steps; no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
 	add_child(help_dialog)
 	var help_scroll := ScrollContainer.new()
 	help_scroll.custom_minimum_size = Vector2(640, 440)
@@ -304,10 +313,29 @@ func _build_dialogs() -> void:
 	budget_dialog = AcceptDialog.new()
 	budget_dialog.title = "Monthly budget"
 	add_child(budget_dialog)
+	var budget_column := VBoxContainer.new()
+	budget_dialog.add_child(budget_column)
+	var tax_row := HBoxContainer.new()
+	budget_column.add_child(tax_row)
+	tax_label = _label("", 18)
+	tax_label.custom_minimum_size.x = 170
+	tax_row.add_child(tax_label)
+	for entry in [["lower", "−  Lower", -1], ["raise", "+  Raise", 1]]:
+		var step: int = entry[2]
+		var button := _button(entry[1], func(): _set_tax(city.tax_rate + step))
+		tax_row.add_child(button)
+		tax_buttons[entry[0]] = button
+	tax_buttons["standard"] = _button("Standard %d%%" % Balance.TAX_STANDARD, func(): _set_tax(Balance.TAX_STANDARD))
+	tax_row.add_child(tax_buttons.standard)
+	tax_note = _label("", 15, Style.MUTED)
+	tax_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tax_note.custom_minimum_size.x = 700
+	budget_column.add_child(tax_note)
+	budget_column.add_child(HSeparator.new())
 	var budget_scroll := ScrollContainer.new()
-	budget_scroll.custom_minimum_size = Vector2(700, 440)
+	budget_scroll.custom_minimum_size = Vector2(700, 330)
 	budget_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	budget_dialog.add_child(budget_scroll)
+	budget_column.add_child(budget_scroll)
 	budget_text = _label("", 16)
 	budget_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	budget_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -374,6 +402,7 @@ func _set_text_size(amount: int) -> void:
 	legend_label.add_theme_font_size_override("font_size", amount - 2)
 	preview_label.add_theme_font_size_override("font_size", amount)
 	status_label.add_theme_font_size_override("font_size", amount)
+	demand_meter.set_font_size(14 + (amount - 16) / 2)
 	_layout_ui()
 	_status("Interface text updated.")
 
@@ -573,7 +602,9 @@ func _growth_text(cell: Vector2i) -> String:
 	if not city.inside(cell) or not City.is_zone(city.occupancy[city.index(cell)]):
 		return "Next growth: day %d. Zones need road access, power and demand." % next_day
 	var i: int = city.anchor_at(cell)
-	var prefix: String = "Demand %d · next check day %d\n" % [city.growth.demand[city.occupancy[i]], next_day]
+	var kind: int = city.occupancy[i]
+	var wanted: String = "Demand −%d (high taxes)" % city.growth.surplus[kind] if city.growth.surplus[kind] > 0 else "Demand %d" % city.growth.demand[kind]
+	var prefix: String = "%s · next check day %d\n" % [wanted, next_day]
 	if city.occupancy[i] == City.HOME:
 		prefix += "Park priority. " if city.amenity.lot_covered[i] != 0 else "No park priority. "
 	match city.growth.reason(city, i):
@@ -581,6 +612,8 @@ func _growth_text(cell: Vector2i) -> String:
 		"queued": return prefix + "Waiting turn; park homes first, then map order."
 		"demand": return prefix + "Demand met. More residents support jobs; jobs support homes."
 		"full": return prefix + "Fully developed (level 2)."
+		"leaving": return prefix + "High taxes: loses a level next check. Lower the rate to keep it."
+		"surplus": return prefix + "Taxes above %d%%: more levels may leave." % Balance.TAX_STANDARD
 		"declining": return prefix + "Loses a level in %d check(s) unless services return." % (Balance.DECLINE_ROUNDS - city.service_loss[i])
 	return prefix + "Waiting for road access and power."
 
@@ -702,13 +735,37 @@ func _set_speed(value: int) -> void:
 func _refresh_metrics() -> void:
 	cash_label.text = Balance.money(city.cash)
 	population_label.text = "Residents %d · Jobs %d" % [city.growth.population, city.growth.jobs]
-	demand_label.text = "Demand  H %d · S %d · W %d" % [city.growth.demand[City.HOME], city.growth.demand[City.SHOP], city.growth.demand[City.WORKSHOP]]
 	var forecast: Dictionary = City.Economy.totals(city.budget)
-	demand_label.text += "\nMonthly net %s%s" % [Balance.money(forecast.net), " · DEFICIT" if forecast.net < 0 else ""]
+	demand_label.text = "Tax %d%% · Net %s%s" % [city.tax_rate, Balance.money(forecast.net), " · DEFICIT" if forecast.net < 0 else ""]
+	demand_meter.set_values(meter_values())
 	budget_button.tooltip_text = "Current forecast; changes with services and development. Next settlement: day %d." % (city.tick + 31 - city.tick % 30)
 	day_label.text = "Day %d\n%s" % [city.tick + 1, "Paused" if speed == 0 or focus_paused else "%dx speed" % speed]
 	var grid = city.power
 	grid_label.text = "Power %d / %d\n%s" % [grid.total_used, grid.total_capacity, "No stations" if grid.station_count == 0 else "%d lot%s short" % [grid.short_homes, "" if grid.short_homes == 1 else "s"] if grid.short_homes > 0 else "No shortage"]
+
+## D32: signed meter values; negative only while levels leave above the standard rate.
+func meter_values() -> Array[int]:
+	var out: Array[int] = []
+	for kind in [City.HOME, City.SHOP, City.WORKSHOP]:
+		out.append(-city.growth.surplus[kind] if city.growth.surplus[kind] > 0 else city.growth.demand[kind])
+	return out
+
+## D32: one ordered tax command; time stays suspended while the Budget dialog is open.
+func _set_tax(rate: int) -> void:
+	var result: Dictionary = city.set_tax_rate(rate)
+	if result.ok and result.has("record"):
+		dirty = true
+		print("COMMAND ", JSON.stringify(result.record))
+		var appeal: int = Balance.appeal(city.tax_rate)
+		result.message = "Tax rate %d%% · residents %s, jobs %s a month · demand %d%% of standard%s." % [city.tax_rate, _rate_money(Balance.RESIDENT_TAX_PER_POINT * city.tax_rate), _rate_money(Balance.JOB_TAX_PER_POINT * city.tax_rate), appeal, "; surplus levels leave" if city.tax_rate > Balance.TAX_STANDARD else ""]
+	_status(String(result.message))
+	_refresh_metrics()
+	if city.inside(inspected_cell): _inspect_cell(inspected_cell)
+	if budget_dialog.visible: _fill_budget()
+	world.queue_redraw()
+
+static func _rate_money(cents: int) -> String:
+	return Balance.money(cents).trim_suffix(".00")
 
 func _status(message: String) -> void:
 	status_label.text = message
@@ -764,7 +821,10 @@ func _load_path(path: String) -> void:
 	world.queue_redraw()
 	_update_preview()
 	var preserved_name: String = Store.preserved_path(path.trim_suffix(".bak"), maxi(1, int(result.get("migrated_from", 0)))).get_file()
-	var cleared: String = "%d old single-tile zone/station tiles cleared for 3x3 lots and 4x4 stations" % int(result.get("cleared_tiles", 0))
+	# Formats 1-5 lose their single-tile zones and stations (D30); format 6 keeps
+	# everything. Every earlier format starts at the standard tax rate (D32).
+	var cleared: String = "every lot kept" if int(result.get("migrated_from", 0)) >= 6 else "%d old single-tile zone/station tiles cleared for 3x3 lots and 4x4 stations" % int(result.get("cleared_tiles", 0))
+	cleared += ", tax rate set to the standard %d%%" % Balance.TAX_STANDARD
 	if int(result.get("migrated_from", 0)) > 0 and path.ends_with(".bak"):
 		_status("Backup restored from earlier format %d; %s. Save to make it current; its bytes are kept as %s first." % [result.migrated_from, cleared, preserved_name])
 	elif int(result.get("migrated_from", 0)) > 0:
@@ -805,6 +865,17 @@ func _notification(what: int) -> void:
 
 func _open_budget() -> void:
 	_cancel_stroke()
+	_fill_budget()
+	budget_dialog.popup_centered(Vector2i(760, 600))
+
+func _fill_budget() -> void:
+	tax_label.text = "Tax rate %d%%" % city.tax_rate
+	tax_label.add_theme_font_size_override("font_size", font_size + 2)
+	tax_note.add_theme_font_size_override("font_size", font_size - 1)
+	tax_buttons.lower.disabled = city.tax_rate <= Balance.TAX_MIN
+	tax_buttons.raise.disabled = city.tax_rate >= Balance.TAX_MAX
+	tax_buttons.standard.disabled = city.tax_rate == Balance.TAX_STANDARD
+	tax_note.text = "Each month: %s per serviced resident, %s per serviced job. Demand %d%% of standard (%d-%d%%, standard %d%%). Lower rates attract homes and businesses; %s" % [_rate_money(Balance.RESIDENT_TAX_PER_POINT * city.tax_rate), _rate_money(Balance.JOB_TAX_PER_POINT * city.tax_rate), Balance.appeal(city.tax_rate), Balance.TAX_MIN, Balance.TAX_MAX, Balance.TAX_STANDARD, "above %d%%, up to %d levels of each type leave per check while above demand." % [Balance.TAX_STANDARD, Balance.LEAVE_LIMIT]]
 	var next_day: int = city.tick + Balance.MONTH_DAYS - city.tick % Balance.MONTH_DAYS + 1
 	budget_text.add_theme_font_size_override("font_size", font_size)
 	budget_text.text = "CURRENT FORECAST · settles day %d after growth\n" % next_day
@@ -818,11 +889,11 @@ func _open_budget() -> void:
 		budget_text.text += _budget_breakdown(city.last_budget)
 		budget_text.text += "\nOpening %s → closing %s\nShortfall waived %s · surplus capped %s\n" % [Balance.money(city.last_budget.opening_cash), Balance.money(last.closing_cash), Balance.money(last.waiver), Balance.money(last.capped)]
 	budget_text.text += "\nRECOVERY · Clear surplus roads, stations or parks for free.\nRestore road access and power to restore taxes.\nAt zero, unpaid costs are waived: no debt or service cuts.\nWith everything cleared, the $100 monthly grant rebuilds cash."
-	budget_dialog.popup_centered(Vector2i(760, 560))
 
 func _budget_breakdown(data: Dictionary) -> String:
 	var result: Dictionary = City.Economy.totals(data)
-	return "Grant $100 + %d serviced residents × $2 + %d serviced jobs × $4 = %s\nUpkeep: %d roads × $1 + %d stations × $60 + %d parks × $10 = %s\nNet %s%s" % [data.residents, data.jobs, Balance.money(result.income), data.roads, data.stations, data.parks, Balance.money(result.expenses), Balance.money(result.net), " · DEFICIT: costs exceed income" if result.net < 0 else ""]
+	var rate: int = int(data.get("tax_rate", Balance.TAX_STANDARD))
+	return "Tax %d%%: grant $100 + %d serviced residents × %s + %d serviced jobs × %s = %s\nUpkeep: %d roads × $1 + %d stations × $60 + %d parks × $10 = %s\nNet %s%s" % [rate, data.residents, _rate_money(Balance.RESIDENT_TAX_PER_POINT * rate), data.jobs, _rate_money(Balance.JOB_TAX_PER_POINT * rate), Balance.money(result.income), data.roads, data.stations, data.parks, Balance.money(result.expenses), Balance.money(result.net), " · DEFICIT: costs exceed income" if result.net < 0 else ""]
 
 func _build_project_dialog() -> void:
 	project_dialog = AcceptDialog.new()

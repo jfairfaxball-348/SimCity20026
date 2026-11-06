@@ -1,14 +1,16 @@
-UNTITLED CITY BUILDER - M2e ZONE LOTS, MODERN CITY ARTWORK (0.7.1-m2e)
+UNTITLED CITY BUILDER - M2f DEMAND METER AND TAX RATE (0.8.0-m2f)
 
 Run citybuilder.exe. Keep citybuilder.pck beside it.
 Local development checkpoint; 3x3 zone lots, 4x4 power stations, a monthly
-economy, a pocket park, and one optional project.
+economy with an adjustable tax rate, a demand meter, a pocket park, and one
+optional project.
 
 1 Roads ($10 per tile) / 2 Homes / 6 Shops / 7 Workshops ($25 per 3x3 lot)
 P Power station (4x4, $500, 20 lots) / 8 Park ($100) / 3 Clear (free)
 Zone tools centre a 3x3 lot on the pointer; drag to lay a straight row or
 column of lots. Clear any tile of a lot or station to remove all of it.
-B Budget: expected income/upkeep and latest actual settlement.
+B Budget: expected income/upkeep, latest actual settlement, and the tax
+rate (- / + / Standard 10%; 0-25%).
 J Project: choose a park with three developed, serviced home lots that each
 have a tile within 3 side-steps. Complete it once to add cosmetic flowers;
 no new growth or income benefit. Clear the park freely; completion remains,
@@ -33,8 +35,8 @@ needs both services. Stations carry power but never road access.
 Every five days, eligible lots can gain one of two development levels.
 A home level holds 4 residents; shops/workshops provide 2/4 jobs per level.
 Starter demand supports 12 residents before jobs exist. Residents create
-business demand; jobs support more homes. HUD demand H/S/W counts level
-additions. At most eight additions per type per round, park-covered homes
+business demand; jobs support more homes. The H/S/W meter in the top bar
+shows levels the town welcomes (up, +) or that will leave (down, -). At most eight additions per type per round, park-covered homes
 first, then map order. Satisfied demand stops new growth without evicting existing buildings.
 Two growth checks without road access or power lose one level. Reconnect
 or add capacity to stop decline; normal demand allows recovery.
@@ -42,8 +44,13 @@ or add capacity to stop decline; normal demand allows recovery.
 Parks cover lots with a tile within 3 side-steps; overlap does not stack.
 They give priority within existing growth demand/caps, not extra capacity
 or demand. Parks need no services and carry neither road access nor power.
-Every 30 days after growth: $100 grant + $2 per serviced resident + $4 per
-serviced job, minus $1 per road tile, $60 per station, $10 per park. Unserved
+Tax rate (Budget): each point charges 20 cents per serviced resident and
+40 cents per serviced job a month; the standard 10% is $2 and $4. Lower
+rates raise demand (140% at 0%); higher rates lower it (40% at 25%), and
+above 10% up to four surplus levels of each type leave per growth check.
+Leaving never removes a lot; lower the rate and the town regrows.
+Every 30 days after growth: $100 grant + taxes at the current rate, minus
+$1 per road tile, $60 per station, $10 per park. Unserved
 buildings pay no tax. All facilities pay upkeep, even disconnected ones.
 A negative net is a deficit. Reduce it by clearing surplus facilities free
 or restoring services. Cash never falls below zero; unpaid costs are visibly
@@ -53,12 +60,13 @@ Time starts paused. Construction works while paused. Unfocused windows and
 dialogs suspend time. Save manually; after restarting, press Load.
 Saves: %APPDATA%/OriginalCityBuilder/saves/manual.json
 The previous valid save is manual.json.bak; failed loads leave the city intact.
-Format 6 stores lot and station anchors. Earlier formats (1-5) load with
+Format 7 stores the tax rate and lot and station anchors. Format 6 saves
+load unchanged at the standard 10% rate. Earlier formats (1-5) load with
 their old single-tile zones and stations cleared; roads, parks, funds, time,
 budget history and project completion are kept. Loading changes no files.
 Saving preserves older primary/backup bytes once as manual.schema1.json to
-manual.schema5.json before replacement. No retroactive charges. Older builds
-cannot read format 6; use the preserved older-format copy to roll back.
+manual.schema6.json before replacement. No retroactive charges. Older builds
+cannot read format 7; use the preserved older-format copy to roll back.
 
 Windows x64, tested on the development machine. Other hardware, Windows DPI
 variants, other operating systems, and controllers remain unverified.

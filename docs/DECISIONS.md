@@ -30,6 +30,7 @@ Recorded: 4 November 2026. Use this file to distinguish the user's requirements 
 | U22 | Kenney Roguelike Modern City is the chosen artwork direction | Owner answer after reviewing the side-by-side comparison, **6 November 2026** |
 | U23 | Make Modern City the game's default artwork now, keeping the original as a fallback | Owner instruction "Do it now yes", **6 November 2026** |
 | U24 | Build the classic city-builder systems before the M3b guide: M2f demand meter and tax rate, then M2g desirability and workshop nuisance, then M2h town summary; the guide is deferred, not cancelled | Owner "Can I choose now and you set that up...i want the city builder", **6 November 2026**; order recommended in [NEXT_SESSION.md](../NEXT_SESSION.md) |
+| U25 | Implement the M2f assignment (demand meter and adjustable tax rate) from the handoff through verification and delivery | Owner "Run next session", **6 November 2026** |
 
 U06 superseded the earlier planning-only scope for M0/M1. U07 and U08 authorised M2a and M2b. U09 authorises M2c and source integration. U12 authorises M2d local implementation. The follow-up owner instruction authorises source delivery now and in future sessions: commit, push, merge and fast-forward completed work. Public game release remains separate.
 
@@ -69,8 +70,28 @@ D01–D06, D08, and the M1 part of D10 were adopted for the foundation. Later pr
 | <a id="d26"></a>D26 | One pocket park gives covered homes growth priority within existing demand/caps | A local choice with a tested contention effect; no extra simulation system. |
 | <a id="d27"></a>D27 | Schema 4 / m2d-1 with last-budget inputs and schema-3 migration | Preserve earlier development and original save bytes; no retroactive collection. |
 | <a id="d31"></a>D31 | Selectable presentation-only art modes; Kenney Roguelike Modern City is the default since 0.7.1-m2e (U22/U23); original renderer is the fallback; Tiny City stays experimental | Still to add: documented supplementary sprites (water/shore, power station, roof edges). The art choice is never saved and never changes the model. |
+| <a id="d32"></a>D32 | M2f: always-visible demand meter; town tax rate 0-25% (standard 10%) scales taxes and demand appeal; above 10% surplus levels leave gently; schema 7 / m2f-1 | The trade-off is money per person against growth, recoverable by lowering the rate. Revisit the numbers with playtest evidence; M2g may add local effects. |
 | <a id="d29"></a>D29 | Proposed: one dismissible, session-only First steps card derived from the current town; no save change | Replaces a start-up status line that vanishes after the first command. Deferred by U24 until after M2h; refresh its steps for M2f-M2h before adopting. Use lot wording. Revisit persistence of dismissal with M3 settings/autosaves or if observed players find it intrusive. |
 | <a id="d30"></a>D30 | Adopted and locally verified (M2e): freely placed 3x3 zone lots replace single-tile plots one-for-one, and power stations become 4x4; schema 6 / m2e-1; older zones and stations cleared on migration | Implements U16/U18/U19 while keeping D19-D28 numbers unchanged. Revisit prices and frontage costs after M3 playtests. |
+
+## D32 - M2f demand meter and tax rate, adopted and locally verified 6 November 2026
+
+**Adopted before model changes** under the owner's "Run next session" request (U25), then implemented and locally verified as game 0.8.0-m2f / schema 7 / m2f-1. Evidence: [M2f record](sessions/2026-11-06-m2f.md). [The M2f specification](M2F_SPEC.md) holds the full rules and acceptance checklist; values are original provisional choices.
+
+- **Rate.** An integer town `tax_rate` of 0-25%, standard 10%. Serviced residents pay 20 cents and serviced jobs 40 cents per point at each settlement, using the rate in force then. At 10% this is exactly D25. The grant, upkeep, waiver, cap and no-debt rules are unchanged. D25's "no adjustable tax slider" is superseded.
+- **Command.** `set_tax_rate` is an ordered, validated, free command between ticks. The same rate is a no-op without a sequence increment. It never consumes RNG.
+- **Appeal.** Appeal = 100 + 4 × (10 − rate) percent, 40-140. D22 targets are multiplied by it, rounding half up in integer arithmetic. They are unchanged at 10%, and the empty-town home starter is at least 1 at every rate.
+- **Leaving.** Above 10% only, a type's surplus (existing levels minus target) loses at most 4 levels per growth round. Each lost level comes from a different developed, serviced lot: level 2 first, then later row-major index first. Leaving never removes a zone, cash or the project. A type never grows and leaves in one round. At or below 10%, demand still never evicts. Parks give no protection.
+- **Meter.** One compact line under the population count: H, S and W, each with a small bar from a centre line (up for demand, down for leaving, full at 8 levels on a square-root scale) and a signed number. It does not rely on colour and fits the top bar at every supported size.
+- **Budget.** The Budget dialog has a tax row with −, + and Standard 10%. The forecast and last settlement show their rates. The inspector adds leaving/surplus explanations.
+- **Saves.** Game 0.8.0-m2f, schema 7, simulation/content `m2f-1`, with a required `tax_rate` and a `tax_rate` in every non-empty ledger.
+  - Schema 6 migrates unchanged plus rate 10, including a ledger rate of 10.
+  - Schemas 1-5 keep the D30 clearing migration plus the same fields.
+  - Earlier schemas with tax fields are rejected.
+  - Older originals are preserved once as `manual.schemaN.json`.
+  - Seven fixtures stay byte-identical, and a schema-7 fixture is added.
+
+D17-D24, D26-D28 and D30 are otherwise unchanged.
 
 ## D30 - M2e zone lots and stations, adopted 6 November 2026
 
@@ -205,3 +226,5 @@ None of these unanswered commercial questions prevents local prototype implement
 - 2026-11-06, U23: made Modern City the default artwork in game 0.7.1-m2e, with the original renderer as fallback and Tiny City experimental. Verified 483 source / 429 packed checks, release-EXE start-up and a native default/switch check; packaged locally. Saves and simulation unchanged (schema 6 / m2e-1); NEXT_SESSION assignment unchanged.
 
 - 2026-11-06, U24: the owner chose the city-builder systems ahead of the M3b guide. Recorded the roadmap M2f (demand meter and tax rate), M2g (desirability and workshop nuisance), M2h (town summary), then the refreshed guide; civic services and traffic later on request; hazards only if asked. Planning only: no game code, saves or version changed. NEXT_SESSION now assigns M2f.
+
+- 2026-11-06, U25 M2f: adopted D32 before model changes. Implemented the town tax rate (0-25%, standard 10%), demand appeal, gentle leaving above 10%, the H/S/W demand meter, the Budget tax row and schema 7 / m2f-1 with schema-6 migration and preservation. Passed 565 source / 457 exported-PCK checks, release-EXE start-up and native EXE checks (schema-6 load, 15% via Budget, shrinking at 3x, schema-7 save, restart/load, final-build smoke). Packaged 0.8.0-m2f locally; not published. NEXT_SESSION now assigns M2g.

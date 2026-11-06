@@ -123,7 +123,8 @@ func run() -> void:
 			check(main._is_world_position(link.get_center()) and not main.inspector.get_global_rect().intersects(link) and not main.side.get_global_rect().intersects(link), "centred outside link uncovered by panels %s text %d" % [resolution,amount])
 			main.grid_label.text = "Power 100 / 120\n10 lots short"
 			main.population_label.text = "Residents 131072 · Jobs 131072"
-			main.demand_label.text = "Demand  H 32768 · S 8192 · W 8192"
+			main.demand_label.text = "Tax 25% · Net −$99999.00 · DEFICIT"
+			main.demand_meter.set_values([32768, -8192, -8192])
 			for message in REJECTIONS:
 				main.preview_label.text = message
 				await frames()
@@ -134,6 +135,7 @@ func run() -> void:
 			await frames()
 			check(main.side.get_global_rect().end.y <= main.bottom.position.y, "sidebar with a lot-run price above footer %s text %d" % [resolution,amount])
 			check(main.top.get_global_rect().end.x <= resolution.x, "toolbar with power total fits %s text %d" % [resolution,amount])
+			check(main.top.get_global_rect().encloses(main.demand_meter.get_global_rect()) and main.demand_meter.size.x >= main.demand_meter.get_combined_minimum_size().x, "demand meter fits inside the toolbar unclipped %s text %d" % [resolution,amount])
 			check(main.top.get_global_rect().end.y <= main.side.position.y, "toolbar does not overlap sidebar %s text %d" % [resolution,amount])
 			var marks: Control = main.access_button.get_parent()
 			check(main.access_button.get_global_rect().end.x <= marks.get_global_rect().end.x + 0.5 and main.power_button.get_global_rect().end.x <= main.side.get_global_rect().end.x, "both mark toggles fit the sidebar %s text %d" % [resolution,amount])
@@ -150,7 +152,7 @@ func run() -> void:
 				check(main.scope_label.get_global_rect().end.y <= main.inspector.get_global_rect().end.y and main.inspector.get_global_rect().end.y < main.bottom.position.y, "inspector text fits %s text %d cell %s" % [resolution,amount,cell])
 				check(main.power_label.get_global_rect().end.y <= main.legend_label.get_global_rect().position.y and main.inspector.size.y <= 320.5, "power reason does not overlap marks legend %s text %d cell %s" % [resolution,amount,cell])
 			# The longest migration message must fit the status bar.
-			main._status("Earlier format 5 loaded; 16384 old single-tile zone/station tiles cleared for 3x3 lots and 4x4 stations. Nothing written; saving keeps the original as manual.schema5.json.")
+			main._status("Earlier format 5 loaded; 16384 old single-tile zone/station tiles cleared for 3x3 lots and 4x4 stations, tax rate set to the standard 10%. Nothing written; saving keeps the original as manual.schema5.json.")
 			await frames()
 			check(main.status_label.get_global_rect().end.y <= main.bottom.get_global_rect().end.y + 0.5 and main.bottom.get_global_rect().end.y <= resolution.y, "longest migration status fits the footer %s text %d" % [resolution,amount])
 			main._open_help()
@@ -369,6 +371,7 @@ func run() -> void:
 	await economy_flow(isolated)
 	await project_flow(isolated)
 	await artwork_flow(isolated)
+	await tax_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -413,7 +416,7 @@ func growth_flow(isolated: IsolatedStore) -> void:
 	main._inspect_cell(Vector2i(43, 30))
 	check(main.city.growth.population == 12 and main.city.growth.jobs == 0 and "L1" in main.selection_label.text and "Demand met" in main.scope_label.text, "pack bootstrap updates residents, lot level, and demand explanation")
 	await growth_days(35)
-	check(main.city.growth.population == 48 and main.city.growth.jobs == 18 and "Residents 48" in main.population_label.text and "H 0" in main.demand_label.text, "shipped growth reaches equilibrium with matching HUD")
+	check(main.city.growth.population == 48 and main.city.growth.jobs == 18 and "Residents 48" in main.population_label.text and main.demand_meter.summary() == "H 0 · S 0 · W 0" and "Tax 10%" in main.demand_label.text, "shipped growth reaches equilibrium with matching HUD")
 	await key(KEY_S, true)
 	var saved: String = main.city.canonical()
 	await fresh_scene(isolated)
@@ -617,6 +620,74 @@ func artwork_flow(isolated: IsolatedStore) -> void:
 	check(main.city.growth.population > 0 and main.city.tick == 35, "simulation keeps running under the experimental artwork modes")
 	main.world.set_art("unknown")
 	check(main.world.art_mode == "original" and main.world.art == null, "an unknown artwork mode falls back to the original renderer")
+
+## D32 / M2f: the shipped meter, Budget tax row, rate effects and saved rate.
+func tax_flow(isolated: IsolatedStore) -> void:
+	await fresh_scene(isolated)
+	check(main.demand_meter.is_visible_in_tree() and main.demand_meter.summary() == "H +3 · S 0 · W 0" and "Tax 10%" in main.demand_label.text, "fresh game shows the starter home demand on the meter at the standard rate")
+	var roads: Array[Vector2i] = []
+	for x in range(42, 64): roads.append(Vector2i(x, 32))
+	project_command("road", roads)
+	project_command("power", [Vector2i(38, 31)])
+	project_command("home", [Vector2i(42, 29), Vector2i(45, 29), Vector2i(48, 29), Vector2i(51, 29)])
+	project_command("shop", [Vector2i(42, 33), Vector2i(45, 33)])
+	project_command("workshop", [Vector2i(48, 33), Vector2i(51, 33)])
+	main._refresh_metrics()
+	await frames()
+	check(main.demand_meter.summary() == "H +3 · S 0 · W 0" and "H +3" in main.demand_meter.tooltip_text, "meter shows the three-level starter home demand")
+	await key(KEY_B)
+	check(main.budget_dialog.visible and main._modal_open() and "Tax rate 10%" in main.tax_label.text and main.tax_buttons.standard.disabled, "B opens the Budget dialog at the standard rate")
+	var tick: int = main.city.tick
+	var sequence: int = main.city.sequence
+	for step in range(5):
+		main.tax_buttons.raise.pressed.emit()
+		await frames(1)
+	check(main.city.tax_rate == 15 and main.city.sequence == sequence + 5 and main.city.tick == tick, "five raise presses set 15% as five ordered commands without advancing time")
+	check("Tax rate 15%" in main.tax_label.text and "$3 per serviced resident" in main.tax_note.text and "Tax 15%" in main.budget_text.text and "Tax 15%" in main.demand_label.text and "Tax rate 15%" in main.status_label.text, "Budget, toolbar and status agree on 15%")
+	check(main.demand_meter.summary() == "H +2 · S 0 · W 0", "15% lowers the starter home demand on the meter")
+	for step in range(20):
+		main.tax_buttons.lower.pressed.emit()
+	await frames()
+	check(main.city.tax_rate == 0 and main.tax_buttons.lower.disabled and main.demand_meter.summary() == "H +4 · S 0 · W 0", "lower stops at 0% and the meter shows the larger 0% demand")
+	for step in range(30):
+		main.tax_buttons.raise.pressed.emit()
+	await frames()
+	check(main.city.tax_rate == 25 and main.tax_buttons.raise.disabled, "raise stops at 25%")
+	main.tax_buttons.standard.pressed.emit()
+	await frames()
+	check(main.city.tax_rate == 10 and main.tax_buttons.standard.disabled, "Standard returns to 10%")
+	main.budget_dialog.hide()
+	await growth_days(40)
+	var grown: int = main.city.growth.population
+	await key(KEY_B)
+	for step in range(10):
+		main.tax_buttons.raise.pressed.emit()
+	await frames()
+	main.budget_dialog.hide()
+	main._refresh_metrics()
+	await frames()
+	var values: Array[int] = main.meter_values()
+	check(main.city.tax_rate == 20 and (values[0] < 0 or values[1] < 0 or values[2] < 0) and "−" in main.demand_meter.summary(), "20% shows leaving levels as negative meter values")
+	var anchor: Vector2i = Vector2i(51, 29)
+	main._inspect_cell(anchor)
+	check("high taxes" in main.scope_label.text or "Taxes above 10%" in main.scope_label.text or "Demand" in main.scope_label.text, "inspector explains demand under high taxes")
+	await growth_days(15)
+	check(main.city.growth.population < grown and main.city.lot_anchors.size() == 8, "high taxes shrink the shipped town without removing lots")
+	await key(KEY_S, true)
+	var saved: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(isolated.test_path))
+	check(int(saved.schema_version) == 7 and int(saved.tax_rate) == 20 and saved.simulation_version == "m2f-1", "shipped save writes schema 7 with the 20% rate")
+	var canonical: String = main.city.canonical()
+	await fresh_scene(isolated)
+	await key(KEY_L, true)
+	check(main.city.tax_rate == 20 and main.city.canonical() == canonical and "Tax 20%" in main.demand_label.text, "shipped load restores the town and its tax rate")
+	var six_path: String = (get_script() as Script).resource_path.get_base_dir().path_join("fixtures/m2e-schema6.json")
+	var six: String = FileAccess.get_file_as_string(six_path)
+	await fresh_scene(isolated)
+	isolated.files.write_text(isolated.test_path, six)
+	await key(KEY_L, true)
+	check(main.city.lot_anchors.size() == 3 and main.city.tax_rate == 10 and "Earlier format 6" in main.status_label.text and "every lot kept" in main.status_label.text and "standard 10%" in main.status_label.text and "manual.schema6.json" in main.status_label.text, "UI schema-6 load keeps every lot at the standard rate and names the preserved original")
+	await key(KEY_S, true)
+	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 6)) == six and int(isolated.load_city(main.SAVE_PATH).schema) == 7, "UI save preserves schema-6 bytes and writes schema 7")
 
 func project_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	return main.city.apply_command(kind, cells)

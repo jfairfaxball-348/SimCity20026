@@ -1,12 +1,12 @@
 # Untitled city builder
 
-**M0/M1 through M2d, the bounded M3a project and M2e zone lots are implemented and tested locally, 4–6 November 2026.** Version **0.7.0-m2e** makes homes, shops and workshops 3x3 lots and power stations 4x4 buildings, with schema-6 saves; **0.7.1-m2e** makes the owner-chosen Kenney Roguelike Modern City (CC0) the default artwork, with the original graphics as a fallback. M3 as a whole and public release remain future work. **Specified, not implemented:** a dismissible first-steps guide ([M3b](docs/M3B_SPEC.md)) is next. [Classic-genre candidates](docs/GENRE_ALIGNMENT.md) await the owner's choice. **Artwork:** Modern City is the default (U22/U23); Display → Artwork switches to Original (fallback) or Tiny City (experimental). See the [screenshots and report](docs/artwork-review/ARTWORK_EVALUATION.md).
+**M0/M1 through M2d, the bounded M3a project, M2e zone lots and M2f taxes are implemented and tested locally, 4–6 November 2026.** Version **0.7.0-m2e** makes homes, shops and workshops 3x3 lots and power stations 4x4 buildings, with schema-6 saves; **0.7.1-m2e** makes the owner-chosen Kenney Roguelike Modern City (CC0) the default artwork, with the original graphics as a fallback. **0.8.0-m2f** adds a demand meter and an adjustable tax rate (schema 7), the first of the owner-chosen [city-builder systems](docs/GENRE_ALIGNMENT.md) (U24). M3 as a whole and public release remain future work. Next is **M2g**, neighbourhood desirability and workshop nuisance; the first-steps guide ([M3b](docs/M3B_SPEC.md)) is specified and deferred. **Artwork:** Modern City is the default (U22/U23); Display → Artwork switches to Original (fallback) or Tiny City (experimental). See the [screenshots and report](docs/artwork-review/ARTWORK_EVALUATION.md).
 
 The user confirmed desktop players, a possible Steam release, relaxed building, charming pixel art, and approachable controls. The code, map generation, geometric graphics, and interface were created independently. The repository name is a workspace identifier, not a cleared product title.
 
 ## Play or develop
 
-The Windows export is `builds/windows/citybuilder.exe`; keep its `citybuilder.pck` beside it. The tested local package is `builds/citybuilder-0.7.1-m2e-windows-x64.zip`. Tools, caches, and builds are ignored and absent from a fresh clone.
+The Windows export is `builds/windows/citybuilder.exe`; keep its `citybuilder.pck` beside it. The tested local package is `builds/citybuilder-0.8.0-m2f-windows-x64.zip`. Tools, caches, and builds are ignored and absent from a fresh clone.
 
 From the repository root in PowerShell:
 
@@ -38,9 +38,9 @@ Start at the **gold flag**, tile `(63,32)` on the default map. Lay a road on it,
 
 Each station supplies **20 zone lots**, including empty lots, nearest lots first. Each lot needs one unit regardless of development. A newly zoned nearer lot can displace a farther developed lot. Add a station on that network to fix capacity shortages; reconnect roads to fix access. The two conditions have separate inspector lines.
 
-Unpause to grow. Every five days, lots with road access, power, and demand can gain one level, up to level 2. A home level holds 4 residents; a shop/workshop level supplies 2/4 jobs. **Starter demand supports 12 residents before any jobs exist.** Residents create business demand; jobs support more homes. The HUD's H/S/W demand is the number of available level additions. Each type gains at most eight levels per round, park-covered home lots first, then map order (businesses retain map order). A mixed, sufficiently serviced town can settle at 48 residents / 18 jobs under these provisional rules. These are aggregate capacities, not simulated citizens or employment assignments.
+Unpause to grow. Every five days, lots with road access, power, and demand can gain one level, up to level 2. A home level holds 4 residents; a shop/workshop level supplies 2/4 jobs. **Starter demand supports 12 residents before any jobs exist.** Residents create business demand; jobs support more homes. The **demand meter** under the population count shows, for H(omes), S(hops) and W(orkshops), the level additions the town welcomes (+, bar up) or, above the standard tax rate, the levels about to leave (−, bar down). Each type gains at most eight levels per round, park-covered home lots first, then map order (businesses retain map order). A mixed, sufficiently serviced town can settle at 48 residents / 18 jobs under these provisional rules. These are aggregate capacities, not simulated citizens or employment assignments.
 
-Satisfied demand stops new growth without evicting buildings. Every second growth check without both services loses one level. Restoring both services immediately resets the loss counter; demand then permits regrowth. Counts include standing development until it declines. Clear removes the building and its residents/jobs immediately.
+At or below the standard tax rate, satisfied demand stops new growth without evicting buildings. Every second growth check without both services loses one level. Restoring both services immediately resets the loss counter; demand then permits regrowth. Counts include standing development until it declines. Clear removes the building and its residents/jobs immediately.
 
 | Control | Action |
 | --- | --- |
@@ -56,7 +56,9 @@ Satisfied demand stops new growth without evicting buildings. Every second growt
 
 ## Budget and parks
 
-Every 30 days, after that day's growth, the town receives a **$100 grant + $2 per serviced resident + $4 per serviced job**. Upkeep is **$1 per road tile + $60 per station + $10 per park**, even when unused or disconnected. Unserved buildings pay no tax, including during decline grace. First settlement is displayed on day 31. **B** shows the current forecast, input counts, last actual settlement, and any shortfall waived or surplus capped. Forecasts change as the town changes.
+**Tax rate.** Budget **B** has − / + / Standard 10% buttons for a rate from 0% to 25%. Each point charges 20 cents per serviced resident and 40 cents per serviced job a month, so the standard 10% is $2 and $4. Lower rates raise every demand target (140% at 0%) and higher rates lower them (40% at 25%). Above 10%, up to four surplus levels of each type leave per growth check, level-2 lots first. Leaving never removes a lot, cash or the project; lowering the rate lets the town regrow. Rate changes are free, ordered commands and take effect immediately, even while paused.
+
+Every 30 days, after that day's growth, the town receives a **$100 grant + taxes at the current rate** (at 10%: **$2 per serviced resident + $4 per serviced job**). Upkeep is **$1 per road tile + $60 per station + $10 per park**, even when unused or disconnected. Unserved buildings pay no tax, including during decline grace. First settlement is displayed on day 31. **B** shows the current forecast, input counts, last actual settlement, and any shortfall waived or surplus capped. Forecasts change as the town changes.
 
 A negative monthly net is a deficit. Clear surplus facilities for free or restore road/power service to recover taxes. Cash stops at zero: unpaid costs are explicitly waived, with no debt, interest, destruction, or service cuts. Construction still needs full funds. With everything cleared, the $100 monthly grant can finance a new start.
 
@@ -72,9 +74,11 @@ Completion is once per town. Service loss or decline does not undo it. Clearing 
 
 Saves use `%APPDATA%/OriginalCityBuilder/saves/manual.json`, with `.bak` as the previous valid save. Restarting begins a fresh paused map; use Load to restore your city. Camera/display/overlay preferences are not persisted.
 
-**Schema 6**, simulation/content **m2e-1**, stores lot and station anchors, development and service-loss counters on lot anchors, the latest settlement inputs, and one project record (completed status and park location, or no location after clearing). Earlier saves (schemas 1-5) load with their old single-tile zones and stations cleared, because they cannot become 3x3 lots or 4x4 stations; roads, parks, funds, time, budget history and project completion are kept, and the load message counts the cleared tiles. Schemas 1-4 gain an incomplete project, with no automatic completion or retroactive collection. Loading never writes. Before replacing an older primary or backup, its exact bytes are preserved once as `manual.schema1-5.json`; failed preservation stops the save. Older builds cannot read schema 6: roll back using the preserved original. Networks, population/jobs, demand, park coverage, project eligibility and budget forecasts are derived.
+**Schema 7**, simulation/content **m2f-1**, stores the tax rate (and the rate of the latest settlement), lot and station anchors, development and service-loss counters on lot anchors, the latest settlement inputs, and one project record (completed status and park location, or no location after clearing). Schema-6 saves load with everything kept at the standard 10% rate. Earlier saves (schemas 1-5) load with their old single-tile zones and stations cleared, because they cannot become 3x3 lots or 4x4 stations; roads, parks, funds, time, budget history and project completion are kept, and the load message counts the cleared tiles. Schemas 1-4 gain an incomplete project, with no automatic completion or retroactive collection. Loading never writes. Before replacing an older primary or backup, its exact bytes are preserved once as `manual.schema1-6.json`; failed preservation stops the save. Older builds cannot read schema 7: roll back using the preserved original. Networks, population/jobs, demand, park coverage, project eligibility and budget forecasts are derived.
 
 ## Evidence and limits
+
+M2f passed **565 source checks**, **457 exported-PCK checks** under the pinned editor runtime, and release-EXE headless startup. New tests cover exact taxes at 0/10/25%, the tax command, appeal, leaving order and limits, recovery, schema-7 strictness, migration of every earlier fixture at the standard rate and an eighth (schema-7) fixture. A native run of the actual EXE loaded a schema-6 town, raised the tax to 15% through Budget, watched the meter show leaving and the town settle at 28 residents / 12 jobs, saved schema 7 with the schema-6 original preserved, and restored it after restart; a final smoke used the packaged export. See [M2f evidence](docs/sessions/2026-11-06-m2f.md).
 
 M2e passed **479 source checks**, **415 exported-PCK checks** under the pinned editor runtime, and release-EXE headless startup. Tests cover lot and station footprints, access through every side position of a lot, nearest-first lot power with 4x4 stations counted per station, growth, budgets, park coverage and the project with lots, ten invalid-footprint save cases, migration of every earlier schema and schema-5 preservation. Six historical fixtures remain byte-identical; a seventh captures a completed lot square across a month.
 
@@ -84,13 +88,13 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 
 ## Continue here
 
-**M2e is complete at the local checkpoint; M3 is not complete.** Owner decisions U16-U19 (6 November 2026) made homes, shops and workshops 3x3 lots and power stations 4x4, and lean the design closer to the classic genre, within unchanged copyright limits. The owner then chose the city-builder systems ahead of the guide (U24): [Next session](NEXT_SESSION.md) specifies and implements **M2f, a demand meter and adjustable tax rate**, followed by M2g (neighbourhood desirability and workshop nuisance) and M2h (town summary); the M3b guide is deferred. The source-study permission remains exhausted: never open reference source; only the permitted qualitative notes and Decisions may supply study input. The game remains original, unnamed, and not GPL-licensed.
+**M2f is complete at the local checkpoint; M3 is not complete.** Owner decisions U16-U19 (6 November 2026) made homes, shops and workshops 3x3 lots and power stations 4x4, and lean the design closer to the classic genre, within unchanged copyright limits. The owner then chose the city-builder systems ahead of the guide (U24). M2f, a demand meter and adjustable tax rate, is done; [Next session](NEXT_SESSION.md) specifies and implements **M2g, neighbourhood desirability and workshop nuisance**, followed by M2h (town summary); the M3b guide is deferred. The source-study permission remains exhausted: never open reference source; only the permitted qualitative notes and Decisions may supply study input. The game remains original, unnamed, and not GPL-licensed.
 
 | Document | Purpose |
 | --- | --- |
-| [Next session](NEXT_SESSION.md) | Current checkpoint, city-builder roadmap, M2f assignment, and study boundary |
-| [M2e lots](docs/M2E_SPEC.md) / [M3b guide](docs/M3B_SPEC.md) | M2e implemented and tested; M3b specified, deferred by U24 |
-| [Genre candidates](docs/GENRE_ALIGNMENT.md) | Classic-genre systems for owner choice |
+| [Next session](NEXT_SESSION.md) | Current checkpoint, city-builder roadmap, M2g assignment, and study boundary |
+| [M2e lots](docs/M2E_SPEC.md) / [M2f taxes](docs/M2F_SPEC.md) / [M3b guide](docs/M3B_SPEC.md) | M2e and M2f implemented and tested; M3b specified, deferred by U24 |
+| [Genre candidates](docs/GENRE_ALIGNMENT.md) | Classic-genre systems and the U24 schedule |
 | [Artwork evaluation](docs/artwork-review/ARTWORK_EVALUATION.md) | Kenney pack screenshots and comparison; Modern City chosen and now default |
 | [Decisions](docs/DECISIONS.md) | Requirements and exact adopted rules |
 | [Toolchain](docs/TOOLCHAIN.md) | Setup, verification, export, packaging |
@@ -100,4 +104,4 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 | [IP and assets](docs/IP_AND_ASSETS.md) | Provenance and rights boundaries |
 | [Asset ledger](licenses/ASSETS.md) | Original placeholders and notices |
 
-**M2 local functional gate met; M3a and M2e locally verified; the full M3 gate remains open.** M2e work uses `codex/m2e-lots`, based on `b976cbd`, with standing commit/push/fast-forward delivery into default branch `codex/m2a-road-access`. No public release, title, source licence, price, release date or additional supported platform was selected.
+**M2 local functional gate met; M3a, M2e and M2f locally verified; the full M3 gate remains open.** M2f work uses `codex/m2f-tax-demand`, based on `0f6d8fc`, with standing commit/push/fast-forward delivery into default branch `codex/m2a-road-access`. No public release, title, source licence, price, release date or additional supported platform was selected.

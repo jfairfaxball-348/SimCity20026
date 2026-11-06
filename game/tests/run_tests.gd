@@ -16,7 +16,7 @@ class FaultFiles extends FileOps:
 		return super.write_text(path, "{" if fault == "truncate" else text)
 	func copy_file(from: String, to: String) -> Error:
 		if fault == "backup_copy": return ERR_CANT_CREATE
-		if fault == "preserve_copy" and (to.contains(".schema1.json") or to.contains(".schema2.json") or to.contains(".schema3.json") or to.contains(".schema4.json") or to.contains(".schema5.json")): return ERR_CANT_CREATE
+		if fault == "preserve_copy" and (to.contains(".schema1.json") or to.contains(".schema2.json") or to.contains(".schema3.json") or to.contains(".schema4.json") or to.contains(".schema5.json") or to.contains(".schema6.json")): return ERR_CANT_CREATE
 		return super.copy_file(from, to)
 	func replace_file(from: String, to: String) -> Error:
 		if fault == "backup_replace" and to.ends_with(".bak"): return ERR_CANT_CREATE
@@ -51,6 +51,7 @@ func run() -> void:
 	preload("res://tests/growth_tests.gd").new().run(self)
 	preload("res://tests/economy_tests.gd").new().run(self)
 	preload("res://tests/project_tests.gd").new().run(self)
+	preload("res://tests/tax_tests.gd").new().run(self)
 	test_clock()
 	test_codec()
 	test_storage()
@@ -58,7 +59,7 @@ func run() -> void:
 	await test_scene()
 	if "--prove-failure-exit" in OS.get_cmdline_user_args():
 		check(false, "Deliberate runner failure to verify exit code")
-	print(JSON.stringify({"suite": "M2e-artwork", "checks": checks, "failed": failures.size(), "failures": failures}))
+	print(JSON.stringify({"suite": "M2f", "checks": checks, "failed": failures.size(), "failures": failures}))
 	quit(0 if failures.is_empty() else 1)
 
 func test_commands() -> void:
@@ -518,8 +519,9 @@ func reason(city: City, cell: Vector2i) -> String:
 func net(city: City, cell: Vector2i) -> int:
 	return city.power.network_of[city.index(cell)]
 
-## Expected D30 migration: version fields change, single-tile zones and stations
-## become open land, growth/footprint arrays are zero, and every other value stays.
+## Expected migration: version fields change; before schema 6, D30 clears single-tile
+## zones and stations and zeroes growth/footprint arrays; D32 adds the standard tax
+## rate to the town and to any ledger; every other value stays.
 func migrated_text(legacy: String) -> String:
 	var data: Dictionary = JSON.parse_string(legacy)
 	var schema: int = int(data.schema_version)
@@ -531,15 +533,20 @@ func migrated_text(legacy: String) -> String:
 	zeros.fill(0)
 	for field in ["width", "height", "cash", "tick", "sequence", "pending_us"]: data[field] = int(data[field])
 	data.terrain = Array(PackedByteArray(data.terrain))
-	var occupancy: PackedByteArray = PackedByteArray(data.occupancy)
-	for i in range(occupancy.size()):
-		if City.is_zone(occupancy[i]) or occupancy[i] == City.POWER: occupancy[i] = City.EMPTY
-	data.occupancy = Array(occupancy)
-	data.development = zeros.duplicate()
-	data.service_loss = zeros.duplicate()
-	data.footprint_anchor = zeros.duplicate()
+	if schema < 6:
+		var occupancy: PackedByteArray = PackedByteArray(data.occupancy)
+		for i in range(occupancy.size()):
+			if City.is_zone(occupancy[i]) or occupancy[i] == City.POWER: occupancy[i] = City.EMPTY
+		data.occupancy = Array(occupancy)
+		data.development = zeros.duplicate()
+		data.service_loss = zeros.duplicate()
+		data.footprint_anchor = zeros.duplicate()
+	else:
+		for field in ["occupancy", "development", "service_loss", "footprint_anchor"]: data[field] = Array(PackedByteArray(data[field]))
 	data.last_budget = data.get("last_budget", {})
 	for key in data.last_budget: data.last_budget[key] = int(data.last_budget[key])
+	if not data.last_budget.is_empty(): data.last_budget.tax_rate = Balance.TAX_STANDARD
+	data.tax_rate = Balance.TAX_STANDARD
 	if schema >= 5: data.project = {"completed": data.project.completed, "park_index": int(data.project.park_index)}
 	else: data.project = {"completed": false, "park_index": -1}
 	return JSON.stringify(data, "", true)
@@ -671,7 +678,7 @@ func test_power() -> void:
 	check(decoded.ok and decoded.migrated_from == 0 and decoded.city.power.home_state == spill.power.home_state and decoded.city.power.network_used == spill.power.network_used, "reload reconstructs the power allocation")
 	var keys: Array = spill.snapshot().keys()
 	keys.sort()
-	check(keys == ["cash", "content_version", "development", "footprint_anchor", "height", "last_budget", "occupancy", "pending_us", "project", "random_state", "schema_version", "seed", "sequence", "service_loss", "simulation_version", "terrain", "tick", "width"], "power and access are absent from saves")
+	check(keys == ["cash", "content_version", "development", "footprint_anchor", "height", "last_budget", "occupancy", "pending_us", "project", "random_state", "schema_version", "seed", "sequence", "service_loss", "simulation_version", "tax_rate", "terrain", "tick", "width"], "power and access are absent from saves")
 	for item: City in [spill, decoded.city]:
 		command(item, "power", one(Vector2i(6, 19)))
 		Clock.advance(item, 2_000_000, 3)

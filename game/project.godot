@@ -7,7 +7,7 @@ run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/use_custom_user_dir=true
 config/custom_user_dir_name="OriginalCityBuilder"
-config/version="0.7.1-m2e"
+config/version="0.8.0-m2f"
 
 [display]
 window/size/viewport_width=1280
