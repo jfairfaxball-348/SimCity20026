@@ -4,6 +4,8 @@ Status, 6 November 2026: **M0/M1 through M2d implemented and locally tested; M3a
 
 ## Milestones and gates
 
+**Roadmap (U30, 6 November 2026).** The ordered work from 0.11.0-m3b to these gates is in the [roadmap](ROADMAP.md) (R1-R17), based on the [gap analysis](GAP_ANALYSIS.md). R6 is the M3 five-person playtest gate and R17 the M4 gate; M5 release work stays a separate owner decision.
+
 Each milestone should produce a runnable checkpoint, a short evidence record, and an updated handoff. Dates are intentionally unset.
 
 | Milestone | Work | Completion evidence |
@@ -15,7 +17,7 @@ Each milestone should produce a runnable checkpoint, a short evidence record, an
 | M4: content-complete candidate | Tuned 128x128 limit if profiling supports it; bounded content/project set; settings/accessibility; save migration | No missing advertised systems; busy-city profile; content and asset provenance audit; closed beta feedback |
 | M5: release candidate / 1.0 | Regression fixes, store material, distribution notices, packaging, account/store work if authorised | Release checklist passes on supported targets; store reviews complete where required; rollback package and support route ready |
 
-The local **M2 functional gate is met**: empty-town growth, service-shortage recovery, exact deterministic monthly budgets, park priority and deficit recovery have source/packed/native evidence. This is not a human usability/enjoyment result. The one U10 study is complete; its source-reading permission remains exhausted. [M3a](M3A_SPEC.md) is locally verified; Owner decisions U16-U19 added [M2e 3x3 zone lots and 4x4 stations](M2E_SPEC.md), now locally verified; the owner then scheduled the [city-builder systems](GENRE_ALIGNMENT.md) M2f-M2h ahead of the deferred [M3b guide](M3B_SPEC.md) (U24); [M2f taxes](M2F_SPEC.md), [M2g desirability](M2G_SPEC.md) and the [M2h town summary](M2H_SPEC.md) are now locally verified, and so is the refreshed [M3b guide](M3B_SPEC.md); the next direction is the owner's choice. See [NEXT_SESSION.md](../NEXT_SESSION.md). The full native 1080p/DPI matrix, fresh-machine/controller tests, performance targets and five-person observed test remain outstanding. If M3 feedback is weak, improve the existing experience before expanding M4. Keep optional ports, disasters, and advanced transport out of the critical path.
+The local **M2 functional gate is met**: empty-town growth, service-shortage recovery, exact deterministic monthly budgets, park priority and deficit recovery have source/packed/native evidence. This is not a human usability/enjoyment result. The one U10 study is complete; its source-reading permission remains exhausted. [M3a](M3A_SPEC.md) is locally verified; Owner decisions U16-U19 added [M2e 3x3 zone lots and 4x4 stations](M2E_SPEC.md), now locally verified; the owner then scheduled the [city-builder systems](GENRE_ALIGNMENT.md) M2f-M2h ahead of the deferred [M3b guide](M3B_SPEC.md) (U24); [M2f taxes](M2F_SPEC.md), [M2g desirability](M2G_SPEC.md) and the [M2h town summary](M2H_SPEC.md) are now locally verified, and so is the refreshed [M3b guide](M3B_SPEC.md); the [roadmap](ROADMAP.md) now sets the order, starting with R1. See [NEXT_SESSION.md](../NEXT_SESSION.md). The full native 1080p/DPI matrix, fresh-machine/controller tests, performance targets and five-person observed test remain outstanding. If M3 feedback is weak, improve the existing experience before expanding M4. Keep optional ports, disasters, and advanced transport out of the critical path.
 
 ## Effort and spending assumptions
 

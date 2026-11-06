@@ -1,116 +1,36 @@
-# Next session: structured gap analysis and roadmap
+# Next session: roadmap R1, terminology and calendar
 
-Updated 6 November 2026 after M3b and owner directions U29/U30. **M0/M1 through M2d, the M3a project, M2e zone lots, M2f taxes, M2g desirability, the M2h town summary and the M3b first-steps guide are implemented and locally tested. The U24 roadmap is complete. M3 as a whole is incomplete.** There is no public release and no human enjoyment evidence.
+Updated 6 November 2026 after the U30 planning session. **M0/M1 through M2d, the M3a project, M2e zone lots, M2f taxes, M2g desirability, the M2h town summary and the M3b first-steps guide are implemented and locally tested. M3 as a whole is incomplete.** The [gap analysis](docs/GAP_ANALYSIS.md) and the ordered [roadmap](docs/ROADMAP.md) (R1-R17) are written; owner answers U31-U34 are recorded. There is no public release and no human enjoyment evidence.
 
 ## Start here
 
-Read README, AGENTS (including U29 on plain words), docs/DECISIONS.md (all U and D entries), docs/PRODUCT_BRIEF.md, docs/DELIVERY_PLAN.md, docs/GENRE_ALIGNMENT.md, the permitted [study notes](docs/research/MICROPOLIS_STUDY.md) and the session evidence under `docs/sessions/`. Inspect the local diff, and fetch and reconcile live remote refs before editing.
+Read README, AGENTS (including U29 on plain words), docs/DECISIONS.md (all U and D entries), docs/ROADMAP.md, docs/GAP_ANALYSIS.md, docs/PRODUCT_BRIEF.md, the permitted [study notes](docs/research/MICROPOLIS_STUDY.md) and the session evidence under `docs/sessions/`. Inspect the local diff, and fetch and reconcile live remote refs before editing.
 
-- **Branches.** The default branch is still `codex/m2a-road-access`, whose name is historical. Create a new `codex/` branch for this work.
+- **Branches.** The default branch is still `codex/m2a-road-access`, whose name is historical. Create a new `codex/` branch (for example `codex/r1-terms-calendar`).
 - **Delivery.** Standing commit/push/fast-forward delivery applies. Never force-push or discard unrelated work.
 
-The current build is game 0.11.0-m3b, save schema 8, simulation/content `m2g-1` (Godot 4.7.2 through `tools/`). This session changes **no game code**.
+The current build is game 0.11.0-m3b, save schema 8, simulation/content `m2g-1` (Godot 4.7.2 through `tools/`).
 
-## Assignment (U30): audit, then roadmap
+## Assignment: roadmap R1 (terminology and calendar)
 
-On a subsequent **"Run next session"**, do a planning-only session in three parts, then deliver.
+On **"Run next session"**, specify, adopt (as D35 in Decisions, before code), implement, test and deliver R1. Proposed game version **0.12.0-r1**. Scope:
 
-### 1. Audit what we have
+### 1. Terminology (U29)
 
-Inventory every player-facing feature and system in 0.11.0-m3b from this project's own code, Decisions and evidence. For each, give its status (implemented, tested locally, limits) and its key numbers. Cover at least:
+- Player-facing **Residential / Commercial / Industrial** (zones, lots, blocks) in place of Homes / Shops / Workshops everywhere a player reads it: sidebar tools and tooltips, inspector, Budget, demand meter (**R / C / I** in place of H / S / W), town summary items, First steps card, project dialog, Help, status lines and load messages; README controls table and player text.
+- "Power station" may stay or become "power plant"; choose one and use it consistently. "Workshop nuisance" becomes industrial nuisance (or pollution, if the wording stays honest about what is modelled).
+- **Unchanged:** key bindings (2 / 6 / 7), internal identifiers and command names (`home`, `shop`, `workshop`), occupancy IDs, save fields, content version and every rule. This is wording only.
+- Every changed string must fit at every supported layout and text size (existing layout checks), and tests that match text must be updated rather than weakened.
 
-- zones and their levels;
-- demand and growth;
-- roads and the outside link;
-- power;
-- budget, taxes and upkeep;
-- parks and desirability;
-- the project, summary and guide;
-- overlays and the inspector;
-- saves;
-- input and accessibility;
-- map size and generation;
-- art, audio and platforms.
+### 2. Calendar
 
-### 2. List what the full classic game has, then the gaps
+- Show a **month and year** in place of the bare day count, derived from the tick: months stay the D25 30-day month, 12 months a year. Choose our own start year and record it in D35 (not the reference game's).
+- The Budget forecast and last settlement name the month they cover. The tick, clock order, settlement timing and saves are unchanged; no schema change.
+- Tests: month and year boundaries, the first settlement month, very large ticks, and load continuity.
 
-**Baseline.** Use the original classic city-builder (the 1989 game and its console ports) as the baseline, and mark features that only later editions added as optional.
+### 3. Evidence and delivery
 
-**Feature list.** Describe its features at player level, in our own words: what the player can build, see and manage, and what the simulation responds to. Cover at least:
-
-- **Building and growth:**
-  - zone types and density or wealth growth;
-  - demand;
-  - land value;
-  - pollution;
-  - crime;
-  - traffic and transport (road, rail);
-  - power (plant types, lines, shortages);
-  - services (police, fire) and their funding;
-  - special buildings (stadium, seaport, airport);
-- **Money and rules:**
-  - budget, taxes and funding levels;
-  - disasters;
-  - scenarios;
-  - the city evaluation, public opinion and problems;
-  - city size milestones;
-  - rewards or gifts;
-- **Information and presentation:**
-  - map overlays and graphs;
-  - terrain, map generation and editing;
-  - time controls;
-  - sound and music;
-  - animation and presentation;
-  - map and population scale.
-
-**Allowed inputs (clean-room boundary).** General genre knowledge, the permitted study notes, and public non-source feature descriptions (such as encyclopedia overviews) for what features exist.
-
-- Never open source code, ROM data, decompilations or reproduced manuals.
-- Never copy numbers, formulas, tables, text or artwork.
-- Plain genre words are fine (U29).
-
-**Gap matrix.** Write `docs/GAP_ANALYSIS.md` with one row per feature, giving:
-
-- the classic behaviour, briefly and in our own words;
-- our status: done, partial, missing, or deliberately different (for example the relaxed no-debt rule);
-- the size of the gap (S, M or L);
-- what it depends on;
-- the player impact;
-- any rights note.
-
-Also give a one-paragraph verdict on the biggest gaps.
-
-### 3. Set the roadmap
-
-**The document.** Write `docs/ROADMAP.md`, which supersedes the candidate table in `docs/GENRE_ALIGNMENT.md`. It lays out ordered milestones from 0.11.0-m3b to a feature-complete, classic-style city builder. Each milestone gives:
-
-- its scope;
-- why it comes at that point;
-- its dependencies;
-- a size in sessions;
-- whether it changes the save format or schema;
-- its acceptance gate.
-
-**Items to place.**
-
-- **Early.** The U29 terminology pass: player-facing "Residential / Commercial / Industrial" in place of Homes / Shops / Workshops, where the owner wants it.
-- **Recommended first big milestone.** Growth depth: more density levels, land value for all zone types, and services needed for the top levels.
-- **The remaining M3 gate items** at sensible points: the five-person observed playtest, coherent original audio, the controller route, autosaves and remembered settings.
-
-**Owner questions.** End with at most four questions, only for choices that are genuinely the owner's:
-
-- disasters (off, optional or on by default);
-- failure states such as debt or bankruptcy versus the relaxed no-debt rule;
-- the target map and population scale;
-- whether to include later-edition extras.
-
-Record the answers as U entries.
-
-### Deliver
-
-Update README, Decisions, DELIVERY_PLAN (pointing at the roadmap), GENRE_ALIGNMENT (marked superseded) and this handoff, so the next "Run next session" starts the first roadmap milestone. Then deliver under the standing instruction.
-
-**Planning only.** Write no game code, change no version, and make no purchases, external messages or public release.
+Run `tools/verify.ps1` (source, exported PCK, release-EXE start-up), confirm the nine fixtures stay byte-identical, and do a native posted-input check of the actual EXE at 720p and largest text. Update README, Decisions (D35 and change record), ROADMAP (R1 done), the evidence record under `docs/sessions/`, and this handoff so the next "Run next session" starts **R2a (land value for every zone)**. Then deliver under the standing instruction. No purchases, external messages or public release.
 
 ## Preserve the current contract
 
@@ -135,7 +55,8 @@ Update README, Decisions, DELIVERY_PLAN (pointing at the roadmap), GENRE_ALIGNME
   - **Routes.** Show and a footprint bracket; Hide/Close; F1 and Help's Show first steps.
   - **No side effects.** It saves nothing, never pauses time and never locks tools.
   - **Packed tests.** Feature flows hide the card (`fresh_scene(…, guide = false)`), and `guide_flow` tests it shown.
-- **Unchanged numbers.** D17-D28 prices, capacities, caps, clock order, budget, park priority and project rules are unchanged except as D32 specifies. The next item's decision must state exactly which earlier rules it changes.
+- **Unchanged numbers.** D17-D28 prices, capacities, caps, clock order, budget, park priority and project rules are unchanged except as D32 specifies. R1 changes no rule; each later roadmap milestone's decision must state exactly which earlier rules it changes.
+- **Owner answers (U31-U34).** Disasters optional and off by default; the no-debt waiver stays the default; target map and population scale match the original game with our own numbers; no later-edition extras for now.
 - **Determinism.** No commands or ticks consume RNG. The fixed clock, dialog/focus suspension, eight ticks per frame and bounded backlog stay.
 - **Saves.**
   - **Schema 8 contents.** The same fields as schema 7: a strict `tax_rate`, a ledger `tax_rate`, and the per-cell `footprint_anchor` array. Desirability is derived.
