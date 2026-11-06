@@ -1,9 +1,10 @@
-UNTITLED CITY BUILDER - M2g NEIGHBOURHOOD DESIRABILITY (0.9.0-m2g)
+UNTITLED CITY BUILDER - M2h TOWN SUMMARY (0.10.0-m2h)
 
 Run citybuilder.exe. Keep citybuilder.pck beside it.
 Local development checkpoint; 3x3 zone lots, 4x4 power stations, a monthly
 economy with an adjustable tax rate, a demand meter, neighbourhood
-desirability with a map overlay, a pocket park, and one optional project.
+desirability with a map overlay, a town summary, a pocket park, and one
+optional project.
 
 1 Roads ($10 per tile) / 2 Homes / 6 Shops / 7 Workshops ($25 per 3x3 lot)
 P Power station (4x4, $500, 20 lots) / 8 Park ($100) / 3 Clear (free)
@@ -11,6 +12,8 @@ Zone tools centre a 3x3 lot on the pointer; drag to lay a straight row or
 column of lots. Clear any tile of a lot or station to remove all of it.
 B Budget: expected income/upkeep, latest actual settlement, and the tax
 rate (- / + / Standard 10%; 0-25%).
+T Town summary (also the status-bar button): the biggest measurable causes
+holding the town back, biggest first, each with Show or Budget.
 J Project: choose a park with three developed, serviced home lots that each
 have a tile within 3 side-steps. Complete it once to add cosmetic flowers;
 no new growth or income benefit. Clear the park freely; completion remains,
@@ -66,7 +69,7 @@ Time starts paused. Construction works while paused. Unfocused windows and
 dialogs suspend time. Save manually; after restarting, press Load.
 Saves: %APPDATA%/OriginalCityBuilder/saves/manual.json
 The previous valid save is manual.json.bak; failed loads leave the city intact.
-Format 8 (desirability rules) stores the same fields as format 7: the tax
+Format 8 (unchanged since 0.9.0-m2g) stores the same fields as format 7: the tax
 rate and lot and station anchors; desirability is derived, never saved.
 Format 7 saves load unchanged; format 6 saves load at the standard 10% rate. Earlier formats (1-5) load with
 their old single-tile zones and stations cleared; roads, parks, funds, time,

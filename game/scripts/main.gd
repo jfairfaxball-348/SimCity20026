@@ -8,6 +8,7 @@ const Style = preload("res://scripts/presentation/ui_style.gd")
 const Bindings = preload("res://scripts/input/input_bindings.gd")
 const ArtKit = preload("res://scripts/presentation/art_kit.gd")
 const Meter = preload("res://scripts/presentation/demand_meter.gd")
+const Summary = preload("res://scripts/presentation/town_summary.gd")
 const SAVE_PATH: String = "user://saves/manual.json"
 const SIZES: Array[Vector2i] = [Vector2i(1280,720), Vector2i(1366,768), Vector2i(1920,1080), Vector2i(1280,800)]
 const PAN_VECTORS: Dictionary = {"pan_left": Vector2.LEFT, "pan_right": Vector2.RIGHT, "pan_up": Vector2.UP, "pan_down": Vector2.DOWN}
@@ -68,6 +69,13 @@ var project_text: Label
 var project_complete: Button
 var project_show: Button
 var project_button: Button
+## D34: read-only town summary.
+var summary_dialog: AcceptDialog
+var summary_heading: Label
+var summary_column: VBoxContainer
+var summary_button: Button
+var summary_items: Array = []
+var summary_actions: Array[Button] = []
 var help_text: Label
 var help_dialog: AcceptDialog
 var load_dialog: ConfirmationDialog
@@ -245,9 +253,23 @@ func _build_ui() -> void:
 	power_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_update_legend()
 	bottom = _panel()
+	var footer := HBoxContainer.new()
+	bottom.add_child(footer)
 	status_label = _label("", 15)
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	bottom.add_child(status_label)
+	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	footer.add_child(status_label)
+	summary_button = _button("Town summary [T]", _open_summary)
+	summary_button.tooltip_text = "The biggest measurable causes holding the town back, with where to look."
+	summary_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	summary_button.add_theme_font_size_override("font_size", 14)
+	for style_name in ["normal", "hover", "pressed", "focus"]:
+		var compact: StyleBox = theme.get_stylebox(style_name, "Button").duplicate()
+		compact.content_margin_top = 3
+		compact.content_margin_bottom = 3
+		summary_button.add_theme_stylebox_override(style_name, compact)
+	footer.add_child(summary_button)
 	_build_dialogs()
 	_refresh_metrics()
 
@@ -301,7 +323,7 @@ func _build_dialogs() -> void:
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_text = _label("1 Roads · 2 Homes · 6 Shops · 7 Workshops\nP Station · 8 Park · 3 Clear · B Budget\nJ Project: a square with three serviced home lots.\nZones are 3x3 lots; stations are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV desirability overlay.\n\nJoin roads from the gold flag; zone beside them.\nAdd a station: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nHome desirability: park within 3 +2, water within 3 +1,\neach developed workshop within 2 steps −2 (up to 3).\nHigher grows first; below 0 a home stops at level 1.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
+	help_text = _label("1 Roads · 2 Homes · 6 Shops · 7 Workshops\nP Station · 8 Park · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nJ Project: a square with three serviced home lots.\nZones are 3x3 lots; stations are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV desirability overlay.\n\nJoin roads from the gold flag; zone beside them.\nAdd a station: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nHome desirability: park within 3 +2, water within 3 +1,\neach developed workshop within 2 steps −2 (up to 3).\nHigher grows first; below 0 a home stops at level 1.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
 	add_child(help_dialog)
 	var help_scroll := ScrollContainer.new()
 	help_scroll.custom_minimum_size = Vector2(640, 440)
@@ -311,6 +333,7 @@ func _build_dialogs() -> void:
 	help_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	help_scroll.add_child(help_text)
 	_build_project_dialog()
+	_build_summary_dialog()
 	budget_dialog = AcceptDialog.new()
 	budget_dialog.title = "Monthly budget"
 	add_child(budget_dialog)
@@ -482,6 +505,8 @@ func _shortcut_input(event: InputEvent) -> void:
 		_cancel_stroke()
 	elif event.is_action_pressed("show_project"):
 		_open_project()
+	elif event.is_action_pressed("show_summary"):
+		_open_summary()
 	elif event.is_action_pressed("show_budget"):
 		_open_budget()
 	elif event.is_action_pressed("display_settings"):
@@ -513,7 +538,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_extend_stroke(world.cell_at(_view_position(event.position)))
 
 func _modal_open() -> bool:
-	return settings != null and (settings.visible or project_dialog.visible or budget_dialog.visible or help_dialog.visible or load_dialog.visible or quit_dialog.visible or recovery_dialog.visible)
+	return settings != null and (settings.visible or project_dialog.visible or summary_dialog.visible or budget_dialog.visible or help_dialog.visible or load_dialog.visible or quit_dialog.visible or recovery_dialog.visible)
 
 func _is_world_position(point: Vector2) -> bool:
 	if not world_rect.has_point(point) or _modal_open(): return false
@@ -978,6 +1003,73 @@ func _complete_project() -> void:
 		world.queue_redraw()
 	_status(result.message)
 	_refresh_project()
+
+func _build_summary_dialog() -> void:
+	summary_dialog = AcceptDialog.new()
+	summary_dialog.title = "Town summary"
+	summary_dialog.get_ok_button().text = "Close"
+	add_child(summary_dialog)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(700, 420)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	summary_dialog.add_child(scroll)
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 12)
+	scroll.add_child(column)
+	summary_heading = _label("", 16, Style.MUTED)
+	summary_heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(summary_heading)
+	summary_column = VBoxContainer.new()
+	summary_column.add_theme_constant_override("separation", 10)
+	column.add_child(summary_column)
+
+## D34: read-only; building the summary and opening it never change the town.
+func _open_summary() -> void:
+	_cancel_stroke()
+	_fill_summary()
+	summary_dialog.popup_centered(Vector2i(760, 560))
+
+func _fill_summary() -> void:
+	summary_items = Summary.build(city)
+	summary_actions.clear()
+	for child in summary_column.get_children():
+		summary_column.remove_child(child)
+		child.queue_free()
+	summary_heading.add_theme_font_size_override("font_size", font_size - 1)
+	summary_heading.text = "Day %d · Residents %d · Jobs %d · Tax %d%%\nWhat is holding the town back, biggest first:" % [city.tick + 1, city.growth.population, city.growth.jobs, city.tax_rate]
+	for item in summary_items:
+		var row := HBoxContainer.new()
+		summary_column.add_child(row)
+		var text := _label(String(item.text), font_size)
+		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text.custom_minimum_size.x = 520
+		row.add_child(text)
+		var action: String = String(item.action)
+		if action.is_empty(): continue
+		var entry: Dictionary = item
+		var button := _button("Show" if action == "show" else "Budget", func(): _summary_action(entry))
+		button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		button.custom_minimum_size.x = 96
+		row.add_child(button)
+		summary_actions.append(button)
+
+func _summary_action(item: Dictionary) -> void:
+	summary_dialog.hide()
+	if String(item.action) == "budget":
+		_open_budget()
+	elif int(item.example) >= 0:
+		_show_cell(city.cell_of(int(item.example)))
+
+## Centres the view on a cell and points the inspector at it (Show actions).
+func _show_cell(cell: Vector2i) -> void:
+	world.zoom = 1
+	world.origin = Vector2(cell) * World.TILE + Vector2.ONE * World.TILE / 2 - Vector2(400, 140)
+	world.clamp_camera()
+	zoom_label.text = "1x"
+	world.queue_redraw()
+	_inspect_cell(cell)
 
 func _show_project_park() -> void:
 	var i: int = _project_index()

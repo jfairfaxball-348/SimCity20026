@@ -1,12 +1,12 @@
 # Untitled city builder
 
-**M0/M1 through M2d, the bounded M3a project, M2e zone lots, M2f taxes and M2g desirability are implemented and tested locally, 4–6 November 2026.** Version **0.7.0-m2e** makes homes, shops and workshops 3x3 lots and power stations 4x4 buildings, with schema-6 saves; **0.7.1-m2e** makes the owner-chosen Kenney Roguelike Modern City (CC0) the default artwork, with the original graphics as a fallback. **0.8.0-m2f** adds a demand meter and an adjustable tax rate (schema 7), and **0.9.0-m2g** neighbourhood desirability with workshop nuisance and a map overlay (schema 8): the first two owner-chosen [city-builder systems](docs/GENRE_ALIGNMENT.md) (U24). M3 as a whole and public release remain future work. Next is **M2h**, a town summary; the first-steps guide ([M3b](docs/M3B_SPEC.md)) is specified and deferred. **Artwork:** Modern City is the default (U22/U23); Display → Artwork switches to Original (fallback) or Tiny City (experimental). See the [screenshots and report](docs/artwork-review/ARTWORK_EVALUATION.md).
+**M0/M1 through M2d, the bounded M3a project, M2e zone lots, M2f taxes, M2g desirability and the M2h town summary are implemented and tested locally, 4–6 November 2026.** Version **0.7.0-m2e** makes homes, shops and workshops 3x3 lots and power stations 4x4 buildings, with schema-6 saves; **0.7.1-m2e** makes the owner-chosen Kenney Roguelike Modern City (CC0) the default artwork, with the original graphics as a fallback. **0.8.0-m2f** adds a demand meter and an adjustable tax rate (schema 7), **0.9.0-m2g** neighbourhood desirability with workshop nuisance and a map overlay (schema 8), and **0.10.0-m2h** a town summary (T): the three owner-chosen [city-builder systems](docs/GENRE_ALIGNMENT.md) (U24). M3 as a whole and public release remain future work. Next is the refreshed first-steps guide ([M3b](docs/M3B_SPEC.md)). **Artwork:** Modern City is the default (U22/U23); Display → Artwork switches to Original (fallback) or Tiny City (experimental). See the [screenshots and report](docs/artwork-review/ARTWORK_EVALUATION.md).
 
 The user confirmed desktop players, a possible Steam release, relaxed building, charming pixel art, and approachable controls. The code, map generation, geometric graphics, and interface were created independently. The repository name is a workspace identifier, not a cleared product title.
 
 ## Play or develop
 
-The Windows export is `builds/windows/citybuilder.exe`; keep its `citybuilder.pck` beside it. The tested local package is `builds/citybuilder-0.9.0-m2g-windows-x64.zip`. Tools, caches, and builds are ignored and absent from a fresh clone.
+The Windows export is `builds/windows/citybuilder.exe`; keep its `citybuilder.pck` beside it. The tested local package is `builds/citybuilder-0.10.0-m2h-windows-x64.zip`. Tools, caches, and builds are ignored and absent from a fresh clone.
 
 From the repository root in PowerShell:
 
@@ -64,6 +64,8 @@ A negative monthly net is a deficit. Clear surplus facilities for free or restor
 
 **Desirability (V).** Each home lot has a score: **+2** for a park within 3 side-steps (not stacking), **+1** for water within 3, and **−2** for each developed workshop lot within 2 side-steps (up to three), so a workshop directly across a one-tile road counts. Higher-scoring homes reserve growth first, then map order. Below 0 a home stops at level 1, and a level-2 home drops one level at the next check; add a park or move the workshops and it regrows. Nothing is demolished. **V** (or Display) toggles an overlay: + marks attract, hatching deters, smoke marks developed workshops; the inspector lists a home's parts. Shops and workshops are not affected.
 
+**Town summary (T).** **T**, or the **Town summary** button at the right of the status bar, lists the biggest measurable causes holding the town back, biggest first: no road on the gold flag, lots without road access or power, lots short of power, homes held by workshops, levels leaving under high taxes, and demand with no lot able to use it; then any monthly deficit. Each item gives a count and a remedy, and **Show** centres the view on an example and inspects it (or **Budget** opens Budget). An empty town gets the three starting steps; a town with nothing blocking it says so. The summary is read-only and pauses time while open; the inspector remains the per-lot explanation.
+
 A **pocket park (8)** costs $100 and $10/month. Home lots with a tile within three side-steps (Manhattan distance) gain +2 desirability, so they reserve growth demand first. Overlap does not stack. Parks need no services and relay neither roads nor power. They change which homes develop first under contention; they add no demand, capacity, tax multiplier, or protection from decline. The inspector explains coverage and priority.
 
 ## A welcoming square
@@ -80,6 +82,8 @@ Saves use `%APPDATA%/OriginalCityBuilder/saves/manual.json`, with `.bak` as the 
 
 ## Evidence and limits
 
+M2h passed **629 source checks**, **502 exported-PCK checks** under the pinned editor runtime, and release-EXE headless startup. New tests build the summary on constructed towns (empty, no flag road, isolated lot, shortage, held homes, 25% taxes, a buffered satisfied town, a deficit), check its purity, ordering and five-item cap, and drive T, the status-bar button, Show, the Budget action, time suspension and fit at every size in the exported game. A native run of the actual EXE opened the summary on a pointer-built town with a held home and used Show. See [M2h evidence](docs/sessions/2026-11-06-m2h.md).
+
 M2g passed **600 source checks**, **469 exported-PCK checks** under the pinned editor runtime, and release-EXE headless startup. New tests cover every desirability part, distance and the floor, growth order, held homes, the gentle drop with D32 leaving, park and clearing recovery, schema-8 continuation and a ninth (schema-8) fixture. A native run of the actual EXE built a street by pointer, grew it at 3x until the home across from a developed workshop was held at level 1, showed the overlay, rescued the home with a pointer-placed park, saved schema 8 and reloaded it after restart; a final smoke used the packaged export. See [M2g evidence](docs/sessions/2026-11-06-m2g.md).
 
 M2f passed **565 source checks**, **457 exported-PCK checks** under the pinned editor runtime, and release-EXE headless startup. New tests cover exact taxes at 0/10/25%, the tax command, appeal, leaving order and limits, recovery, schema-7 strictness, migration of every earlier fixture at the standard rate and an eighth (schema-7) fixture. A native run of the actual EXE loaded a schema-6 town, raised the tax to 15% through Budget, watched the meter show leaving and the town settle at 28 residents / 12 jobs, saved schema 7 with the schema-6 original preserved, and restored it after restart; a final smoke used the packaged export. See [M2f evidence](docs/sessions/2026-11-06-m2f.md).
@@ -92,12 +96,12 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 
 ## Continue here
 
-**M2g is complete at the local checkpoint; M3 is not complete.** Owner decisions U16-U19 (6 November 2026) made homes, shops and workshops 3x3 lots and power stations 4x4, and lean the design closer to the classic genre, within unchanged copyright limits. The owner then chose the city-builder systems ahead of the guide (U24). M2f (demand meter and tax rate) and M2g (neighbourhood desirability and workshop nuisance) are done; [Next session](NEXT_SESSION.md) specifies and implements **M2h, a town summary**; the M3b guide is deferred. The source-study permission remains exhausted: never open reference source; only the permitted qualitative notes and Decisions may supply study input. The game remains original, unnamed, and not GPL-licensed.
+**M2h is complete at the local checkpoint; M3 is not complete.** Owner decisions U16-U19 (6 November 2026) made homes, shops and workshops 3x3 lots and power stations 4x4, and lean the design closer to the classic genre, within unchanged copyright limits. The owner then chose the city-builder systems ahead of the guide (U24). M2f (demand meter and tax rate), M2g (neighbourhood desirability and workshop nuisance) and M2h (town summary) are done; [Next session](NEXT_SESSION.md) refreshes and implements the **M3b first-steps guide**. The source-study permission remains exhausted: never open reference source; only the permitted qualitative notes and Decisions may supply study input. The game remains original, unnamed, and not GPL-licensed.
 
 | Document | Purpose |
 | --- | --- |
-| [Next session](NEXT_SESSION.md) | Current checkpoint, city-builder roadmap, M2h assignment, and study boundary |
-| [M2e lots](docs/M2E_SPEC.md) / [M2f taxes](docs/M2F_SPEC.md) / [M2g desirability](docs/M2G_SPEC.md) / [M3b guide](docs/M3B_SPEC.md) | M2e-M2g implemented and tested; M3b specified, deferred by U24 |
+| [Next session](NEXT_SESSION.md) | Current checkpoint, city-builder roadmap, M3b assignment, and study boundary |
+| [M2e lots](docs/M2E_SPEC.md) / [M2f taxes](docs/M2F_SPEC.md) / [M2g desirability](docs/M2G_SPEC.md) / [M2h summary](docs/M2H_SPEC.md) / [M3b guide](docs/M3B_SPEC.md) | M2e-M2h implemented and tested; M3b specified, next after refresh |
 | [Genre candidates](docs/GENRE_ALIGNMENT.md) | Classic-genre systems and the U24 schedule |
 | [Artwork evaluation](docs/artwork-review/ARTWORK_EVALUATION.md) | Kenney pack screenshots and comparison; Modern City chosen and now default |
 | [Decisions](docs/DECISIONS.md) | Requirements and exact adopted rules |
@@ -108,4 +112,4 @@ Automated layouts cover 1280x720, 1366x768, 1920x1080, and 1280x800 at text size
 | [IP and assets](docs/IP_AND_ASSETS.md) | Provenance and rights boundaries |
 | [Asset ledger](licenses/ASSETS.md) | Original placeholders and notices |
 
-**M2 local functional gate met; M3a and M2e-M2g locally verified; the full M3 gate remains open.** M2g work uses `codex/m2g-desirability`, based on `4899cb2`, with standing commit/push/fast-forward delivery into default branch `codex/m2a-road-access`. No public release, title, source licence, price, release date or additional supported platform was selected.
+**M2 local functional gate met; M3a and M2e-M2h locally verified; the full M3 gate remains open.** M2h work uses `codex/m2h-town-summary`, based on `cd035dc`, with standing commit/push/fast-forward delivery into default branch `codex/m2a-road-access`. No public release, title, source licence, price, release date or additional supported platform was selected.

@@ -165,6 +165,11 @@ func run() -> void:
 			check(main.budget_dialog.size.y <= resolution.y and main.budget_dialog.get_ok_button().get_global_rect().end.y <= resolution.y, "budget scroll area and OK fit %s text %d" % [resolution,amount])
 			check(main._modal_open(), "budget suspends simulation %s text %d" % [resolution,amount])
 			main.budget_dialog.hide()
+			check(main.bottom.get_global_rect().encloses(main.summary_button.get_global_rect()), "town summary button fits the status bar %s text %d" % [resolution, amount])
+			main._open_summary()
+			await frames()
+			check(main.summary_dialog.size.y <= resolution.y and main.summary_dialog.get_ok_button().get_global_rect().end.y <= resolution.y and main._modal_open(), "town summary dialog fits and suspends time %s text %d" % [resolution, amount])
+			main.summary_dialog.hide()
 			main._open_project()
 			await frames()
 			check(main.project_dialog.size.y <= resolution.y and main.project_dialog.get_ok_button().get_global_rect().end.y <= resolution.y and main.project_text.get_minimum_size().x < 650, "project dialog fits %s text %d" % [resolution, amount])
@@ -374,6 +379,7 @@ func run() -> void:
 	await artwork_flow(isolated)
 	await tax_flow(isolated)
 	await desirability_flow(isolated)
+	await summary_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -746,6 +752,55 @@ func desirability_flow(isolated: IsolatedStore) -> void:
 	check(main.city.tax_rate == 14 and "Earlier format 7" in main.status_label.text and "every lot kept" in main.status_label.text and not "standard 10%" in main.status_label.text, "UI schema-7 load keeps every lot and its own tax rate")
 	await key(KEY_S, true)
 	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 7)) == seven and int(isolated.load_city(main.SAVE_PATH).schema) == 8, "UI save preserves schema-7 bytes and writes schema 8")
+
+## D34 / M2h: the shipped summary dialog, its actions and its read-only guarantee.
+func summary_flow(isolated: IsolatedStore) -> void:
+	await fresh_scene(isolated)
+	await key(KEY_T)
+	check(main.summary_dialog.visible and main._modal_open() and main.summary_items.size() == 1 and main.summary_items[0].kind == "empty" and "Residents 0" in main.summary_heading.text, "T opens the summary of an empty town")
+	check(main.summary_actions.size() == 1 and main.summary_actions[0].text == "Show", "the empty-town item has a Show action")
+	main.summary_actions[0].pressed.emit()
+	await frames()
+	check(not main.summary_dialog.visible and main.inspected_cell == main.city.access.root, "Show closes the summary and inspects the gold flag")
+	# A grown street with homes held across from developed workshops.
+	var roads: Array[Vector2i] = []
+	for x in range(42, 64): roads.append(Vector2i(x, 32))
+	project_command("road", roads)
+	project_command("power", [Vector2i(38, 31)])
+	project_command("home", lots_row(29, 42, 6))
+	project_command("shop", lots_row(33, 42, 3))
+	project_command("workshop", lots_row(33, 51, 3))
+	await growth_days(40)
+	var before: String = main.city.canonical()
+	var sequence: int = main.city.sequence
+	main.summary_button.pressed.emit()
+	await frames()
+	check(main.summary_dialog.visible and main.summary_items[0].kind == "held" and "2 home lots held" in main.summary_items[0].text and main.city.canonical() == before and main.city.sequence == sequence, "the status-bar button opens a read-only summary led by the held homes")
+	var tick: int = main.city.tick
+	main._set_speed(3)
+	main.set_process(true)
+	await frames(10)
+	main.set_process(false)
+	main._set_speed(0)
+	check(main.city.tick == tick and main.summary_dialog.visible, "time stays suspended at 3x while the summary is open")
+	main.summary_actions[0].pressed.emit()
+	await frames()
+	var held: int = int(main.summary_items[0].example)
+	check(main.inspected_cell == main.city.cell_of(held) and "Held at L1" in main.scope_label.text and main._is_world_position(screen_cell(main.city.cell_of(held))), "Show centres on and inspects the first held home")
+	main.city.set_tax_rate(25)
+	main._refresh_metrics()
+	await key(KEY_T)
+	check(main.summary_items[0].kind == "leaving" and main.summary_actions[0].text == "Budget", "under 25% taxes the summary leads with leaving levels and a Budget action")
+	main.summary_actions[0].pressed.emit()
+	await frames()
+	check(main.budget_dialog.visible and not main.summary_dialog.visible and "Tax rate 25%" in main.tax_label.text, "the Budget action opens Budget at the tax row")
+	main.budget_dialog.hide()
+	main._set_text_size(20)
+	await key(KEY_T)
+	await frames()
+	check(main.summary_dialog.size.y <= 720 and main.summary_dialog.get_ok_button().get_global_rect().end.y <= 720, "a several-item summary fits 720p at the largest text")
+	main.summary_dialog.hide()
+	main._set_text_size(16)
 
 func project_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	return main.city.apply_command(kind, cells)

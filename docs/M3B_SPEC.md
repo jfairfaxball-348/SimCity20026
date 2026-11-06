@@ -1,6 +1,6 @@
 # M3b: a dismissible first-steps guide
 
-Scoped 6 November 2026 under the owner's "Run next session" request. **Specified, not implemented. Deferred by U24 (6 November 2026)** until after the M2f-M2h city-builder systems; before adopting, refresh its steps, game version and save notes for them. This is proposed D29. Adopt these rules in Decisions before writing implementation code. The full M3 gate stays open after M3b.
+Scoped 6 November 2026 under the owner's "Run next session" request. **Specified, not implemented. Deferred by U24 (6 November 2026)** until after the M2f-M2h city-builder systems, which are now complete (0.10.0-m2h). It is the next assignment: before adopting, refresh its steps, game version (`0.11.0-m3b`) and save notes (schema 8 / `m2g-1` unchanged) as listed in [NEXT_SESSION.md](../NEXT_SESSION.md). This is proposed D29. Adopt these rules in Decisions before writing implementation code. The full M3 gate stays open after M3b.
 
 ## Dependency on M2e
 
