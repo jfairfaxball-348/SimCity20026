@@ -188,5 +188,5 @@ func test_saves() -> void:
 	var every: bool = true
 	for fixture in ["m1-schema1", "m2a-schema1", "m2b-schema2", "m2c-schema3", "m2d-schema4", "m3a-schema5", "m2e-schema6", "m2f-schema7", "m2g-schema8", "r2a-schema9", "r2b-schema10"]:
 		var result: Dictionary = Codec.decode(FileAccess.get_file_as_string("res://tests/fixtures/%s.json" % fixture))
-		every = every and result.ok and int(result.migrated_from) > 0 and result.city.canonical().contains("\"schema_version\":11")
-	t.check(every, "every earlier fixture loads and resaves as schema 11")
+		every = every and result.ok and int(result.migrated_from) > 0 and result.city.canonical().contains("\"schema_version\":%d" % City.SCHEMA)
+	t.check(every, "every earlier fixture loads and resaves as the current schema")

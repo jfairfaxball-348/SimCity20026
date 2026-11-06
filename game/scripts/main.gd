@@ -11,8 +11,10 @@ const Meter = preload("res://scripts/presentation/demand_meter.gd")
 const Summary = preload("res://scripts/presentation/town_summary.gd")
 const Guide = preload("res://scripts/presentation/opening_guide.gd")
 const Calendar = preload("res://scripts/presentation/calendar.gd")
+const Settings = preload("res://scripts/persistence/settings_store.gd")
+const HistoryGraph = preload("res://scripts/presentation/history_graph.gd")
 const SAVE_PATH: String = "user://saves/manual.json"
-const SIZES: Array[Vector2i] = [Vector2i(1280,720), Vector2i(1366,768), Vector2i(1920,1080), Vector2i(1280,800)]
+const SIZES: Array[Vector2i] = Settings.WINDOW_SIZES
 const PAN_VECTORS: Dictionary = {"pan_left": Vector2.LEFT, "pan_right": Vector2.RIGHT, "pan_up": Vector2.UP, "pan_down": Vector2.DOWN}
 
 var city: City = City.new()
@@ -93,6 +95,14 @@ var load_dialog: ConfirmationDialog
 var quit_dialog: ConfirmationDialog
 var recovery_dialog: ConfirmationDialog
 var font_size: int = 16
+## D39: remembered settings, the window size chosen in Display, and the autosave period.
+var settings_store: Settings = Settings.new()
+var remembered_window: Array = []
+var applying_settings: bool = false
+var autosave_period: int = 0
+var graphs_dialog: AcceptDialog
+var graphs_view: HistoryGraph
+var graphs_note: Label
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
@@ -125,8 +135,10 @@ func _ready() -> void:
 	# Modern City artwork is the default (U23); an optional launch argument such as
 	# -- --art=original or -- --art=tiny_city selects another mode.
 	world.set_art(ArtKit.DEFAULT_MODE)
+	_apply_settings()
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--art="): world.set_art(argument.trim_prefix("--art="))
+	autosave_period = city.tick / Store.AUTOSAVE_DAYS
 	last_usec = Time.get_ticks_usec()
 	_status("Begin at the gold flag: lay a road on its tile, zone 3x3 residential lots beside connected streets, then add a 4x4 power plant (P) beside a street.")
 
@@ -330,7 +342,10 @@ func _build_dialogs() -> void:
 	var sizes := HBoxContainer.new()
 	column.add_child(sizes)
 	for resolution in SIZES:
-		sizes.add_child(_button("%d × %d" % [resolution.x,resolution.y], func(): DisplayServer.window_set_size(resolution)))
+		sizes.add_child(_button("%d × %d" % [resolution.x,resolution.y], func():
+			DisplayServer.window_set_size(resolution)
+			remembered_window = [resolution.x, resolution.y]
+			_remember_settings()))
 	column.add_child(_label("Interface text", 18))
 	var texts := HBoxContainer.new()
 	column.add_child(texts)
@@ -341,20 +356,20 @@ func _build_dialogs() -> void:
 	column.add_child(arts)
 	for mode in ArtKit.MODES:
 		arts.add_child(_button(ArtKit.LABELS[mode], func(): _set_art(mode)))
-	column.add_child(_button("Toggle grid  [G]", func(): world.grid_visible = not world.grid_visible; world.queue_redraw()))
+	column.add_child(_button("Toggle grid  [G]", _toggle_grid))
 	column.add_child(_button("Land value overlay  [V]", _toggle_desirability))
 	column.add_child(_button("Services overlay  [C]", _toggle_services))
 	column.add_child(_button("Center view  [Home]", _center_camera))
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_text = _label("1 Roads · 2 Residential · 6 Commercial · 7 Industrial\nP Power plant · 8 Park · 9 Police · 0 Fire · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced residential lots.\nZones and police/fire stations are 3x3; power plants are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV land value overlay · C services overlay.\nDemand meter: R residential, C commercial, I industrial.\nDates run in 30-day months from 1 Jan 1950.\n\nJoin roads from the gold flag; zone beside them.\nAdd a power plant: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level (0-4).\nLevels 3-4 hold far more; they need land value 1 / 2\n(commercial 3 / 4); industry needs 100 / 250 residents. Plain streets stop at level 2.\nLevel 4 also needs police and fire cover: a station with road\naccess and power covers lots within 12 steps ($30/month each).\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nLand value: park within 3 +2, water within 3 +1,\neach developed industrial lot within 2 steps −2 (up to 3).\nCommercial: +1 per developed residential lot within 3 (up to 2).\nResidential and commercial: higher grows first;\nbelow 0 a lot stops at level 1.\nIndustry ignores land value: nearest the link (by road) grows first.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
+	help_text = _label("1 Roads · 2 Residential · 6 Commercial · 7 Industrial\nP Power plant · 8 Park · 9 Police · 0 Fire · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nH Graphs: residents, jobs and funds month by month.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced residential lots.\nZones and police/fire stations are 3x3; power plants are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV land value overlay · C services overlay.\nDemand meter: R residential, C commercial, I industrial.\nDates run in 30-day months from 1 Jan 1950.\n\nJoin roads from the gold flag; zone beside them.\nAdd a power plant: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level (0-4).\nLevels 3-4 hold far more; they need land value 1 / 2\n(commercial 3 / 4); industry needs 100 / 250 residents. Plain streets stop at level 2.\nLevel 4 also needs police and fire cover: a station with road\naccess and power covers lots within 12 steps ($30/month each).\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nLand value: park within 3 +2, water within 3 +1,\neach developed industrial lot within 2 steps −2 (up to 3).\nCommercial: +1 per developed residential lot within 3 (up to 2).\nResidential and commercial: higher grows first;\nbelow 0 a lot stops at level 1.\nIndustry ignores land value: nearest the link (by road) grows first.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Every 60 days of play\nthe game also autosaves to one of 3 slots (Load > Load autosave);\nautosaves never replace your manual save.\nDisplay, text, art, overlays and the First steps choice are remembered.", 16)
 	add_child(help_dialog)
 	help_dialog.add_button("Show first steps", false, "guide")
 	help_dialog.custom_action.connect(func(action: String):
 		if action == "guide":
 			help_dialog.hide()
-			_set_guide_visible(true))
+			_set_guide_visible(true, true))
 	var help_scroll := ScrollContainer.new()
 	help_scroll.custom_minimum_size = Vector2(640, 440)
 	help_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -367,6 +382,9 @@ func _build_dialogs() -> void:
 	budget_dialog = AcceptDialog.new()
 	budget_dialog.title = "Monthly budget"
 	add_child(budget_dialog)
+	budget_dialog.add_button("Graphs [H]", false, "graphs")
+	budget_dialog.custom_action.connect(func(action: String):
+		if action == "graphs": _open_graphs())
 	var budget_column := VBoxContainer.new()
 	budget_dialog.add_child(budget_column)
 	var tax_row := HBoxContainer.new()
@@ -399,7 +417,13 @@ func _build_dialogs() -> void:
 	load_dialog.dialog_text = "Replace your unsaved layout with the saved city?"
 	load_dialog.get_ok_button().text = "Load city"
 	load_dialog.confirmed.connect(func(): _load_path(SAVE_PATH))
+	load_dialog.add_button("Load autosave", false, "autosave")
+	load_dialog.custom_action.connect(func(action: String):
+		if action == "autosave":
+			load_dialog.hide()
+			_load_autosave())
 	add_child(load_dialog)
+	_build_graphs_dialog()
 	quit_dialog = ConfirmationDialog.new()
 	quit_dialog.title = "Keep your changes?"
 	quit_dialog.dialog_text = "Save this city before leaving?"
@@ -461,6 +485,7 @@ func _set_text_size(amount: int) -> void:
 	_refresh_guide()
 	_layout_ui()
 	_status("Interface text updated.")
+	_remember_settings()
 
 func _process(_delta: float) -> void:
 	var now: int = Time.get_ticks_usec()
@@ -471,6 +496,7 @@ func _process(_delta: float) -> void:
 			dirty = true
 			_refresh_metrics()
 			world.queue_redraw()
+			_maybe_autosave()
 		var direction := Vector2.ZERO
 		for action in PAN_VECTORS:
 			if Input.is_action_pressed(action, true): direction += PAN_VECTORS[action]
@@ -523,8 +549,7 @@ func _shortcut_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("fast_speed"):
 		_set_speed(3)
 	elif event.is_action_pressed("toggle_grid"):
-		world.grid_visible = not world.grid_visible
-		world.queue_redraw()
+		_toggle_grid()
 	elif event.is_action_pressed("toggle_access"):
 		_toggle_access()
 	elif event.is_action_pressed("toggle_power"):
@@ -541,8 +566,10 @@ func _shortcut_input(event: InputEvent) -> void:
 		_open_project()
 	elif event.is_action_pressed("show_summary"):
 		_open_summary()
+	elif event.is_action_pressed("show_graphs"):
+		_open_graphs()
 	elif event.is_action_pressed("toggle_guide"):
-		_set_guide_visible(not guide_visible)
+		_set_guide_visible(not guide_visible, true)
 	elif event.is_action_pressed("show_budget"):
 		_open_budget()
 	elif event.is_action_pressed("display_settings"):
@@ -574,7 +601,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_extend_stroke(world.cell_at(_view_position(event.position)))
 
 func _modal_open() -> bool:
-	return settings != null and (settings.visible or project_dialog.visible or summary_dialog.visible or budget_dialog.visible or help_dialog.visible or load_dialog.visible or quit_dialog.visible or recovery_dialog.visible)
+	return settings != null and (settings.visible or project_dialog.visible or summary_dialog.visible or budget_dialog.visible or help_dialog.visible or load_dialog.visible or quit_dialog.visible or recovery_dialog.visible or (graphs_dialog != null and graphs_dialog.visible))
 
 func _is_world_position(point: Vector2) -> bool:
 	if not world_rect.has_point(point) or _modal_open(): return false
@@ -763,12 +790,19 @@ func _toggle_access() -> void:
 	access_button.set_pressed_no_signal(world.access_visible)
 	_update_legend()
 	world.queue_redraw()
+	_remember_settings()
+
+func _toggle_grid() -> void:
+	world.grid_visible = not world.grid_visible
+	world.queue_redraw()
+	_remember_settings()
 
 ## D33: presentation only; the overlay state is never saved.
 func _toggle_desirability() -> void:
 	world.desirability_visible = not world.desirability_visible
 	world.queue_redraw()
 	_update_legend()
+	_remember_settings()
 	_status("Land value overlay on: + marks raise it (park +2, water +1); hatching lowers it (each developed industrial lot within 2 steps −2). Residential and commercial lots below 0 stop at level 1." if world.desirability_visible else "Land value overlay off (V).")
 
 ## D38: presentation only; the overlay state is never saved.
@@ -776,6 +810,7 @@ func _toggle_services() -> void:
 	world.services_visible = not world.services_visible
 	world.queue_redraw()
 	_update_legend()
+	_remember_settings()
 	_status(("Services overlay on: a square marks police cover, a triangle fire cover, within %d steps of a working station. Level 4 needs both; × marks a station without road access or power." % Balance.SERVICE_RADIUS) if world.services_visible else "Services overlay off (C).")
 
 func _toggle_power() -> void:
@@ -783,6 +818,7 @@ func _toggle_power() -> void:
 	power_button.set_pressed_no_signal(world.power_visible)
 	_update_legend()
 	world.queue_redraw()
+	_remember_settings()
 
 ## Lots and stations are addressed by their top-left anchor; the pointer is at offset (1, 1).
 func _command_cell(pointer: Vector2i) -> Vector2i:
@@ -921,8 +957,12 @@ func _save_city() -> bool:
 
 func _load_clicked() -> void:
 	_cancel_stroke()
-	if dirty and FileAccess.file_exists(SAVE_PATH):
-		load_dialog.popup_centered(Vector2i(520,180))
+	# D39: with an autosave on disk the dialog always opens, so Load autosave is reachable.
+	var autosave: bool = store.has_autosave(SAVE_PATH)
+	if (dirty and FileAccess.file_exists(SAVE_PATH)) or autosave:
+		load_dialog.dialog_text = ("Replace your unsaved layout with a saved city?" if dirty else "Load your manual save, or the newest autosave?") + ("
+Autosaves are kept separately from your manual save." if autosave else "")
+		load_dialog.popup_centered(Vector2i(560,200))
 	else:
 		_load_path(SAVE_PATH)
 
@@ -939,6 +979,7 @@ func _load_path(path: String) -> void:
 	world.city = city
 	inspected_cell = city.access.root
 	dirty = false
+	autosave_period = city.tick / Store.AUTOSAVE_DAYS
 	_set_speed(0)
 	world.clamp_camera()
 	world.queue_redraw()
@@ -959,6 +1000,99 @@ func _load_path(path: String) -> void:
 	_refresh_guide()
 	print("LOAD ", path, " sequence=", city.sequence, " tick=", city.tick)
 
+## D39: an autosave each time running time passes a multiple of AUTOSAVE_DAYS. It never
+## touches the manual save and leaves the unsaved flag set.
+func _maybe_autosave() -> void:
+	var period: int = city.tick / Store.AUTOSAVE_DAYS
+	if period <= autosave_period: return
+	autosave_period = period
+	var result: Dictionary = store.save_autosave(city, SAVE_PATH)
+	if result.ok: _status("Autosaved %s (slot %d of %d)." % [Calendar.date(city.tick), int(result.slot), Store.AUTOSAVE_SLOTS])
+	else: _status(String(result.message))
+	print("AUTOSAVE ", result.ok, " slot=", result.get("slot", 0), " tick=", city.tick)
+
+func _load_autosave() -> void:
+	_cancel_stroke()
+	var result: Dictionary = store.load_autosave(SAVE_PATH)
+	if not result.ok:
+		_status("No valid autosave yet. Current city unchanged.")
+		return
+	city = result.city
+	world.city = city
+	inspected_cell = city.access.root
+	_set_speed(0)
+	world.clamp_camera()
+	world.queue_redraw()
+	_update_preview()
+	# A loaded autosave is unsaved work until the player saves it manually.
+	dirty = true
+	autosave_period = city.tick / Store.AUTOSAVE_DAYS
+	_refresh_metrics()
+	_refresh_guide()
+	_status("Autosave from %s loaded (slot %d). Save to keep it as your manual save." % [Calendar.date(city.tick), int(result.slot)])
+	print("LOAD AUTOSAVE slot=", result.slot, " sequence=", city.sequence, " tick=", city.tick)
+
+## D39: current presentation choices, as the settings file stores them.
+func settings_values() -> Dictionary:
+	return {"settings_version": Settings.VERSION, "window": remembered_window.duplicate(), "text_size": font_size,
+		"art": world.art_mode, "grid": world.grid_visible, "road_marks": world.access_visible,
+		"power_marks": world.power_visible, "land_value": world.desirability_visible,
+		"services": world.services_visible, "guide_hidden": not guide_visible}
+
+func _remember_settings() -> void:
+	if applying_settings or world == null: return
+	var result: Dictionary = settings_store.save_settings(settings_values())
+	if not result.ok: print("SETTINGS ", result.message)
+
+func _apply_settings() -> void:
+	var loaded: Dictionary = settings_store.load_settings()
+	var values: Dictionary = loaded.settings
+	applying_settings = true
+	world.set_art(String(values.art))
+	world.grid_visible = bool(values.grid)
+	world.access_visible = bool(values.road_marks)
+	world.power_visible = bool(values.power_marks)
+	world.desirability_visible = bool(values.land_value)
+	world.services_visible = bool(values.services)
+	access_button.set_pressed_no_signal(world.access_visible)
+	power_button.set_pressed_no_signal(world.power_visible)
+	remembered_window = values.window.duplicate()
+	if remembered_window.size() == 2 and DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_size(Vector2i(int(remembered_window[0]), int(remembered_window[1])))
+	if int(values.text_size) != font_size: _set_text_size(int(values.text_size))
+	guide_visible = not bool(values.guide_hidden)
+	applying_settings = false
+	_refresh_guide()
+	_update_legend()
+	world.queue_redraw()
+	print("SETTINGS ", loaded.message)
+
+func _build_graphs_dialog() -> void:
+	graphs_dialog = AcceptDialog.new()
+	graphs_dialog.title = "Town history"
+	graphs_dialog.get_ok_button().text = "Close"
+	add_child(graphs_dialog)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	graphs_dialog.add_child(column)
+	graphs_note = _label("", 15, Style.MUTED)
+	graphs_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	graphs_note.custom_minimum_size.x = 700
+	column.add_child(graphs_note)
+	graphs_view = HistoryGraph.new()
+	graphs_view.custom_minimum_size = Vector2(700, 400)
+	column.add_child(graphs_view)
+
+## D39: read-only graphs of the saved monthly history.
+func _open_graphs() -> void:
+	_cancel_stroke()
+	budget_dialog.hide()
+	graphs_note.add_theme_font_size_override("font_size", font_size - 1)
+	var months: int = city.history.size()
+	graphs_note.text = "No months recorded yet. The graphs fill in at each monthly settlement." if months == 0 else "%d month%s recorded (up to %d are kept). Values are taken at each monthly settlement." % [months, "" if months == 1 else "s", Balance.HISTORY_LIMIT]
+	graphs_view.set_history(city.history, font_size)
+	graphs_dialog.popup_centered(Vector2i(760, 560))
+
 func _open_settings() -> void:
 	_cancel_stroke()
 	settings.popup_centered(Vector2i(680,480))
@@ -966,6 +1100,7 @@ func _open_settings() -> void:
 ## Presentation only; the simulation, saves and controls are unchanged.
 func _set_art(mode: String) -> void:
 	world.set_art(mode)
+	_remember_settings()
 	var note: String = {"original": " (original fallback)", "tiny_city": " (experimental Kenney CC0 pack)", "modern_city": " (default, Kenney CC0 pack)"}[world.art_mode]
 	_status("Artwork: %s%s. Presentation only; the town and simulation are unchanged." % [ArtKit.LABELS[world.art_mode], note])
 
@@ -1170,7 +1305,7 @@ func _build_guide() -> void:
 	buttons.add_theme_constant_override("separation", 8)
 	column.add_child(buttons)
 	guide_action = _button("Show", _guide_action_pressed)
-	guide_hide = _button("Hide", func(): _set_guide_visible(false))
+	guide_hide = _button("Hide", func(): _set_guide_visible(false, true))
 	for button: Button in [guide_action, guide_hide]:
 		for style_name in ["normal", "hover", "pressed", "focus"]:
 			var compact: StyleBox = theme.get_stylebox(style_name, "Button").duplicate()
@@ -1210,9 +1345,11 @@ func _layout_guide() -> void:
 	guide_panel.size = Vector2(width, height)
 	guide_panel.position = Vector2(left, bottom.position.y - 12 - height)
 
-func _set_guide_visible(value: bool) -> void:
+## D39: player actions (Hide/Close, F1, Help) remember the choice in settings.
+func _set_guide_visible(value: bool, remember: bool = false) -> void:
 	guide_visible = value
 	_refresh_guide()
+	if remember: _remember_settings()
 
 func _guide_action_pressed() -> void:
 	match String(guide_state.get("action", "")):

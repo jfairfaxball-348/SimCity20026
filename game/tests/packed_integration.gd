@@ -5,6 +5,7 @@ const Store = preload("res://scripts/persistence/save_store.gd")
 const City = preload("res://scripts/sim/city_state.gd")
 const FileOps = preload("res://scripts/persistence/file_ops.gd")
 const Clock = preload("res://scripts/sim/simulation_clock.gd")
+const Settings = preload("res://scripts/persistence/settings_store.gd")
 var main: Control
 var checks: int = 0
 var failures: Array[String] = []
@@ -19,6 +20,12 @@ class IsolatedStore extends Store:
 	func load_city(path: String) -> Dictionary:
 		var actual: String = test_path + path.trim_prefix("user://saves/manual.json") if path.begins_with("user://saves/manual.json") else path
 		return super.load_city(actual)
+	func save_autosave(city: City, _path: String) -> Dictionary:
+		return super.save_autosave(city, test_path)
+	func load_autosave(_path: String) -> Dictionary:
+		return super.load_autosave(test_path)
+	func has_autosave(_path: String) -> bool:
+		return super.has_autosave(test_path)
 
 func _initialize() -> void:
 	call_deferred("run")
@@ -100,6 +107,8 @@ func run() -> void:
 	check(not FileAccess.file_exists("res://tests/run_tests.gd") and not ResourceLoader.exists("res://tests/run_tests.gd"), "test runner excluded from release package")
 	check(not FileAccess.file_exists("res://tests/fixtures/m1-schema1.json") and not FileAccess.file_exists("res://tests/fixtures/m2e-schema6.json"), "fixtures excluded from release package")
 	var isolated := IsolatedStore.new("user://tests/export_%d/manual.json" % Time.get_ticks_usec())
+	# D39: remembered settings live beside the isolated saves, never in the real profile.
+	Settings.override_path = isolated.test_path.get_base_dir().path_join("settings.json")
 	root.size = Vector2i(1280,720)
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -402,6 +411,7 @@ func run() -> void:
 	await landvalue_flow(isolated)
 	await density_flow(isolated)
 	await services_flow(isolated)
+	await r3_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -416,9 +426,11 @@ func growth_days(count: int) -> void:
 	main.world.queue_redraw()
 	await frames()
 
-func fresh_scene(isolated: IsolatedStore, guide: bool = false) -> void:
+func fresh_scene(isolated: IsolatedStore, guide: bool = false, keep_settings: bool = false) -> void:
 	main.queue_free()
 	await frames()
+	# D39: each flow starts from default settings unless it tests remembering them.
+	if not keep_settings and FileAccess.file_exists(Settings.path()): DirAccess.remove_absolute(Settings.path())
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	main.store = isolated
@@ -1138,7 +1150,7 @@ func services_flow(isolated: IsolatedStore) -> void:
 	main._set_text_size(16)
 	await key(KEY_S, true)
 	var saved: String = FileAccess.get_file_as_string(isolated.test_path)
-	check(int(JSON.parse_string(saved).schema_version) == 11 and not "services_visible" in saved and not "police_tile" in saved, "saves are schema 11 and never store coverage")
+	check(int(JSON.parse_string(saved).schema_version) == City.SCHEMA and not "services_visible" in saved and not "police_tile" in saved, "saves are the current schema and never store coverage")
 	var r2b_path: String = (get_script() as Script).resource_path.get_base_dir().path_join("fixtures/r2b-schema10.json")
 	var r2b: String = FileAccess.get_file_as_string(r2b_path)
 	await fresh_scene(isolated)
@@ -1146,7 +1158,94 @@ func services_flow(isolated: IsolatedStore) -> void:
 	await key(KEY_L, true)
 	check("Earlier format 10" in main.status_label.text and "every lot kept" in main.status_label.text and main.city.development[main.city.index(Vector2i(4, 3))] == 4, "UI schema-10 load keeps every lot")
 	await key(KEY_S, true)
-	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 10)) == r2b and int(isolated.load_city(main.SAVE_PATH).schema) == City.SCHEMA, "UI save preserves schema-10 bytes and writes schema 11")
+	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 10)) == r2b and int(isolated.load_city(main.SAVE_PATH).schema) == City.SCHEMA, "UI save preserves schema-10 bytes and writes the current schema")
+
+## D39 / R3: autosave during play through the shipped clock, Load autosave, the Graphs
+## dialog and settings remembered across a scene restart.
+func r3_flow(isolated: IsolatedStore) -> void:
+	await fresh_scene(isolated)
+	for slot in range(1, 4):
+		var old: String = Store.autosave_path(isolated.test_path, slot)
+		if FileAccess.file_exists(old): DirAccess.remove_absolute(old)
+	if FileAccess.file_exists(Store.autosave_index_path(isolated.test_path)): DirAccess.remove_absolute(Store.autosave_index_path(isolated.test_path))
+	var manual_before: String = FileAccess.get_file_as_string(isolated.test_path)
+	main._open_graphs()
+	await frames()
+	check(main.graphs_dialog.visible and main._modal_open() and "No months recorded yet" in main.graphs_note.text, "an empty town's graphs explain that months fill in at settlements")
+	main.graphs_dialog.hide()
+	var roads: Array[Vector2i] = []
+	for x in range(42, 64): roads.append(Vector2i(x, 32))
+	project_command("road", roads)
+	project_command("power", [Vector2i(38, 31)])
+	project_command("home", [Vector2i(42, 29), Vector2i(45, 29), Vector2i(48, 29)])
+	project_command("shop", [Vector2i(51, 29)])
+	main._set_speed(3)
+	var guard: int = 0
+	while main.city.tick < 61 and guard < 100:
+		main.last_usec = Time.get_ticks_usec() - 3_000_000
+		main._process(0.0)
+		guard += 1
+	main._set_speed(0)
+	var autosaved: Dictionary = isolated.load_city(Store.autosave_path(isolated.test_path, 1))
+	var autosaved_tick: int = int(autosaved.city.tick) if autosaved.ok else -1
+	# The autosave follows the frame that passes day 60 (up to eight days per frame).
+	check(autosaved_tick >= 60 and autosaved_tick < 68 and ("Autosaved %s (slot 1 of 3)." % main.Calendar.date(autosaved_tick)) in main.status_label.text, "running time autosaves to slot 1 just after day 60 with a status line")
+	check(FileAccess.get_file_as_string(isolated.test_path) == manual_before and main.dirty, "the autosave leaves the manual save alone and the town still unsaved")
+	check(autosaved.ok and autosaved.city.history.size() == 2, "the autosave holds two months of history")
+	project_command("road", [Vector2i(41, 20)])
+	main._load_clicked()
+	await frames()
+	main.load_dialog.custom_action.emit("autosave")
+	await frames()
+	check(main.city.tick == autosaved_tick and main.city.occupancy[main.city.index(Vector2i(41, 20))] == City.EMPTY and main.dirty and ("Autosave from %s loaded (slot 1)" % main.Calendar.date(autosaved_tick)) in main.status_label.text, "Load autosave restores the newest autosave as unsaved work")
+	main.dirty = false
+	main._load_clicked()
+	await frames()
+	check(main.load_dialog.visible and "newest autosave" in main.load_dialog.dialog_text and main.city.tick == autosaved_tick, "with an autosave on disk, Load always offers the choice, even without unsaved changes")
+	main.load_dialog.hide()
+	main.dirty = true
+	await key(KEY_H)
+	check(main.graphs_dialog.visible and "2 months recorded" in main.graphs_note.text and main.graphs_view.history.size() == 2, "H opens the graphs with the recorded months")
+	main.graphs_dialog.hide()
+	for resolution in [Vector2i(1280, 720), Vector2i(1366, 768)]:
+		root.size = resolution
+		for amount in [16, 18, 20]:
+			main._set_text_size(amount)
+			main._open_graphs()
+			await frames()
+			check(main.graphs_dialog.size.y <= resolution.y and main.graphs_dialog.get_ok_button().get_global_rect().end.y <= resolution.y and main.graphs_dialog.size.x <= resolution.x, "graphs dialog fits %s text %d" % [resolution, amount])
+			main.graphs_dialog.hide()
+	root.size = Vector2i(1280, 720)
+	main._set_text_size(16)
+	main._open_budget()
+	await frames()
+	var graphs_button: Button = null
+	for child in main.budget_dialog.find_children("*", "Button", true, false):
+		if (child as Button).text == "Graphs [H]": graphs_button = child
+	check(graphs_button != null, "Budget offers Graphs [H]")
+	if graphs_button != null:
+		graphs_button.pressed.emit()
+		await frames()
+	check(main.graphs_dialog.visible and not main.budget_dialog.visible, "the Budget button opens the graphs")
+	main.graphs_dialog.hide()
+	# Remembered settings across a restart of the scene.
+	main._set_text_size(18)
+	main._set_art("original")
+	await key(KEY_C)
+	await key(KEY_G)
+	main.guide_hide.pressed.emit()
+	await frames()
+	var stored: Dictionary = main.settings_store.load_settings()
+	check(stored.ok and int(stored.settings.text_size) == 18 and String(stored.settings.art) == "original" and bool(stored.settings.services) and not bool(stored.settings.grid) and bool(stored.settings.guide_hidden), "changes are written to the settings file")
+	await fresh_scene(isolated, true, true)
+	check(main.font_size == 18 and main.world.art_mode == "original" and main.world.services_visible and not main.world.grid_visible and not main.guide_panel.visible, "a restarted game restores text size, art, overlays and the hidden card")
+	await key(KEY_F1)
+	check(main.guide_panel.visible and not bool(main.settings_store.load_settings().settings.guide_hidden), "F1 shows the card again and remembers that")
+	isolated.files.write_text(Settings.path(), "{\"settings_version\":99}")
+	await fresh_scene(isolated, true, true)
+	check(main.font_size == 16 and main.world.art_mode == "modern_city" and not main.world.services_visible and main.world.grid_visible and main.guide_panel.visible, "an invalid settings file starts with the defaults")
+	check(main.city.history.is_empty() and main.city.tick == 0, "settings never carry town state")
+	main._set_text_size(16)
 
 func project_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	return main.city.apply_command(kind, cells)

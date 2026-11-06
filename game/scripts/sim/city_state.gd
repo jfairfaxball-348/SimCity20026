@@ -23,9 +23,9 @@ const POLICE: int = 7
 const FIRE: int = 8
 const MAX_TICK: int = 1_000_000_000
 const MAX_PENDING_US: int = 3_600_000_000
-const SCHEMA: int = 11
-const SIMULATION: String = "r2c-1"
-const CONTENT: String = "r2c-1"
+const SCHEMA: int = 12
+const SIMULATION: String = "r3-1"
+const CONTENT: String = "r3-1"
 ## Supported earlier format (M1/M2a): IDs 0..2 only, migrated in memory (D20).
 const LEGACY_SCHEMA: int = 1
 const LEGACY_VERSION: String = "m1-1"
@@ -63,6 +63,9 @@ var desirability: Desirability = Desirability.new()
 var services: Services = Services.new()
 var project: Dictionary = {"completed": false, "park_index": -1}
 var last_budget: Dictionary = {}
+## D39: one record per settlement, [tick, residents, commercial jobs, industrial jobs,
+## closing cash, net], oldest first, at most Balance.HISTORY_LIMIT.
+var history: Array = []
 var budget: Dictionary = {}
 
 func initialize(map_seed: int = 198624, map_width: int = 64, map_height: int = 64) -> void:
@@ -76,6 +79,7 @@ func initialize(map_seed: int = 198624, map_width: int = 64, map_height: int = 6
 	pending_us = 0
 	sequence = 0
 	last_budget = {}
+	history = []
 	project = {"completed": false, "park_index": -1}
 	terrain.resize(width * height)
 	terrain.fill(LAND)
@@ -343,7 +347,7 @@ func snapshot() -> Dictionary:
 		"terrain": Array(terrain), "occupancy": Array(occupancy),
 		"footprint_anchor": Array(footprint_anchor),
 		"development": Array(development), "service_loss": Array(service_loss),
-		"last_budget": last_budget.duplicate(), "project": project.duplicate(),
+		"last_budget": last_budget.duplicate(), "history": history.duplicate(true), "project": project.duplicate(),
 		"cash": cash, "tax_rate": tax_rate, "tick": tick, "pending_us": pending_us, "sequence": sequence}
 
 func canonical() -> String:

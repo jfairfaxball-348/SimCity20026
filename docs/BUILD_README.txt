@@ -1,4 +1,4 @@
-UNTITLED CITY BUILDER - R2c POLICE AND FIRE (0.15.0-r2c)
+UNTITLED CITY BUILDER - R3 AUTOSAVES, SETTINGS AND HISTORY (0.16.0-r3)
 
 Run citybuilder.exe. Keep citybuilder.pck beside it. A First steps card at
 the bottom left of the map shows one next step at a time (Show centres on
@@ -7,7 +7,8 @@ Local development checkpoint; 3x3 residential, commercial and industrial
 lots, 4x4 power plants, a calendar from 1 Jan 1950, a monthly
 economy with an adjustable tax rate, a demand meter, neighbourhood
 land value for every zone with a map overlay, police and fire stations, a town
-summary, a pocket park, and one optional project.
+summary, monthly history graphs, autosaves, remembered settings, a pocket park,
+and one optional project.
 
 1 Roads ($10 per tile) / 2 Residential / 6 Commercial / 7 Industrial
 ($25 per 3x3 lot). P Power plant (4x4, $500, 20 lots) / 8 Park ($100)
@@ -18,6 +19,8 @@ B Budget: expected income/upkeep, latest actual settlement, and the tax
 rate (- / + / Standard 10%; 0-25%).
 T Town summary (also the status-bar button): the biggest measurable causes
 holding the town back, biggest first, each with Show or Budget.
+H Graphs (also in Budget): residents, jobs (commercial solid, industrial
+dashed) and funds for each month, up to the latest 240 months.
 J Project: choose a park with three developed, serviced residential lots that each
 have a tile within 3 side-steps. Complete it once to add cosmetic flowers;
 no new growth or income benefit. Clear the park freely; completion remains,
@@ -91,18 +94,27 @@ waived, with no debt or service cuts. An empty town regains $100 each month.
 Dates run in 30-day months (12 a year) from 1 Jan 1950; the date is
 derived from elapsed days and never saved. Time starts paused. Construction works while paused. Unfocused windows and
 dialogs suspend time. Save manually; after restarting, press Load.
+Autosaves: every 60 days of running time the game also writes one of three
+rotating autosave slots (saves/autosave1-3.json). They never replace or
+change your manual save or its backup. Load > Load autosave opens the newest
+valid one (an older slot if the newest is damaged); save it to keep it.
+Settings: window size, text size, artwork, the grid, road/power marks, the
+land value and services overlays and whether the First steps card is hidden
+are remembered in %APPDATA%/OriginalCityBuilder/settings.json. A damaged
+settings file is ignored and the defaults are used; it never affects saves.
 Saves: %APPDATA%/OriginalCityBuilder/saves/manual.json
 The previous valid save is manual.json.bak; failed loads leave the city intact.
-Format 11 (0.15.0-r2c; police and fire stations and their upkeep counts; the guide and
-calendar save nothing) stores the tax rate and lot, power plant and station anchors; land value,
-freight and police/fire cover are derived, never saved. Format 10 saves load with every lot
-kept (level-4 lots without police and fire cover then drop to 3 one level per check);
+Format 12 (0.16.0-r3) adds the monthly history (up to 240 months) to format 11, which stores
+the tax rate, lot, power plant and police/fire station anchors and their upkeep counts; land
+value, freight and police/fire cover are derived, never saved, and the guide, calendar and
+settings are not part of a save. Format 11 saves load with every value kept and an empty history.
+Format 10 saves load with every lot kept (level-4 lots without police and fire cover then drop to 3 one level per check);
 formats 9, 8 and 7 load unchanged; format 6 saves load at the standard 10% rate. Earlier formats (1-5) load with
 their old single-tile zones and power stations cleared; roads, parks, funds, time,
 budget history and project completion are kept. Loading changes no files.
 Saving preserves older primary/backup bytes once as manual.schema1.json to
-manual.schema10.json before replacement. No retroactive charges. Older builds
-cannot read format 11; use the preserved older-format copy to roll back.
+manual.schema11.json before replacement. No retroactive charges. Older builds
+cannot read format 12; use the preserved older-format copy to roll back.
 
 Windows x64, tested on the development machine. Other hardware, Windows DPI
 variants, other operating systems, and controllers remain unverified.

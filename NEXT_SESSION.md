@@ -1,33 +1,34 @@
-# Next session: roadmap R3, autosaves, settings and history
+# Next session: roadmap R4, sound sample and animation
 
-Updated 6 November 2026 after R2c. **M0/M1 through M2d, the M3a project, M2e zone lots, M2f taxes, M2g desirability, the M2h town summary, the M3b first-steps guide, roadmap R1 (terminology and calendar), R2a (land value), R2b part 1 (levels 0-4) and R2c (police and fire) are implemented and locally tested. M3 as a whole is incomplete.** The ordered [roadmap](docs/ROADMAP.md) (R1-R17) and [gap analysis](docs/GAP_ANALYSIS.md) set the direction; owner answers U31-U34 are recorded. There is no public release and no human enjoyment evidence.
+Updated 6 November 2026 after R3. **M0/M1 through M2d, the M3a project, M2e zone lots, M2f taxes, M2g desirability, the M2h town summary, the M3b first-steps guide, roadmap R1 (terminology and calendar), R2a (land value), R2b part 1 (levels 0-4), R2c (police and fire) and R3 (autosaves, settings and history) are implemented and locally tested. M3 as a whole is incomplete.** The ordered [roadmap](docs/ROADMAP.md) (R1-R17) and [gap analysis](docs/GAP_ANALYSIS.md) set the direction; owner answers U31-U34 are recorded, and under **U39** the R6 playtest will be the owner playing alone, at its current position after R5. There is no public release and no human enjoyment evidence.
 
 ## Start here
 
-Read README, AGENTS (including U29 on plain words), docs/DECISIONS.md (all U and D entries, especially D15, D20, D27, D29, D38), docs/ROADMAP.md, docs/R2C_SPEC.md and the session evidence under `docs/sessions/`. Inspect the local diff, and fetch and reconcile live remote refs before editing.
+Read README, AGENTS (including U29 on plain words), docs/DECISIONS.md (all U and D entries, especially D10, D31, D39), docs/IP_AND_ASSETS.md, licenses/ASSETS.md, docs/ROADMAP.md, docs/R3_SPEC.md and the session evidence under `docs/sessions/`. Inspect the local diff, and fetch and reconcile live remote refs before editing.
 
-- **Branches.** The default branch is still `codex/m2a-road-access`, whose name is historical. Create a new `codex/` branch (for example `codex/r3-autosave-history`).
+- **Branches.** The default branch is still `codex/m2a-road-access`, whose name is historical. Create a new `codex/` branch (for example `codex/r4-sound-animation`).
 - **Delivery.** Standing commit/push/fast-forward delivery applies. Never force-push or discard unrelated work.
 
-The current build is game **0.15.0-r2c**, save schema 11, simulation/content `r2c-1` (Godot 4.7.2 through `tools/`).
+The current build is game **0.16.0-r3**, save schema 12, simulation/content `r3-1`, settings version 1 (Godot 4.7.2 through `tools/`).
 
-## Assignment: roadmap R3 (autosaves, settings and history)
+## Assignment: roadmap R4 (sound sample and animation)
 
-On **"Run next session"**, write `docs/R3_SPEC.md`, adopt its rules as D39 in Decisions **before code** (stating exactly which D15/D20/D27/D29 rules it changes), then implement, test and deliver. Proposed game version **0.16.0-r3**. Choose every number ourselves.
+On **"Run next session"**, write `docs/R4_SPEC.md`, adopt its rules as D40 in Decisions **before code** (stating exactly which D31/D39 rules it changes), then implement, test and deliver. Proposed game version **0.17.0-r4**. Choose every number ourselves.
 
 ### Scope
 
-1. **Autosaves.** Rotating autosave slots beside the manual save, at our own interval (in game months or real minutes) and count. An autosave never replaces or rotates the manual slot or its backup, uses the same validated temporary write, and is skipped (with a quiet status) when nothing changed. Load offers the manual save or the newest valid autosave; a corrupt autosave falls back to an older one.
-2. **Settings file.** A separate, versioned settings file remembering window size, text size, art mode, overlay toggles (grid, road and power marks, land value, services) and First steps dismissal (this revisits the D29 session-only rule). Corrupt, unknown-version or out-of-range settings fall back to defaults without touching saves.
-3. **History.** Per-month records (population, jobs, funds, net, and per-type levels or residents) appended at each D25 settlement, bounded in length so the largest map stays well under the 512 KiB save cap (raise the cap only by decision). Schema **12** with strict validation; schema 11 migrates with an empty history.
-4. **Graphs dialog.** A key and button opening simple original line graphs of the history, using the R1 calendar for month and year labels, readable without colour, fitting 720p at every text size.
-5. **Interface and docs.** Help, BUILD_README, README; Budget may link to Graphs. Save preservation (`manual.schemaN.json`) continues.
+1. **Sound effects.** A small coherent set of original effects: build, clear, a rejected action, a level gained, and a gentle alert (for example a monthly deficit). Keep them short and quiet.
+2. **One music sample.** One short original looping piece, calm and unobtrusive, off or low by default if that suits the relaxed goal (U05).
+3. **Volumes.** Separate master, effects and music volumes plus a silence option in Display, remembered in the settings file (a settings version 2 with migration of version 1, keeping every D39 fallback rule).
+4. **First animations.** Presentation only: for example smoke on developed industry, water shimmer, a gentle pulse on the outside-link flag. No flashing (nothing faster than a calm cycle), never changes the model, and an option to turn animation off, also remembered.
+5. **Provenance.** Every sound and music file must be original to this project. Prefer generating it with our own code (for example a script that synthesises the WAV/OGG from our own parameters, kept in `tools/` or `builds/validation/`), and record each file, how it was made and its licence position in `licenses/ASSETS.md`. **No downloads, purchases, asset packs or generation services without the owner's explicit approval**, and nothing from the reference game.
+6. **Saves.** No save change expected (schema 12 stays). Settings version 2.
 
 ### Acceptance
 
-- Unit tests for autosave rotation and the manual-slot guarantee, settings fallback, history bounds and exact values at settlements, migration of all twelve fixtures (byte-identical) plus a new schema-12 fixture, and determinism (history never consumes RNG).
-- Packed tests through the shipped UI at every layout and text size; `tools/verify.ps1` passes; a native posted-input run of the actual EXE showing an autosave, remembered settings after a restart and the Graphs dialog; profile restored (settings and autosave files included).
-- Update README, Decisions, ROADMAP (R3 done), an evidence record and this handoff so the next "Run next session" starts **R4 (sound sample and animation)**, then deliver. No purchases, external messages or public release.
+- Unit tests for settings version 2 and migration from version 1, volume bounds and silence, animation off, and that audio and animation never change the model (canonical town unchanged, no RNG use).
+- Packed tests through the shipped UI at every layout and text size; `tools/verify.ps1` passes (headless audio must not fail the runs); a native run of the actual EXE showing the volume controls and animations; record honestly what could not be heard by an automated run.
+- Update README, Decisions, ROADMAP (R4 done), an evidence record and this handoff so the next "Run next session" starts **R5 (controller route)**, then deliver. No purchases, external messages or public release.
 
 ### Still deferred
 
@@ -47,6 +48,10 @@ The remaining R2b items (wealth effects and art variants, per-level power, deman
   - **Order.** Residential and commercial lots with higher value reserve growth first; industry by fewest road steps from the link road; then map order.
   - **Held.** Residential and commercial lots below 0 are held at level 1; serviced level-2 lots drop one level per round, and drops count towards that type's D32 leaving.
   - **Overlay.** V or Display (Land value); never saved. Derived in `scripts/sim/desirability.gd` (module name kept).
+- **Autosaves, settings and history (D39).**
+  - **Autosaves.** `autosave1-3.json` and `autosave.index` beside the manual save, written while time runs after the frame that passes each multiple of 60 days, rotating 1 → 2 → 3, with the D15 validated write; they never touch `manual.json`, its `.bak` or preserved copies, and do not clear the unsaved flag. With any autosave on disk, Load always opens its dialog, which offers Load autosave (newest valid slot, falling back to older ones).
+  - **Settings.** `settings.json`, version 1: window, text size, art, grid, road and power marks, land value and services overlays, `guide_hidden`. Written on each player change, read at start-up; any invalid file gives all defaults. `SettingsStore.override_path` isolates tests (source and packed runs set it).
+  - **History.** Each settlement appends `[tick, residents, commercial jobs, industrial jobs, closing cash, net]`, at most 240 records, saved in schema 12; H and Budget → Graphs [H] show three graphs.
 - **Police and fire (D38).** Police (ID 7) and fire (ID 8) stations are 3x3, $400, $30 a month each (counted per station, working or not), keys 9 and 0, placed one at a time. A station works with a connected road beside it and one power unit, drawn with zone lots in the nearest-first order. A working station covers zone lots within 12 side-steps footprint to footprint (terrain ignored, no stacking); derived in `scripts/sim/services.gd`, never saved. Level 4 for every zone type also needs police and fire cover; a lot above the new cap drops one level per round, counted with D32 leaving. Services overlay C (square police, triangle fire, cross not working); with it on, a lot's legend shows its cover. Summary items `uncovered` and `idle_station`. Park, Police and Fire share one sidebar row.
 - **Levels (D37).** Levels 0-4; per-lot capacity residential 0/4/8/20/40, commercial 0/2/4/10/20, industrial 0/4/8/16/28 (`Balance.capacity`). Caps: below 0 held at 1; otherwise level 2 unless residential value ≥1 (L3) / ≥2 (L4), commercial ≥3 / ≥4, industry 100 / 250 town residents. Lots above their cap drop one level per round (counted with D32 leaving); leaving takes the highest levels first. Wealth (modest / comfortable / well-off) is display-only. Original stage art plus yellow pips (one for L3, two for L4) in all art modes.
 - **Town summary (D34).**
@@ -59,30 +64,31 @@ The remaining R2b items (wealth effects and art variants, per-level power, deman
   - **No side effects.** It saves nothing, never pauses time and never locks tools.
   - **Packed tests.** Feature flows hide the card (`fresh_scene(…, guide = false)`), and `guide_flow` tests it shown.
 - **Wording and calendar (D35).** Player-facing text says Residential / Commercial / Industrial lots and power plant; the meter reads R / C / I. Internal identifiers (`home`, `shop`, `workshop`, `power`), keys and save fields are unchanged. The calendar is derived from the tick (tick 0 = 1 Jan 1950, 30-day months, 12-month years) by `scripts/presentation/calendar.gd` and never saved.
-- **Unchanged numbers.** D17-D28 prices, capacities, caps, clock order, budget, park priority and project rules are unchanged except as D32/D33/D36/D37/D38 specify. Each roadmap milestone's decision must state exactly which earlier rules it changes.
+- **Unchanged numbers.** D17-D28 prices, capacities, caps, clock order, budget, park priority and project rules are unchanged except as D32/D33/D36/D37/D38/D39 specify. Each roadmap milestone's decision must state exactly which earlier rules it changes.
 - **Owner answers (U31-U34).** Disasters optional and off by default; the no-debt waiver stays the default; target map and population scale match the original game with our own numbers; no later-edition extras for now.
 - **Determinism.** No commands or ticks consume RNG. The fixed clock, dialog/focus suspension, eight ticks per frame and bounded backlog stay.
 - **Saves.**
-  - **Schema 11 contents.** The schema-10 fields (strict `tax_rate`, ledger `tax_rate`, per-cell `footprint_anchor`, development 0-4) plus occupancy IDs 7-8 as whole 3x3 footprints and ledger counts `police` and `fire`. Land value, freight and cover are derived.
-  - **Migration.** Schema 10 loads with every lot kept and zero ledger station counts (its uncovered level-4 lots then drop); schemas 9, 8 and 7 load unchanged; schema 6 loads unchanged at 10%. Schemas 1-5 load with their single-tile zones and stations cleared.
-  - **Loading and preservation.** Load never writes. Older primary/backup bytes are preserved once as `manual.schema1-10.json` before replacement.
-  - **Fixtures.** Twelve fixtures (hashes in `game/tests/fixtures/README.md`) stay byte-identical.
+  - **Schema 12 contents.** The schema-11 fields (strict `tax_rate`, ledger `tax_rate` and `police`/`fire` counts, per-cell `footprint_anchor`, development 0-4, IDs up to 8) plus a strictly validated `history`. Land value, freight and cover are derived; settings are never in a save.
+  - **Migration.** Schema 11 loads with every value kept and an empty history. Schema 10 loads with every lot kept and zero ledger station counts (its uncovered level-4 lots then drop); schemas 9, 8 and 7 load unchanged; schema 6 loads unchanged at 10%. Schemas 1-5 load with their single-tile zones and stations cleared.
+  - **Loading and preservation.** Load never writes. Older primary/backup bytes are preserved once as `manual.schema1-11.json` before replacement.
+  - **Fixtures.** Thirteen fixtures (hashes in `game/tests/fixtures/README.md`) stay byte-identical.
   - **Limits.** JSON cap 512 KiB; maps 8-128 per dimension; seed and RNG state remain signed-64 decimal strings.
 - **Evidence profile.**
   - **Which profile.** Processes started from a packaged app (such as the Codex desktop app) use a redirected profile under `%LOCALAPPDATA%\Packages\…\LocalCache\Roaming\OriginalCityBuilder\`. Processes started from an ordinary shell use `%APPDATA%\OriginalCityBuilder\`, which had no `saves` folder before the M2f-R1 native runs and was restored to that state after each. In the R1 session (started from the Claude desktop app) the redirected `Claude_pzs8sxrjxfjjc` profile and `%APPDATA%` showed the same contents from the shell; both had no `saves` folder before and after.
+  - **R3.** The native runs also create `settings.json` and autosave files in the profile; record and restore them too. In R3 the profile had no `saves` folder and no `settings.json` before, and again none after.
   - **R2c.** The tested process again resolved `%APPDATA%\OriginalCityBuilder\` (the redirected `Claude_pzs8sxrjxfjjc` profile showed the same contents); no `saves` folder before or after. Seven older packed-test folders from earlier sessions remain under `tests` as found.
   - **Recording and restoring.** Record the path the tested process actually resolved, and restore it exactly afterwards (including any leftover `.recovery_mode_lock`).
   - **Packed tests.** They use an isolated `user://tests/…` store, and their folders are moved out after runs.
-- **Native driver.** When computer-use tools are unavailable, `builds/validation/r2c/native/native_driver.py` (ignored, copied from R2b, with 9, 0, C and Enter added). Lots below the road at the right of the default view sit under the inspector; place lots above the road or pan first posts input only to the game's window handle and captures it with `PrintWindow`.
+- **Native driver.** When computer-use tools are unavailable, `builds/validation/r3/native/native_driver.py` (ignored, copied from R2c, with H added). Lots below the road at the right of the default view sit under the inspector; place lots above the road or pan first posts input only to the game's window handle and captures it with `PrintWindow`.
   - Posted Ctrl shortcuts do not register, because Godot reads modifiers from the real keyboard, so use the Save/Load buttons.
   - Do not use the hover action unless the owner agrees, because hover moves the real cursor.
 - **Packed-test hangs.** A script error inside the packed driver stops it before it quits, so `tools/verify.ps1` then waits indefinitely. If a run exceeds about 10 minutes, stop it and rerun the packed driver directly with a timeout to see the error.
 
 ## Actual evidence and limits
 
-R2c passed 800 source / 612 exported-PCK checks and release-EXE start-up; eleven earlier fixtures byte-identical and a twelfth added. A posted-window-message run of the actual EXE built a street with two parks, stopped at level 3 with the summary "2 lots need police and fire cover to reach level 4", placed both stations by keys and clicks, showed the Services overlay, reached level 4 (72 residents), showed both Budget lines, saved schema 11 and reloaded it after a restart. Three layout fixes came from the packed checks during implementation (a shared sidebar row, cover in the legend only with the overlay, a shorter idle text).
+R3 passed 843 source / 632 exported-PCK checks and release-EXE start-up; twelve earlier fixtures byte-identical and a thirteenth added. A posted-window-message run of the actual EXE built a street, autosaved to slot 1 at day 60 of running time, showed the Graphs dialog, changed the services overlay, grid and First steps card, saved, and after a restart showed those settings restored; the native run also exposed that Load skipped its dialog when nothing was unsaved, which was fixed and retested (packed check and a second native run offering Load autosave).
 
-Native evidence is 1280x720 on one machine. Human enjoyment and usability, DPI variants, other hardware and operating systems, the controller, performance targets and CI remain unverified. Do not turn automated scenarios into the five-person M3 playtest gate.
+Native evidence is 1280x720 on one machine. Human enjoyment and usability, DPI variants, other hardware and operating systems, the controller, performance targets and CI remain unverified. Do not count automated scenarios as the R6 owner playtest.
 
 ## Rights and source-study boundary
 

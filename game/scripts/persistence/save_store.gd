@@ -66,3 +66,85 @@ func preserve_original(source: String, path: String, schema: int) -> Error:
 	if not original.ok or not copy.ok or String(copy.text) != String(original.text):
 		return ERR_FILE_CORRUPT
 	return files.replace_file(preserved + ".tmp", preserved)
+
+## D39 autosaves: three rotating slots beside the manual save, written with the same
+## validated temporary write but never touching the manual file, its backup or the
+## preserved earlier-format copies.
+const AUTOSAVE_SLOTS: int = 3
+const AUTOSAVE_DAYS: int = 60
+
+static func autosave_path(manual_path: String, slot: int) -> String:
+	return manual_path.get_base_dir().path_join("autosave%d.json" % slot)
+
+static func autosave_index_path(manual_path: String) -> String:
+	return manual_path.get_base_dir().path_join("autosave.index")
+
+## Slot named in the index (1-3), or 0 when it is missing or invalid.
+func last_autosave_slot(manual_path: String) -> int:
+	var index_path: String = autosave_index_path(manual_path)
+	if not files.exists(index_path): return 0
+	var read: Dictionary = files.read_text(index_path)
+	if not read.ok: return 0
+	var text: String = String(read.text).strip_edges()
+	if not text.is_valid_int(): return 0
+	var slot: int = text.to_int()
+	return slot if slot >= 1 and slot <= AUTOSAVE_SLOTS else 0
+
+func has_autosave(manual_path: String) -> bool:
+	for slot in range(1, AUTOSAVE_SLOTS + 1):
+		if files.exists(autosave_path(manual_path, slot)): return true
+	return false
+
+func next_autosave_slot(manual_path: String) -> int:
+	var last: int = last_autosave_slot(manual_path)
+	if last > 0: return last % AUTOSAVE_SLOTS + 1
+	for slot in range(1, AUTOSAVE_SLOTS + 1):
+		if not files.exists(autosave_path(manual_path, slot)): return slot
+	return 1
+
+func save_autosave(city: City, manual_path: String) -> Dictionary:
+	var slot: int = next_autosave_slot(manual_path)
+	var path: String = autosave_path(manual_path, slot)
+	var text: String = JSON.stringify(city.snapshot(), "", true)
+	if not Codec.decode(text).ok:
+		return Codec.fail("Autosave skipped: the city could not be validated. Your manual save is unchanged.")
+	var pending: String = path + ".tmp"
+	var err: Error = files.write_text(pending, text)
+	if err != OK:
+		return Codec.fail("Autosave failed (%s). Your manual save is unchanged." % error_string(err))
+	var readback: Dictionary = load_city(pending)
+	if not readback.ok or readback.city.canonical() != city.canonical():
+		return Codec.fail("Autosave verification failed. Your manual save is unchanged.")
+	err = files.replace_file(pending, path)
+	if err != OK:
+		return Codec.fail("Autosave failed (%s). Your manual save is unchanged." % error_string(err))
+	var index_path: String = autosave_index_path(manual_path)
+	err = files.write_text(index_path + ".tmp", str(slot))
+	if err == OK: err = files.replace_file(index_path + ".tmp", index_path)
+	return {"ok": true, "slot": slot, "path": path, "message": "Autosaved (slot %d of %d)." % [slot, AUTOSAVE_SLOTS]}
+
+## Newest valid autosave: from the index slot backwards; without an index, the valid
+## slot with the latest date (then the highest slot). Adds "slot" to the load result.
+func load_autosave(manual_path: String) -> Dictionary:
+	var last: int = last_autosave_slot(manual_path)
+	var order: Array[int] = []
+	if last > 0:
+		for k in range(AUTOSAVE_SLOTS): order.append(posmod(last - 1 - k, AUTOSAVE_SLOTS) + 1)
+	else:
+		var best: Dictionary = {}
+		for slot in range(AUTOSAVE_SLOTS, 0, -1):
+			var path: String = autosave_path(manual_path, slot)
+			if not files.exists(path): continue
+			var result: Dictionary = load_city(path)
+			if result.ok and (best.is_empty() or result.city.tick > best.city.tick):
+				best = result
+				best["slot"] = slot
+		return best if not best.is_empty() else Codec.fail("No valid autosave yet.")
+	for slot in order:
+		var path: String = autosave_path(manual_path, slot)
+		if not files.exists(path): continue
+		var result: Dictionary = load_city(path)
+		if result.ok:
+			result["slot"] = slot
+			return result
+	return Codec.fail("No valid autosave yet.")

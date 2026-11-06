@@ -34,5 +34,14 @@ static func totals(data: Dictionary) -> Dictionary:
 
 static func settle(city: RefCounted) -> void:
 	city.last_budget = inputs(city)
-	city.cash = totals(city.last_budget).closing_cash
+	var result: Dictionary = totals(city.last_budget)
+	city.cash = result.closing_cash
+	# D39: append the month to the bounded history (town totals after growth).
+	var shop_jobs: int = 0
+	var workshop_jobs: int = 0
+	for i in city.lot_anchors:
+		if city.occupancy[i] == city.SHOP: shop_jobs += Balance.capacity(city.SHOP, city.development[i])
+		elif city.occupancy[i] == city.WORKSHOP: workshop_jobs += Balance.capacity(city.WORKSHOP, city.development[i])
+	city.history.append([city.tick, city.growth.population, shop_jobs, workshop_jobs, int(result.closing_cash), int(result.net)])
+	while city.history.size() > Balance.HISTORY_LIMIT: city.history.pop_front()
 

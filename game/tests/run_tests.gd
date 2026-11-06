@@ -43,6 +43,10 @@ func command(city: City, kind: String, cells: Array[Vector2i]) -> Dictionary:
 	return city.apply_command(kind, cells)
 
 func run() -> void:
+	# D39: keep the scene test's remembered settings out of the real profile.
+	var base: String = OS.get_environment("CITY_TEST_DIR")
+	if base.is_empty(): base = "user://tests"
+	preload("res://scripts/persistence/settings_store.gd").override_path = base.path_join("settings_%d/settings.json" % Time.get_ticks_usec())
 	test_commands()
 	test_lots()
 	test_access()
@@ -59,6 +63,7 @@ func run() -> void:
 	preload("res://tests/landvalue_tests.gd").new().run(self)
 	preload("res://tests/density_tests.gd").new().run(self)
 	preload("res://tests/services_tests.gd").new().run(self)
+	preload("res://tests/history_tests.gd").new().run(self)
 	test_clock()
 	test_codec()
 	test_storage()
@@ -66,7 +71,7 @@ func run() -> void:
 	await test_scene()
 	if "--prove-failure-exit" in OS.get_cmdline_user_args():
 		check(false, "Deliberate runner failure to verify exit code")
-	print(JSON.stringify({"suite": "R2c", "checks": checks, "failed": failures.size(), "failures": failures}))
+	print(JSON.stringify({"suite": "R3", "checks": checks, "failed": failures.size(), "failures": failures}))
 	quit(0 if failures.is_empty() else 1)
 
 func test_commands() -> void:
@@ -561,6 +566,8 @@ func migrated_text(legacy: String) -> String:
 	if schema < 11 and not data.last_budget.is_empty():
 		data.last_budget.police = 0
 		data.last_budget.fire = 0
+	# D39: earlier formats gain an empty monthly history.
+	if schema < 12: data.history = []
 	if schema >= 5: data.project = {"completed": data.project.completed, "park_index": int(data.project.park_index)}
 	else: data.project = {"completed": false, "park_index": -1}
 	return JSON.stringify(data, "", true)
@@ -692,7 +699,7 @@ func test_power() -> void:
 	check(decoded.ok and decoded.migrated_from == 0 and decoded.city.power.home_state == spill.power.home_state and decoded.city.power.network_used == spill.power.network_used, "reload reconstructs the power allocation")
 	var keys: Array = spill.snapshot().keys()
 	keys.sort()
-	check(keys == ["cash", "content_version", "development", "footprint_anchor", "height", "last_budget", "occupancy", "pending_us", "project", "random_state", "schema_version", "seed", "sequence", "service_loss", "simulation_version", "tax_rate", "terrain", "tick", "width"], "power and access are absent from saves")
+	check(keys == ["cash", "content_version", "development", "footprint_anchor", "height", "history", "last_budget", "occupancy", "pending_us", "project", "random_state", "schema_version", "seed", "sequence", "service_loss", "simulation_version", "tax_rate", "terrain", "tick", "width"], "power and access are absent from saves")
 	for item: City in [spill, decoded.city]:
 		command(item, "power", one(Vector2i(6, 19)))
 		Clock.advance(item, 2_000_000, 3)

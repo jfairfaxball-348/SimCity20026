@@ -18,6 +18,8 @@ M2g (6 November 2026) adds an original code-drawn desirability overlay in `world
 
 M2h (6 November 2026) adds an original *Town summary* dialog and status-bar button in `main.gd`, with original item wording and ordering in `game/scripts/presentation/town_summary.gd`. It adds no images or sounds, and no external assets or reference sources were used.
 
+R3 (6 November 2026) adds an original *Town history* dialog in `main.gd` and original code-drawn line graphs (solid and dashed lines, axes and text labels) in `game/scripts/presentation/history_graph.gd`, plus original autosave, settings, load and help wording. No images, sounds, external assets or reference sources were used.
+
 R2c (6 November 2026) adds original code-drawn police and fire stations in `world_view.gd` for the original renderer (a slate hall with a column porch, and a brick hall with two bay doors and a hose tower), an original shield sign and flame sign drawn from polygons on every station in all art modes, an original thin slate or brick band on the Kenney-tile stations in `art_kit.gd` (built from the packs' own wall, roof and front tiles), and an original Services overlay (small squares, triangles and a two-tone cross). Station, overlay, inspector, summary and help wording is original. No external assets or reference sources were used.
 
 M3b (6 November 2026) adds the original First steps card (step texts written for this project, refreshed for 0.10.0-m2h) in `game/scripts/presentation/opening_guide.gd` and `main.gd`, and an original code-drawn corner-bracket marker (four two-tone L-shaped corners) in `world_view.gd`. No external assets or reference sources were used.

@@ -182,7 +182,8 @@ func test_saves() -> void:
 	t.check(FileAccess.get_sha256(FIXTURE) == FIXTURE_SHA, "schema-11 fixture hash")
 	var text: String = FileAccess.get_file_as_string(FIXTURE).strip_edges()
 	var loaded: Dictionary = Codec.decode(text)
-	t.check(loaded.ok and loaded.migrated_from == 0 and loaded.city.canonical() == text, "schema-11 fixture exact round trip")
+	# D39: schema 11 now migrates with an empty history.
+	t.check(loaded.ok and loaded.migrated_from == 11 and loaded.city.canonical() == t.migrated_text(text), "schema-11 fixture migrates with every value kept")
 	if loaded.ok:
 		var c: City = loaded.city
 		t.check(c.civic_anchors.size() == 2 and c.services.covered(at(c, 4, 3)) and c.development[at(c, 4, 3)] == 4 and c.development[at(c, 10, 3)] == 4 and c.last_budget.police == 1 and c.last_budget.fire == 1, "schema-11 fixture holds both stations, covered level-4 lots and station counts")

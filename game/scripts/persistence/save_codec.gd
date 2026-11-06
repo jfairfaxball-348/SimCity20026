@@ -15,14 +15,14 @@ static func decode(text: String) -> Dictionary:
 	var schema: int = int(data.schema_version)
 	if schema > City.SCHEMA:
 		return fail("This save was made by a newer version of the game (format %d). The file was not changed." % schema)
-	if schema not in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, City.SCHEMA]:
+	if schema not in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, City.SCHEMA]:
 		return fail("This save uses an unsupported format (%d). The file was not changed." % schema)
 	# Each historical format has its own version pair and allowed occupancy IDs.
-	var version: String = {1: "m1-1", 2: "m2b-1", 3: "m2c-1", 4: "m2d-1", 5: "m3a-1", 6: "m2e-1", 7: "m2f-1", 8: "m2g-1", 9: "r2a-1", 10: "r2b-1", 11: City.SIMULATION}[schema]
+	var version: String = {1: "m1-1", 2: "m2b-1", 3: "m2c-1", 4: "m2d-1", 5: "m3a-1", 6: "m2e-1", 7: "m2f-1", 8: "m2g-1", 9: "r2a-1", 10: "r2b-1", 11: "r2c-1", 12: City.SIMULATION}[schema]
 	var content: String = version
 	if data.get("simulation_version") != version or data.get("content_version") != content:
 		return fail("This save belongs to a different simulation/content version.")
-	var max_use: int = {1: City.HOME, 2: City.POWER, 3: City.WORKSHOP, 4: City.PARK, 5: City.PARK, 6: City.PARK, 7: City.PARK, 8: City.PARK, 9: City.PARK, 10: City.PARK, 11: City.FIRE}[schema]
+	var max_use: int = {1: City.HOME, 2: City.POWER, 3: City.WORKSHOP, 4: City.PARK, 5: City.PARK, 6: City.PARK, 7: City.PARK, 8: City.PARK, 9: City.PARK, 10: City.PARK, 11: City.FIRE, 12: City.FIRE}[schema]
 	if not integer(data.get("width"), 8, 128) or not integer(data.get("height"), 8, 128):
 		return fail("Invalid map dimensions.")
 	if not signed_integer_string(data.get("seed")) or not signed_integer_string(data.get("random_state")):
@@ -76,6 +76,12 @@ static func decode(text: String) -> Dictionary:
 		if not valid_project(data.get("project"), data.occupancy): return fail("Invalid neighbourhood project record.")
 	elif data.has("project"):
 		return fail("Earlier-format save contains unsupported project data.")
+	# D39: schema 12 stores the monthly history; earlier formats never did.
+	if schema >= 12:
+		if not valid_history(data.get("history"), int(data.tick), count):
+			return fail("Invalid monthly history in save.")
+	elif data.has("history"):
+		return fail("Earlier-format save contains unsupported history data.")
 	var city: City = City.new()
 	if schema >= 5:
 		city.project = {"completed": data.project.completed, "park_index": int(data.project.park_index)}
@@ -117,6 +123,12 @@ static func decode(text: String) -> Dictionary:
 		city.last_budget["police"] = 0
 		city.last_budget["fire"] = 0
 	city.tax_rate = int(data.tax_rate) if schema >= 7 else Balance.TAX_STANDARD
+	city.history = []
+	if schema >= 12:
+		for record in data.history:
+			var row: Array = []
+			for value in record: row.append(int(value))
+			city.history.append(row)
 	city.cash = int(data.cash)
 	city.tick = int(data.tick)
 	city.pending_us = int(data.pending_us)
@@ -162,6 +174,21 @@ static func valid_budget(value: Variant, tick: int, count: int, schema: int = Ci
 	var per_job: int = Balance.WORKSHOP_JOBS_BY_LEVEL[Balance.MAX_LEVEL] if schema >= 10 else 8
 	var minimum_zones: int = (int(value.residents) + per_home - 1) / per_home + (int(value.jobs) + per_job - 1) / per_job
 	return int(value.roads) + int(value.stations) + int(value.parks) + int(value.get("police", 0)) + int(value.get("fire", 0)) + minimum_zones <= count
+
+## D39: at most HISTORY_LIMIT records of six integers: settlement ticks strictly
+## increasing and not after the save; residents, jobs and cash within their bounds.
+static func valid_history(value: Variant, tick: int, count: int) -> bool:
+	if typeof(value) != TYPE_ARRAY or value.size() > Balance.HISTORY_LIMIT: return false
+	var previous: int = 0
+	for record in value:
+		if typeof(record) != TYPE_ARRAY or record.size() != 6: return false
+		if not integer(record[0], Balance.MONTH_DAYS, tick) or int(record[0]) % Balance.MONTH_DAYS != 0 or int(record[0]) <= previous: return false
+		previous = int(record[0])
+		if not integer(record[1], 0, count * Balance.RESIDENTS_BY_LEVEL[Balance.MAX_LEVEL]): return false
+		for k in [2, 3]:
+			if not integer(record[k], 0, count * Balance.WORKSHOP_JOBS_BY_LEVEL[Balance.MAX_LEVEL]): return false
+		if not integer(record[4], 0, Balance.MAX_CASH) or not integer(record[5], -Balance.MAX_CASH, Balance.MAX_CASH): return false
+	return true
 
 ## D30: every zone or station tile belongs to exactly one whole, in-map footprint
 ## of one kind, anchored at its top-left tile; growth state lives only on lot anchors.

@@ -83,6 +83,8 @@ const POLICE_UPKEEP: int = 3_000
 const FIRE_UPKEEP: int = 3_000
 const SERVICE_RADIUS: int = 12
 const SERVICE_GATED_LEVEL: int = 3
+## D39: monthly history records kept in a save (20 years).
+const HISTORY_LIMIT: int = 240
 
 ## D37: residents (residential) or jobs (commercial/industrial) a lot holds at a level.
 static func capacity(kind: int, level: int) -> int:
