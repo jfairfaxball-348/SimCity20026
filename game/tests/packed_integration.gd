@@ -108,6 +108,7 @@ func run() -> void:
 	check(main.inspector.position.y >= main.top.get_global_rect().end.y and main.inspector.get_global_rect().end.y < main.bottom.position.y, "first-frame inspector fits without prior resize")
 	check(main._is_world_position(screen_cell(main.city.access.root)), "first-frame outside link is visible and pickable")
 	check("3x3 home lots" in main.status_label.text and "4x4 power station" in main.status_label.text, "start-up guidance names lot and station sizes")
+	check(main.guide_panel.visible and main.guide_state.step == 1 and "1 OF 5" in main.guide_heading.text and main.world.guide_target == main.city.access.root and main.speed == 0 and not main.dirty, "start-up shows the First steps card at step 1, paused and clean")
 	main.set_process(false)
 	for resolution in main.SIZES:
 		root.size = resolution
@@ -141,6 +142,22 @@ func run() -> void:
 			check(main.access_button.get_global_rect().end.x <= marks.get_global_rect().end.x + 0.5 and main.power_button.get_global_rect().end.x <= main.side.get_global_rect().end.x, "both mark toggles fit the sidebar %s text %d" % [resolution,amount])
 			check(main.bottom.get_global_rect().end.y <= resolution.y, "footer fits %s text %d" % [resolution,amount])
 			check(main.inspector.position.y >= main.top.get_global_rect().end.y, "inspector below toolbar %s text %d" % [resolution,amount])
+			main._set_guide_visible(true)
+			await frames()
+			var card: Rect2 = main.guide_panel.get_global_rect()
+			var link_tile: Rect2 = screen_tile(main.city.access.root)
+			var clear_of: bool = not card.intersects(main.top.get_global_rect()) and not card.intersects(main.side.get_global_rect()) and not card.intersects(main.inspector.get_global_rect()) and not card.intersects(main.bottom.get_global_rect())
+			check(Rect2(Vector2.ZERO, Vector2(resolution)).encloses(card) and clear_of and not card.intersects(link_tile), "First steps card is inside the window, clear of every panel and the link %s text %d" % [resolution, amount])
+			check(main.guide_text.get_global_rect().end.y <= card.end.y + 0.5 and main.guide_hide.get_global_rect().end.y <= card.end.y + 0.5 and main.guide_hide.get_global_rect().end.x <= card.end.x + 0.5, "card text and buttons fit inside the card %s text %d" % [resolution, amount])
+			main._show_cell(main.city.access.root)
+			await frames()
+			var target: Rect2 = screen_tile(main.city.access.root)
+			var covered: bool = false
+			for panel in main.ui_panels:
+				if panel.visible and panel.get_global_rect().intersects(target.grow(-1)): covered = true
+			check(main.world_rect.encloses(target) and not covered, "Show target is in the world view and uncovered %s text %d" % [resolution, amount])
+			main._center_camera()
+			main._set_guide_visible(false)
 			for cell in [Vector2i(63,32),Vector2i(42,28)]:
 				main._inspect_cell(cell)
 				# Exercise the longest lot reasons in every layout, without placing a city.
@@ -380,6 +397,7 @@ func run() -> void:
 	await tax_flow(isolated)
 	await desirability_flow(isolated)
 	await summary_flow(isolated)
+	await guide_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -394,7 +412,7 @@ func growth_days(count: int) -> void:
 	main.world.queue_redraw()
 	await frames()
 
-func fresh_scene(isolated: IsolatedStore) -> void:
+func fresh_scene(isolated: IsolatedStore, guide: bool = false) -> void:
 	main.queue_free()
 	await frames()
 	main = load("res://scenes/main.tscn").instantiate()
@@ -402,6 +420,8 @@ func fresh_scene(isolated: IsolatedStore) -> void:
 	main.store = isolated
 	main.set_process(false)
 	await frames()
+	# Feature flows hide the First steps card; guide_flow tests it with the card shown.
+	if not guide: main._set_guide_visible(false)
 
 func growth_flow(isolated: IsolatedStore) -> void:
 	await fresh_scene(isolated)
@@ -800,6 +820,109 @@ func summary_flow(isolated: IsolatedStore) -> void:
 	await frames()
 	check(main.summary_dialog.size.y <= 720 and main.summary_dialog.get_ok_button().get_global_rect().end.y <= 720, "a several-item summary fits 720p at the largest text")
 	main.summary_dialog.hide()
+	main._set_text_size(16)
+
+## D29 / M3b: the shipped First steps card with real pointer and key input.
+func guide_flow(isolated: IsolatedStore) -> void:
+	await fresh_scene(isolated, true)
+	check(main.guide_panel.visible and main.guide_state.step == 1 and main.guide_action.text == "Show" and main.guide_hide.text == "Hide", "a restarted scene shows the card again at step 1")
+	var before: String = main.city.canonical()
+	var origin: Vector2 = main.world.origin
+	main.world.origin = Vector2.ZERO
+	main.world.clamp_camera()
+	await click(main.guide_action.get_global_rect().get_center())
+	check(main.world.origin != Vector2.ZERO and main.inspected_cell == main.city.access.root and main.city.canonical() == before and not main.dirty, "Show recentres on the flag and inspects it without changing the town")
+	main.world.origin = origin
+	main.world.clamp_camera()
+	await frames()
+	check(main._is_world_position(screen_cell(Vector2i(60, 32))) and main._is_world_position(screen_cell(Vector2i(53, 32))), "the opening street area is uncovered by the card")
+	await key(KEY_1)
+	await drag_cells(Vector2i(56, 32), Vector2i(63, 32))
+	check(main.guide_state.step == 2 and main.world.guide_target == main.city.access.root, "a pointer-laid flag road advances to step 2")
+	await key(KEY_2)
+	await click(screen_cell(Vector2i(61, 30)))
+	check(main.guide_state.step == 3 and main.world.guide_target == Vector2i(60, 29) and main.world.guide_size == 3, "a home lot by pointer advances to step 3 with a 3x3 bracket")
+	await key(KEY_P)
+	await click(screen_cell(Vector2i(53, 32)))
+	check(main.city.station_anchors.size() == 1 and main.guide_state.step == 4 and "meter" in main.guide_text.text, "a pointer-placed station advances to step 4")
+	await key(KEY_SPACE)
+	check(main.speed == 1, "Space starts time as step 4 asks")
+	await key(KEY_SPACE)
+	await growth_days(5)
+	check(main.guide_state.step == 5 and main.guide_action.text == "Open Project", "one growth round advances to step 5 with Open Project")
+	await key(KEY_J)
+	main.project_dialog.hide()
+	await frames()
+	check(main.guide_state.state == "done" and "DONE" in main.guide_heading.text and main.guide_hide.text == "Close" and not main.guide_action.visible, "J opens Project and completes the steps")
+	# Visibility routes.
+	await click(main.guide_hide.get_global_rect().get_center())
+	check(not main.guide_panel.visible and main.world.guide_target == Vector2i(-1, -1), "Close hides the card and its marker")
+	await key(KEY_SPACE)
+	check(main.speed == 1, "Space still toggles time after a card click")
+	await key(KEY_SPACE)
+	await key(KEY_2)
+	check(main.tool == "home", "tool keys still work after a card click")
+	await key(KEY_F1)
+	check(main.guide_panel.visible, "F1 shows the card again")
+	await key(KEY_F1)
+	check(not main.guide_panel.visible, "F1 hides it")
+	main._open_help()
+	await frames()
+	main.help_dialog.custom_action.emit("guide")
+	await frames()
+	check(main.guide_panel.visible and not main.help_dialog.visible, "Help's Show first steps closes Help and shows the card")
+	await key(KEY_B)
+	await key(KEY_F1)
+	check(main.guide_panel.visible and main.budget_dialog.visible, "F1 is ignored while a modal dialog is open")
+	main.budget_dialog.hide()
+	await frames()
+	# Input safety over the card.
+	before = main.city.canonical()
+	var cash: int = main.city.cash
+	await key(KEY_1)
+	await click(main.guide_text.get_global_rect().get_center())
+	check(main.city.canonical() == before, "a click over the card never paints")
+	var down := InputEventMouseButton.new()
+	down.position = screen_cell(Vector2i(45, 36))
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.pressed = true
+	Input.parse_input_event(down)
+	await frames()
+	var motion := InputEventMouseMotion.new()
+	motion.position = main.guide_text.get_global_rect().get_center()
+	Input.parse_input_event(motion)
+	await frames()
+	var up: InputEventMouseButton = down.duplicate()
+	up.position = motion.position
+	up.pressed = false
+	Input.parse_input_event(up)
+	await frames()
+	check(main.city.canonical() == before and main.city.cash == cash, "a stroke released over the card cancels without charge")
+	# Saves are identical whether the card is shown or hidden.
+	await key(KEY_S, true)
+	var shown: String = FileAccess.get_file_as_string(isolated.test_path)
+	main._set_guide_visible(false)
+	await key(KEY_S, true)
+	check(FileAccess.get_file_as_string(isolated.test_path) == shown and not "guide" in shown, "saved bytes are identical with the card shown or hidden")
+	# Load rechecks the steps and keeps visibility; a failed load changes nothing.
+	var fixture: String = (get_script() as Script).resource_path.get_base_dir().path_join("fixtures/m3a-schema5.json")
+	isolated.files.write_text(isolated.test_path, FileAccess.get_file_as_string(fixture))
+	main.dirty = false
+	await key(KEY_L, true)
+	check(not main.guide_panel.visible and main.guide_state.step == 2, "load rechecks the steps (cleared M3a homes: step 2) and keeps the card hidden")
+	main._set_guide_visible(true)
+	var state: Dictionary = main.guide_state.duplicate()
+	isolated.files.write_text(isolated.test_path, "{broken")
+	isolated.files.write_text(isolated.test_path + ".bak", "{broken")
+	await key(KEY_L, true)
+	check(main.guide_panel.visible and main.guide_state == state, "a failed load leaves the card unchanged")
+	main.recovery_dialog.hide()
+	# Text size while the card is shown.
+	main._set_text_size(20)
+	await frames()
+	var card: Rect2 = main.guide_panel.get_global_rect()
+	check(Rect2(Vector2.ZERO, Vector2(1280, 720)).encloses(card) and not card.intersects(main.inspector.get_global_rect()) and main.guide_hide.get_global_rect().end.y <= card.end.y + 0.5, "the card re-lays out at the largest text")
+	check(absf(main.bottom.position.y - card.end.y - 12) <= 1.0, "the card keeps its 12 px gap above the status bar after a text-size change")
 	main._set_text_size(16)
 
 func project_command(kind: String, cells: Array[Vector2i]) -> Dictionary:

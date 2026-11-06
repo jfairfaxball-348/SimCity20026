@@ -15,6 +15,9 @@ var access_visible: bool = true
 var power_visible: bool = true
 ## D33: desirability overlay (off by default, never saved).
 var desirability_visible: bool = false
+## D29: the First steps target, outlined with corner brackets while the card is shown.
+var guide_target: Vector2i = Vector2i(-1, -1)
+var guide_size: int = 1
 var hover: Vector2i = Vector2i(-1, -1)
 var preview_cells: Array[Vector2i] = []
 var preview_valid: bool = true
@@ -74,6 +77,7 @@ func _draw() -> void:
 	if desirability_visible:
 		_draw_desirability(first, last, ordered)
 	_draw_outside_link()
+	if city.inside(guide_target): _draw_guide_bracket()
 	var cells: Array[Vector2i] = preview_cells.duplicate()
 	if cells.is_empty() and city.inside(hover):
 		cells.append(hover)
@@ -186,6 +190,21 @@ func _draw_desirability(first: Vector2i, last: Vector2i, anchors: Array) -> void
 		for puff in [[Vector2(0, 0), 3.0], [Vector2(4, -3), 2.5], [Vector2(8, -5), 2.0]]:
 			draw_circle(top + puff[0] * z, (puff[1] + 0.8) * z, Color("3d4446"))
 			draw_circle(top + puff[0] * z, puff[1] * z, Color("d9dcd6"))
+
+## D29 marker: four static L-shaped corners around the target footprint, distinct in
+## shape from hover and stroke previews. No animation.
+func _draw_guide_bracket() -> void:
+	var z: float = float(zoom)
+	var rect: Rect2 = tile_rect(guide_target)
+	rect.size = Vector2.ONE * TILE * guide_size * z
+	rect = rect.grow(2 * z)
+	var arm: float = 5 * z
+	for corner in [[rect.position, Vector2(1, 1)], [Vector2(rect.end.x, rect.position.y), Vector2(-1, 1)], [rect.end, Vector2(-1, -1)], [Vector2(rect.position.x, rect.end.y), Vector2(1, -1)]]:
+		var at: Vector2 = corner[0]
+		var dir: Vector2 = corner[1]
+		for pass_color in [[Color("243f38"), 3 * z], [Color("f6d76b"), 1.5 * z]]:
+			draw_line(at, at + Vector2(dir.x * arm, 0), pass_color[0], pass_color[1])
+			draw_line(at, at + Vector2(0, dir.y * arm), pass_color[0], pass_color[1])
 
 func _draw_footprint(anchor: int) -> void:
 	var kind: int = city.occupancy[anchor]

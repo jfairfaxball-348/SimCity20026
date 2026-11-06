@@ -33,6 +33,7 @@ Recorded: 4 November 2026. Use this file to distinguish the user's requirements 
 | U25 | Implement the M2f assignment (demand meter and adjustable tax rate) from the handoff through verification and delivery | Owner "Run next session", **6 November 2026** |
 | U26 | Implement the M2g assignment (neighbourhood desirability and workshop nuisance) from the handoff through verification and delivery | Owner "Keep gping run next one", **6 November 2026** |
 | U27 | Implement the M2h assignment (town summary) from the handoff through verification and delivery | Owner "Run next session", **6 November 2026** |
+| U28 | Implement the M3b assignment (refresh, adopt and build the first-steps guide) from the handoff through verification and delivery | Owner "Run next session", **6 November 2026** |
 
 U06 superseded the earlier planning-only scope for M0/M1. U07 and U08 authorised M2a and M2b. U09 authorises M2c and source integration. U12 authorises M2d local implementation. The follow-up owner instruction authorises source delivery now and in future sessions: commit, push, merge and fast-forward completed work. Public game release remains separate.
 
@@ -75,7 +76,7 @@ D01–D06, D08, and the M1 part of D10 were adopted for the foundation. Later pr
 | <a id="d32"></a>D32 | M2f: always-visible demand meter; town tax rate 0-25% (standard 10%) scales taxes and demand appeal; above 10% surplus levels leave gently; schema 7 / m2f-1 | The trade-off is money per person against growth, recoverable by lowering the rate. Revisit the numbers with playtest evidence; M2g may add local effects. |
 | <a id="d33"></a>D33 | M2g: derived home desirability (park +2, water +1, developed workshops within 2 −2 each); orders home growth; below 0 holds homes at level 1 with a gentle drop; V overlay; schema 8 / m2g-1 | Generalises D26 park priority for homes; businesses unchanged. Revisit radii and values with playtest evidence; stations and traffic are not sources yet. |
 | <a id="d34"></a>D34 | M2h: a derived, read-only town summary (T and a status-bar button) ranking measurable growth blockers by levels affected, with Show/Budget actions; no rule or save change | Follows the study explanation contract; the inspector remains the per-lot explanation. Revisit item wording and ordering with playtest evidence. |
-| <a id="d29"></a>D29 | Proposed: one dismissible, session-only First steps card derived from the current town; no save change | Replaces a start-up status line that vanishes after the first command. Deferred by U24 until after M2h; refresh its steps for M2f-M2h before adopting. Use lot wording. Revisit persistence of dismissal with M3 settings/autosaves or if observed players find it intrusive. |
+| <a id="d29"></a>D29 | One dismissible, session-only First steps card derived from the current town; no save change. Refreshed for 0.10.0-m2h and adopted (U28) | Replaces a start-up status line that vanishes after the first command. Uses lot wording and points at the meter and T summary. Revisit persistence of dismissal with M3 settings/autosaves or if observed players find it intrusive. |
 | <a id="d30"></a>D30 | Adopted and locally verified (M2e): freely placed 3x3 zone lots replace single-tile plots one-for-one, and power stations become 4x4; schema 6 / m2e-1; older zones and stations cleared on migration | Implements U16/U18/U19 while keeping D19-D28 numbers unchanged. Revisit prices and frontage costs after M3 playtests. |
 
 ## D34 - M2h town summary, adopted and locally verified 6 November 2026
@@ -153,11 +154,19 @@ D17-D24, D26-D28 and D30 are otherwise unchanged.
 
 Adopt before implementation code under a subsequent owner request. M2e is the next implementation session; M3b follows it. (Superseded: M2e shipped as 0.7.0-m2e, and U24 places M2f-M2h before M3b.)
 
-## D29 - M3b guided opening, proposed 6 November 2026
+## D29 - M3b guided opening, refreshed, adopted and locally verified 6 November 2026
 
-**Deferred (U24, 6 November 2026)** until after M2h. Before adoption, refresh its steps, version and save notes for M2f-M2h. Proposed, not adopted or implemented. [The M3b specification](M3B_SPEC.md) defines one non-modal **First steps** card with five ordered steps. The steps are: lay the flag road, zone a home with road access, power a home, grow a home, then open the optional project. The card always shows the first step whose condition is currently false, so undoing a step moves it back. It is visible at each start; Hide/Close dismisses it for the session; F1 and a Help action bring it back. Show centres the camera on a derived target and points the existing inspector at it; a static code-drawn bracket marks that target.
+**Adopted before implementation code** under the owner's "Run next session" request (U28), then implemented and locally verified as game 0.11.0-m3b (schema 8 / m2g-1 unchanged). Evidence: [M3b record](sessions/2026-11-06-m3b.md). [The M3b specification](M3B_SPEC.md) was first refreshed for 0.10.0-m2h. Its refresh section supersedes the earlier text wherever they differ:
 
-Guide evaluation is read-only and never a command. It cannot change the canonical town, sequence, cash, time, RNG or unsaved flag. No guide state is saved: schema 5 and `m3a-1` stay; game version becomes `0.7.0-m3b`; there is no settings file and fixtures stay unchanged. D17-D28 are unchanged, and no file under `sim/`, `persistence/` or `content/` changes. Adopt before implementation code under a subsequent owner request. Passing its automated and native checks would not satisfy the five-person M3 gate.
+- lot wording, and a footprint bracket;
+- the step texts naming the meter and T;
+- F1 as `toggle_guide`;
+- game 0.11.0-m3b, with schema 8 / `m2g-1` and nine fixtures unchanged;
+- Done tested with the schema-6 (M2e) fixture.
+
+The original paragraph follows for its rules that still apply. [The M3b specification](M3B_SPEC.md) defines one non-modal **First steps** card with five ordered steps. The steps are: lay the flag road, zone a home with road access, power a home, grow a home, then open the optional project. The card always shows the first step whose condition is currently false, so undoing a step moves it back. It is visible at each start; Hide/Close dismisses it for the session; F1 and a Help action bring it back. Show centres the camera on a derived target and points the existing inspector at it; a static code-drawn bracket marks that target.
+
+Guide evaluation is read-only and never a command. It cannot change the canonical town, sequence, cash, time, RNG or unsaved flag. No guide state is saved: schema 8 and `m2g-1` stay (refreshed); game version becomes `0.11.0-m3b`; there is no settings file and fixtures stay unchanged. D17-D28 are unchanged, and no file under `sim/`, `persistence/` or `content/` changes. Adopt before implementation code under a subsequent owner request. Passing its automated and native checks would not satisfy the five-person M3 gate.
 
 ## D28 - M3a project, adopted and locally verified 5 November 2026
 
@@ -280,3 +289,5 @@ None of these unanswered commercial questions prevents local prototype implement
 - 2026-11-06, U26 M2g: adopted D33 before model changes. Implemented derived home desirability (park +2, water +1, developed workshops within 2 steps −2 each), desirability growth order, held homes below 0 with a gentle drop, the V/Display overlay, inspector parts and reasons, and schema 8 / m2g-1 with schema-7 migration and preservation. The standard test town now settles at 40 residents / 18 jobs with two homes held across from workshops; expectations were updated accordingly. Passed 600 source / 469 exported-PCK checks, release-EXE start-up and native EXE checks (pointer-built street, held home, overlay, park rescue, schema-8 save, restart/load, final-build smoke). Packaged 0.9.0-m2g locally; not published. NEXT_SESSION now assigns M2h.
 
 - 2026-11-06, U27 M2h: adopted D34 before code. Implemented a pure, read-only town summary (T and a status-bar button) ranking no-link, access, power, shortage, held-home, tax-leaving and no-room blockers by levels affected, with deficit, empty and satisfied items and Show/Budget actions. No rule, save or fixture change. Passed 629 source / 502 exported-PCK checks, release-EXE start-up and native EXE checks. Packaged 0.10.0-m2h locally; not published. The U24 city-builder systems (M2f-M2h) are complete; NEXT_SESSION now assigns the refreshed M3b guide.
+
+- 2026-11-06, U28 M3b: refreshed the M3b specification for 0.10.0-m2h (lot wording, meter/T step texts, F1, schema 8, nine fixtures, bottom-left placement) and adopted D29 before code. Implemented the session-only First steps card, Show, the footprint bracket, Hide/Close, F1 and Help re-entry; no file under sim/, persistence/ or content/ changed. Passed 669 source / 562 exported-PCK checks, release-EXE start-up and a native walkthrough. Packaged 0.11.0-m3b locally; not published. The owner's U24 roadmap is complete; NEXT_SESSION now asks the owner for the next direction.

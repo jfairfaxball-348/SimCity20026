@@ -1,6 +1,6 @@
 # Classic-genre alignment candidates
 
-Recorded 6 November 2026 after an owner direction (U17): lean closer to the classic city-builder target, starting with 3x3 zone lots and 4x4 power stations (U16/U18/U19, [M2e](M2E_SPEC.md)). **Scheduled by the owner (U24, 6 November 2026):** candidates 9 + 4 as M2f, 2 + 3 as M2g, and 7 as M2h, ahead of the M3b guide; 5 and 6 later on request; 8 only if asked. M2f (9 + 4) is adopted as D32 and implemented in 0.8.0-m2f; M2g (2 + 3) as D33 in 0.9.0-m2g; M2h (7) as D34 in 0.10.0-m2h. The scheduled systems are complete; 5, 6 and 8 await an owner request. Each milestone writes its specification and adopts its rules in Decisions before code, then implements and tests in the same session, with the usual evidence.
+Recorded 6 November 2026 after an owner direction (U17): lean closer to the classic city-builder target, starting with 3x3 zone lots and 4x4 power stations (U16/U18/U19, [M2e](M2E_SPEC.md)). **Scheduled by the owner (U24, 6 November 2026):** candidates 9 + 4 as M2f, 2 + 3 as M2g, and 7 as M2h, ahead of the M3b guide; 5 and 6 later on request; 8 only if asked. M2f (9 + 4) is adopted as D32 and implemented in 0.8.0-m2f; M2g (2 + 3) as D33 in 0.9.0-m2g; M2h (7) as D34 in 0.10.0-m2h. The scheduled systems are complete, and the M3b guide (0.11.0-m3b) now teaches them; 5, 6 and 8 await an owner request. Each milestone writes its specification and adopts its rules in Decisions before code, then implements and tests in the same session, with the usual evidence.
 
 ## What U17 changes and what stays
 

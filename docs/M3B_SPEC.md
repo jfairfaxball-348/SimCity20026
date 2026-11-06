@@ -1,18 +1,39 @@
 # M3b: a dismissible first-steps guide
 
-Scoped 6 November 2026 under the owner's "Run next session" request. **Specified, not implemented. Deferred by U24 (6 November 2026)** until after the M2f-M2h city-builder systems, which are now complete (0.10.0-m2h). It is the next assignment: before adopting, refresh its steps, game version (`0.11.0-m3b`) and save notes (schema 8 / `m2g-1` unchanged) as listed in [NEXT_SESSION.md](../NEXT_SESSION.md). This is proposed D29. Adopt these rules in Decisions before writing implementation code. The full M3 gate stays open after M3b.
+Scoped 6 November 2026 under the owner's "Run next session" request, then deferred by U24 until the M2f-M2h city-builder systems were complete. **Refreshed and adopted as D29 on 6 November 2026** under the owner's "Run next session" request (U28), before implementation code, then **implemented and locally verified as game 0.11.0-m3b** ([evidence](sessions/2026-11-06-m3b.md)). The refresh below supersedes the original text wherever they differ. The full M3 gate stays open after M3b.
 
-## Dependency on M2e
+## Refresh for 0.10.0-m2h (adopted)
 
-During this session the owner decided that homes, shops and workshops become 3x3 lots (U16, sized by U19) and power stations 4x4 (U18). [M2e](M2E_SPEC.md) implements that first, so implement this guide only after M2e. When adopting D29, apply that geometry to the steps below:
+Since this guide was scoped, the game gained 3x3 lots and 4x4 stations (M2e), a demand meter and tax rate (M2f), home desirability with the V overlay (M2g) and the T town summary (M2h). Apply these changes to everything below.
 
-- Read every "HOME plot" as "home lot".
-- Step 2's text becomes "Zone a home lot (2) beside a road joined to the flag."
-- Step 3's text becomes "Place a power station (P) touching that street. It powers 20 lots."
-- Show centres on the target lot's footprint, and the bracket marker outlines the whole 3x3 footprint.
-- M2e delivered game 0.7.0-m2e, schema 6, simulation/content `m2e-1`. The guide adds no save change: it becomes game `0.8.0-m3b` and keeps schema 6 and `m2e-1`, so 0.7.0-m2e and 0.8.0-m3b read each other's saves.
+- **Lots.** Read every "HOME plot" as "home lot", meaning a home lot anchor.
+  - Steps 2-4 count home lots only.
+  - Show centres on the target lot's top-left tile.
+  - The bracket marker outlines the whole 3x3 footprint, or the single flag tile for steps 1-2.
+- **Step texts.** All stay within 90 characters, and every key named exists:
 
-The other rules stay as written.
+| Step | Text |
+| --- | --- |
+| 1 | Lay a road (1) on the gold flag. It joins your town to the outside link. |
+| 2 | Zone a home lot (2) beside a road joined to the flag. Diagonals don't count. |
+| 3 | Place a power station (P) touching that street. It powers 20 lots. |
+| 4 | Run time (Space or 1x). Homes with road and power grow; H on the meter is demand. |
+| 5 | Optional goal: open Project (J). T shows what holds the town back. |
+| Done | First steps done. T shows what holds the town back; Help lists every rule. |
+
+- **Keys.** F1 is unused and becomes `toggle_guide`. T (summary), V (overlay), B and J keep their meanings. Step 5 still counts only the project dialog having been opened.
+- **Placement (supersedes "Placement" below).** The card sits at the **bottom left** of the map area:
+  - x = sidebar right edge + 12;
+  - bottom edge 12 px above the status bar;
+  - width 480 px, or less where needed to stay 12 px clear of the inspector (452 px at 1280x720, text 20);
+  - height set by its content.
+- **Why bottom left.** A top-left card would cover the north side of the opening street, where the first home lots usually go.
+- **What it must not cover.** Bottom left still avoids the H/S/W meter, the flag, the status bar and its Town summary button, and the wider inspector at text 18/20 (480/520 px). Show targets must stay uncovered at all 12 layouts.
+- **Saves and versions.**
+  - Game `0.11.0-m3b`, with schema 8 / `m2g-1` unchanged, so 0.10.0-m2h and 0.11.0-m3b read each other's saves.
+  - The nine fixtures stay byte-identical.
+  - "Done" for a loaded town is tested with the completed schema-6 (M2e) fixture, which keeps its developed lots and completed project. The M3a fixture's single-tile homes are cleared by the D30 migration, so it now loads at step 2.
+- **Unchanged.** The meter, overlay, summary, Budget, inspector, sidebar and status bar are not changed.
 
 ## Checkpoint review
 
@@ -94,10 +115,10 @@ All guide state lasts only for the session.
 
 ## Saves and versions
 
-- **No save-format change.** Schema 5 and simulation/content `m3a-1` stay as they are. The game version becomes `0.7.0-m3b`. Because the format is unchanged, 0.6.0-m3a and 0.7.0-m3b read each other's saves.
+- **No save-format change.** Schema 8 and simulation/content `m2g-1` stay as they are (refresh). The game version becomes `0.11.0-m3b`. Because the format is unchanged, 0.10.0-m2h and 0.11.0-m3b read each other's saves.
 - **Nothing written.** Guide visibility and the project-opened flag are never written: not to the town save, and not to any new settings file. M3b creates no new user files.
 - **Saves unaffected.** Saving the same town gives identical bytes whether the card is visible, hidden, or at any step, and whether or not the player used the guide. Load never writes (unchanged).
-- **Fixtures.** All six fixtures stay byte-identical; no new fixture is needed.
+- **Fixtures.** All nine fixtures stay byte-identical; no new fixture is needed.
 - **Revisit condition.** Remembering dismissal across launches belongs with later M3 settings/autosave work. Revisit if observed players find the start-up card intrusive.
 
 ## Implementation boundary
@@ -106,7 +127,7 @@ All guide state lasts only for the session.
 - **`main.gd`:** builds, lays out and refreshes the card. Adds the Show/Hide/Close/Open Project actions, the two session flags, the Help dialog action and F1 handling. `_open_project` sets the project-opened flag.
 - **`input_bindings.gd`:** the `toggle_guide` action (F1).
 - **`world_view.gd`:** a `guide_target` cell and the bracket marker.
-- **`project.godot`:** version `0.7.0-m3b`.
+- **`project.godot`:** version `0.11.0-m3b`.
 - **Tests:** new source guide tests, packed-test additions and `run_tests.gd` registration.
 - **Untouched code:** no file under `game/scripts/sim/`, `game/scripts/persistence/` or `game/content/` changes. If the guide appears to need such a change, stop and record why; do not widen scope.
 
@@ -114,11 +135,11 @@ All guide state lasts only for the session.
 
 | Area | Required observable evidence |
 | --- | --- |
-| Step logic (source) | **Progression:** a fresh default town is step 1 targeting the link. A flag road gives step 2; a home beside it gives step 3, targeting that home. A serviced home gives step 4 with that target, and one growth round gives step 5. **Non-advancing cases:** a disconnected road district or a diagonal home stays at step 2. Shops or workshops alone never advance steps 2-4. A station on a separate network stays at step 3. **Endings and regression:** the project-opened flag or the completed M3a fixture gives Done. Clearing the flag road in a step-5 town returns to step 1. All-water boundary terrain gives the no-link state. All six fixtures evaluate deterministically. |
+| Step logic (source) | **Progression:** a fresh default town is step 1 targeting the link. A flag road gives step 2; a home beside it gives step 3, targeting that home. A serviced home gives step 4 with that target, and one growth round gives step 5. **Non-advancing cases:** a disconnected road district or a diagonal home stays at step 2. Shops or workshops alone never advance steps 2-4. A station on a separate network stays at step 3. **Endings and regression:** the project-opened flag or the completed schema-6 (M2e) fixture gives Done. Clearing the flag road in a step-5 town returns to step 1. All-water boundary terrain gives the no-link state. All nine fixtures evaluate deterministically. |
 | Purity | For each scenario, evaluation leaves `canonical()`, `rng.state` and `sequence` unchanged, and repeated evaluation gives identical results. |
 | Packed UI | **Start and progression:** at start-up the card is visible at step 1, time is paused and the town is clean. Real pointer and key input advances steps 1-5 (flag road, home, station, Space, growth); J or Open Project gives Done. **Show and visibility:** Show recentres the camera, sets the inspector and draws the bracket, with no canonical or unsaved change. Hide removes the card and bracket. F1 re-shows the current step, and so does Help's Show first steps. **Input safety:** clicks over the card never paint, and a stroke released over it cancels with no charge. Space and the tool keys still work after card clicks. F1 is ignored while any modal is open. **Saves and restart:** Load of a saved town or fixture rechecks the steps and keeps visibility; a failed load changes nothing. Saved bytes are identical with the card visible or hidden. A scene restart resets the card to visible. |
 | Layout | All layout invariants above at 4 sizes x 3 text sizes, and a text-size change while the card is visible. |
-| Regression | All prior checks still pass (418 source / 360 packed at M3a; counts will rise). The six fixture hashes are unchanged. There is no diff under `sim/`, `persistence/` or `content/`. |
+| Regression | All prior checks still pass (629 source / 502 packed at M2h; counts will rise). The nine fixture hashes are unchanged. There is no diff under `sim/`, `persistence/` or `content/`. |
 | Actual Windows EXE | **Walkthrough:** launch fresh at 1280x720, at standard and at largest text. Follow the card from the empty town to Done using only the card text and Show. **Visibility routes:** Hide, F1 and Help re-entry. **Restart and load:** save, exit and restart (the card returns on the fresh town), then Load (the steps are rechecked). Screenshot each step. **Profile hygiene:** record the save path the tested process actually resolved, restore it exactly afterwards (including removing a folder that did not exist before), and close the process. |
 
 Run the pinned `tools/verify.ps1`, then the native release-EXE checks, then `tools/package.ps1` on the tested artifact. Record actual counts, failures, artifact hashes and automation limits. Automated desktop input is not a human playtest.

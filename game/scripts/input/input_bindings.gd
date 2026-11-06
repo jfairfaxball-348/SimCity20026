@@ -10,7 +10,7 @@ static func install() -> void:
 		"pan_up": [KEY_W, KEY_UP], "pan_down": [KEY_S, KEY_DOWN],
 		"toggle_grid": [KEY_G], "toggle_access": [KEY_R], "toggle_power": [KEY_E], "toggle_desirability": [KEY_V], "center_camera": [KEY_HOME],
 		"cancel_stroke": [KEY_ESCAPE], "zoom_in": [KEY_EQUAL, KEY_KP_ADD],
-		"zoom_out": [KEY_MINUS, KEY_KP_SUBTRACT], "display_settings": [KEY_F6]}
+		"zoom_out": [KEY_MINUS, KEY_KP_SUBTRACT], "display_settings": [KEY_F6], "toggle_guide": [KEY_F1]}
 	for action: String in keys:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)

@@ -1,51 +1,40 @@
-# Next session: refresh and implement the M3b first-steps guide
+# Next session: ask the owner for the next direction
 
-Updated 6 November 2026 after M2h. **M0/M1 through M2d, the M3a project, M2e zone lots, M2f taxes, M2g desirability and the M2h town summary are implemented and locally tested. The owner-scheduled city-builder systems (U24) are complete. The M3b guide is specified (proposed D29) but needs the refresh below before adoption. M3 as a whole is incomplete.** There is no public release and no human enjoyment evidence.
+Updated 6 November 2026 after M3b. **M0/M1 through M2d, the M3a project, M2e zone lots, M2f taxes, M2g desirability, the M2h town summary and the M3b first-steps guide are implemented and locally tested. The owner's U24 roadmap is complete. M3 as a whole is incomplete:** the five-person observed test, coherent original sample audio, the full controller route and autosaves remain. There is no public release and no human enjoyment evidence.
 
 ## Start here
 
-Read README, AGENTS, docs/DECISIONS.md (U16-U27, D29-D34), docs/TOOLCHAIN.md, [the M3b specification](docs/M3B_SPEC.md), the [M2h specification](docs/M2H_SPEC.md) and [M2h evidence](docs/sessions/2026-11-06-m2h.md). Inspect the local diff, and fetch and reconcile live remote refs before editing.
+Read README, AGENTS, docs/DECISIONS.md (U16-U28, D29-D34), docs/TOOLCHAIN.md, [genre candidates](docs/GENRE_ALIGNMENT.md), the [delivery plan](docs/DELIVERY_PLAN.md) and [M3b evidence](docs/sessions/2026-11-06-m3b.md). Inspect the local diff, and fetch and reconcile live remote refs before editing.
 
-- **Branches.** The default branch is still `codex/m2a-road-access`, whose name is historical; use live history for delivered commits. The M2h work branch was `codex/m2h-town-summary`. Create a new `codex/` branch for the next work.
+- **Branches.** The default branch is still `codex/m2a-road-access`, whose name is historical; use live history for delivered commits. The M3b work branch was `codex/m3b-first-steps`. Create a new `codex/` branch for the next work.
 - **Delivery.** Standing commit/push/fast-forward delivery applies. Never force-push or discard unrelated work.
 
-Use the isolated Godot 4.7.2 Standard (`4.7.2.stable.official.ed1daf0bf`) through `tools/`; the global wrapper is still 4.6.3. The current build is game 0.10.0-m2h, save schema 8, simulation/content `m2g-1`. The export EXE/PCK and `builds/citybuilder-0.10.0-m2h-windows-x64.zip` are local, ignored and unpublished.
+Use the isolated Godot 4.7.2 Standard (`4.7.2.stable.official.ed1daf0bf`) through `tools/`; the global wrapper is still 4.6.3. The current build is game 0.11.0-m3b, save schema 8, simulation/content `m2g-1`. The export EXE/PCK and `builds/citybuilder-0.11.0-m3b-windows-x64.zip` are local, ignored and unpublished.
 
-**Artwork note:** Kenney Roguelike Modern City is the default style (U22/U23); the original renderer is the fallback. The guide's bracket marker should fit Modern City.
-
-## Roadmap status (U24)
-
-| Order | Milestone | Status |
-| --- | --- | --- |
-| 1 | M2f | **Done (0.8.0-m2f):** demand meter and adjustable tax rate |
-| 2 | M2g | **Done (0.9.0-m2g):** home desirability, workshop nuisance and the V overlay |
-| 3 | M2h | **Done (0.10.0-m2h):** town summary (T) |
-| 4 | **M3b guide (next)** | The deferred first-steps guide, refreshed for M2f-M2h |
-
-After M3b the owner's roadmap is complete. On the following "Run next session", ask the owner one question before choosing further work:
-
-- civic services (5);
-- traffic (6);
-- desirability for shops and workshops, or nuisance from stations;
-- remaining M3 bundle items (autosaves, controller route, coherent audio);
-- preparing the five-person M3 playtest.
-
-Optional hazards (8) come only if the owner asks.
+**Artwork note:** Kenney Roguelike Modern City is the default style (U22/U23); the original renderer is the fallback.
 
 ## Assignment
 
-On a subsequent **"Run next session"**, do M3b. Do not ask the guide-or-candidate question: the owner has answered it (U24).
+On a subsequent **"Run next session"**, first ask the owner **one question**: which direction comes next? Offer these options:
 
-1. **Refresh, then adopt.** Update `docs/M3B_SPEC.md` for the current game, then adopt D29 (amended) in Decisions before code.
-   - **Steps.** Keep five ordered steps from the specification, with lot wording (its M2e dependency section). Step 4 ("grow a home") may point at the H/S/W meter. Step 5 (the optional project) may also mention the town summary (T).
-   - **Keys.** Check that every key named is still free and correct: T, V and F1 are now used or claimed (F1 by the guide itself).
-   - **Layout.** The card must not cover the meter, the status-bar summary button, the flag or the wider inspector at text 18/20 (480/520 px).
-   - **Version.** Game `0.11.0-m3b`, schema 8 / `m2g-1` unchanged, no save change. The guide is session-only, as specified.
-2. **Build exactly as refreshed.** Build the card, F1 and Help re-entry, Show and the bracket marker. No file under `sim/`, `persistence/` or `content/` changes.
-3. **Test.** Meet the refreshed acceptance checklist. Run pinned `tools/verify.ps1`, the native EXE checks, then `tools/package.ps1`. Record actual counts, artifact hashes and limits.
-4. **Hand off.** Update README, Decisions, the asset ledger and this handoff (asking the owner's next-direction question), then deliver under the standing instruction.
+1. **Civic services (recommended next gameplay system, candidate 5).** One or two coverage buildings with upkeep (for example a clinic or school) that raise home desirability or a growth cap nearby. Explained per lot, with no crime-as-danger or destruction.
+2. **Traffic (candidate 6).** Busy roads become visible, and congestion can slow growth. It is large, and it revises the product brief's routing exclusion.
+3. **Desirability for shops and workshops**, or nuisance from power stations: a smaller extension of D33.
+4. **M3 bundle items.** Autosaves with remembered settings (including remembering the guide's dismissal), the full controller route, or coherent original sample audio.
+5. **Prepare the five-person M3 playtest.** A test plan and build only; recruitment and external messages still need separate owner authorisation.
 
-**Stop after M3b.** Do not start further systems, balance tuning, final art/audio, the controller route or autosaves.
+If the owner says "you choose", do option 1.
+
+For the chosen item, follow the milestone pattern:
+
+1. Write its specification and adopt its rules in Decisions before code, using this project's own numbers, wording and art.
+2. Implement it with tests.
+3. Run pinned `tools/verify.ps1`, the native EXE checks and `tools/package.ps1`.
+4. Record evidence, update the README, Decisions and this handoff, and deliver under the standing instruction.
+
+Bump the game version (`0.12.0-…`). Bump the schema only if saved meaning changes.
+
+**Stop after that one item.**
 
 ## Preserve the current contract
 
@@ -65,7 +54,12 @@ On a subsequent **"Run next session"**, do M3b. Do not ask the guide-or-candidat
   - **What it is.** A pure, read-only ranking of measurable blockers, opened with T or the status-bar button. It shows at most five, by levels affected, followed by a deficit item and status items.
   - **Actions.** Show centres on and inspects an example; Budget opens Budget.
   - **No side effects.** No rule or save change.
-- **Unchanged numbers.** D17-D28 prices, capacities, caps, clock order, budget, park priority and project rules are unchanged except as D32 specifies. M3b's guide must change no simulation rule or save.
+- **First steps (D29, refreshed).**
+  - **What it is.** A session-only card at the bottom left of the map showing the first unmet of five steps, derived from the town plus a project-opened flag.
+  - **Routes.** Show and a footprint bracket; Hide/Close; F1 and Help's Show first steps.
+  - **No side effects.** It saves nothing, never pauses time and never locks tools.
+  - **Packed tests.** Feature flows hide the card (`fresh_scene(…, guide = false)`), and `guide_flow` tests it shown.
+- **Unchanged numbers.** D17-D28 prices, capacities, caps, clock order, budget, park priority and project rules are unchanged except as D32 specifies. The next item's decision must state exactly which earlier rules it changes.
 - **Determinism.** No commands or ticks consume RNG. The fixed clock, dialog/focus suspension, eight ticks per frame and bounded backlog stay.
 - **Saves.**
   - **Schema 8 contents.** The same fields as schema 7: a strict `tax_rate`, a ledger `tax_rate`, and the per-cell `footprint_anchor` array. Desirability is derived.
@@ -74,28 +68,25 @@ On a subsequent **"Run next session"**, do M3b. Do not ask the guide-or-candidat
   - **Fixtures.** Nine fixtures (hashes in `game/tests/fixtures/README.md`) stay byte-identical.
   - **Limits.** JSON cap 512 KiB; maps 8-128 per dimension; seed and RNG state remain signed-64 decimal strings.
 - **Evidence profile.**
-  - **Which profile.** Processes started from a packaged app (such as the Codex desktop app) use a redirected profile under `%LOCALAPPDATA%\Packages\…\LocalCache\Roaming\OriginalCityBuilder\`. Processes started from an ordinary shell use `%APPDATA%\OriginalCityBuilder\`, which had no `saves` folder before the M2f-M2h native runs and was restored to that state after each.
+  - **Which profile.** Processes started from a packaged app (such as the Codex desktop app) use a redirected profile under `%LOCALAPPDATA%\Packages\…\LocalCache\Roaming\OriginalCityBuilder\`. Processes started from an ordinary shell use `%APPDATA%\OriginalCityBuilder\`, which had no `saves` folder before the M2f-M3b native runs and was restored to that state after each.
   - **Recording and restoring.** Record the path the tested process actually resolved, and restore it exactly afterwards (including any leftover `.recovery_mode_lock`).
   - **Packed tests.** They use an isolated `user://tests/…` store, and their folders are moved out after runs.
-- **Native driver.** When computer-use tools are unavailable, `builds/validation/m2h/native/native_driver.py` (ignored, with V and T added) posts input only to the game's window handle and captures it with `PrintWindow`.
+- **Native driver.** When computer-use tools are unavailable, `builds/validation/m3b/native/native_driver.py` (ignored, with V, T and F1 added) posts input only to the game's window handle and captures it with `PrintWindow`.
   - Posted Ctrl shortcuts do not register, because Godot reads modifiers from the real keyboard, so use the Save/Load buttons.
   - Do not use the hover action unless the owner agrees, because hover moves the real cursor.
 - **Packed-test hangs.** A script error inside the packed driver stops it before it quits, so `tools/verify.ps1` then waits indefinitely. If a run exceeds about 10 minutes, stop it and rerun the packed driver directly with a timeout to see the error.
 
 ## Actual evidence and limits
 
-M2h passed 629 source / 502 exported-PCK checks and release-EXE start-up.
+M3b passed 669 source / 562 exported-PCK checks and release-EXE start-up.
 
-A posted-window-message run of the actual EXE covered:
+A posted-window-message walkthrough of the actual EXE followed the card from the empty town to Done using its text and Show. It also covered:
 
-- a pointer-built street grown at 3x until a home was held;
-- T opening the summary led by the held home;
-- its Show action centring and inspecting that home;
-- the status-bar button.
+- Close, F1 and Help re-entry;
+- save, restart (the card returns) and load (the steps are rechecked);
+- the card at the largest text.
 
-A final smoke run used the packaged export.
-
-Native evidence is 1280x720 at standard text on one machine. Human enjoyment and usability, DPI variants, other hardware and operating systems, the controller, performance targets and CI remain unverified. Do not turn automated scenarios into the five-person M3 playtest gate.
+Native evidence is 1280x720 on one machine. Human enjoyment and usability, DPI variants, other hardware and operating systems, the controller, performance targets and CI remain unverified. Do not turn automated scenarios into the five-person M3 playtest gate.
 
 ## Rights and source-study boundary
 

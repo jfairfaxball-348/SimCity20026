@@ -1,4 +1,4 @@
-# Prototype asset provenance (M1 through M2h, plus experimental candidates)
+# Prototype asset provenance (M1 through M3b, plus experimental candidates)
 
 All map graphics are original code-drawn geometric placeholders in `game/scripts/presentation/world_view.gd`, created for this project on 4 November 2026. No third-party game graphics, screenshots, maps, music, sound effects, fonts, or source code were imported. This prototype has no audio.
 
@@ -17,6 +17,8 @@ M2f (6 November 2026) adds an original code-drawn H/S/W demand meter (letters, s
 M2g (6 November 2026) adds an original code-drawn desirability overlay in `world_view.gd` (translucent tints, small plus marks, diagonal hatching and a three-puff smoke mark on developed workshops), plus original inspector, legend, help and status text in `main.gd`. The desirability parts, radii and values were designed for this project; no external assets or reference sources were used.
 
 M2h (6 November 2026) adds an original *Town summary* dialog and status-bar button in `main.gd`, with original item wording and ordering in `game/scripts/presentation/town_summary.gd`. It adds no images or sounds, and no external assets or reference sources were used.
+
+M3b (6 November 2026) adds the original First steps card (step texts written for this project, refreshed for 0.10.0-m2h) in `game/scripts/presentation/opening_guide.gd` and `main.gd`, and an original code-drawn corner-bracket marker (four two-tone L-shaped corners) in `world_view.gd`. No external assets or reference sources were used.
 
 ## Experimental third-party artwork (evaluation only, not adopted)
 

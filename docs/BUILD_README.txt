@@ -1,6 +1,8 @@
-UNTITLED CITY BUILDER - M2h TOWN SUMMARY (0.10.0-m2h)
+UNTITLED CITY BUILDER - M3b FIRST STEPS GUIDE (0.11.0-m3b)
 
-Run citybuilder.exe. Keep citybuilder.pck beside it.
+Run citybuilder.exe. Keep citybuilder.pck beside it. A First steps card at
+the bottom left of the map shows one next step at a time (Show centres on
+it; Hide closes it for the session; F1 or Help > Show first steps returns).
 Local development checkpoint; 3x3 zone lots, 4x4 power stations, a monthly
 economy with an adjustable tax rate, a demand meter, neighbourhood
 desirability with a map overlay, a town summary, a pocket park, and one
@@ -69,7 +71,7 @@ Time starts paused. Construction works while paused. Unfocused windows and
 dialogs suspend time. Save manually; after restarting, press Load.
 Saves: %APPDATA%/OriginalCityBuilder/saves/manual.json
 The previous valid save is manual.json.bak; failed loads leave the city intact.
-Format 8 (unchanged since 0.9.0-m2g) stores the same fields as format 7: the tax
+Format 8 (unchanged since 0.9.0-m2g; the guide saves nothing) stores the same fields as format 7: the tax
 rate and lot and station anchors; desirability is derived, never saved.
 Format 7 saves load unchanged; format 6 saves load at the standard 10% rate. Earlier formats (1-5) load with
 their old single-tile zones and stations cleared; roads, parks, funds, time,

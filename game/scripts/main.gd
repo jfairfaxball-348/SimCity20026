@@ -9,6 +9,7 @@ const Bindings = preload("res://scripts/input/input_bindings.gd")
 const ArtKit = preload("res://scripts/presentation/art_kit.gd")
 const Meter = preload("res://scripts/presentation/demand_meter.gd")
 const Summary = preload("res://scripts/presentation/town_summary.gd")
+const Guide = preload("res://scripts/presentation/opening_guide.gd")
 const SAVE_PATH: String = "user://saves/manual.json"
 const SIZES: Array[Vector2i] = [Vector2i(1280,720), Vector2i(1366,768), Vector2i(1920,1080), Vector2i(1280,800)]
 const PAN_VECTORS: Dictionary = {"pan_left": Vector2.LEFT, "pan_right": Vector2.RIGHT, "pan_up": Vector2.UP, "pan_down": Vector2.DOWN}
@@ -76,6 +77,15 @@ var summary_column: VBoxContainer
 var summary_button: Button
 var summary_items: Array = []
 var summary_actions: Array[Button] = []
+## D29: session-only First steps card.
+var guide_panel: PanelContainer
+var guide_heading: Label
+var guide_text: Label
+var guide_action: Button
+var guide_hide: Button
+var guide_visible: bool = true
+var project_seen: bool = false
+var guide_state: Dictionary = {}
 var help_text: Label
 var help_dialog: AcceptDialog
 var load_dialog: ConfirmationDialog
@@ -270,6 +280,7 @@ func _build_ui() -> void:
 		compact.content_margin_bottom = 3
 		summary_button.add_theme_stylebox_override(style_name, compact)
 	footer.add_child(summary_button)
+	_build_guide()
 	_build_dialogs()
 	_refresh_metrics()
 
@@ -323,8 +334,13 @@ func _build_dialogs() -> void:
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_text = _label("1 Roads · 2 Homes · 6 Shops · 7 Workshops\nP Station · 8 Park · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nJ Project: a square with three serviced home lots.\nZones are 3x3 lots; stations are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV desirability overlay.\n\nJoin roads from the gold flag; zone beside them.\nAdd a station: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nHome desirability: park within 3 +2, water within 3 +1,\neach developed workshop within 2 steps −2 (up to 3).\nHigher grows first; below 0 a home stops at level 1.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
+	help_text = _label("1 Roads · 2 Homes · 6 Shops · 7 Workshops\nP Station · 8 Park · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced home lots.\nZones are 3x3 lots; stations are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV desirability overlay.\n\nJoin roads from the gold flag; zone beside them.\nAdd a station: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nHome desirability: park within 3 +2, water within 3 +1,\neach developed workshop within 2 steps −2 (up to 3).\nHigher grows first; below 0 a home stops at level 1.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
 	add_child(help_dialog)
+	help_dialog.add_button("Show first steps", false, "guide")
+	help_dialog.custom_action.connect(func(action: String):
+		if action == "guide":
+			help_dialog.hide()
+			_set_guide_visible(true))
 	var help_scroll := ScrollContainer.new()
 	help_scroll.custom_minimum_size = Vector2(640, 440)
 	help_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -406,6 +422,7 @@ func _layout_ui() -> void:
 		label.custom_minimum_size.x = inspector_width - 32
 	inspector_target = Rect2(Vector2(available.x - inspector_width - 16, bottom.position.y - inspector_height - 12), Vector2(inspector_width, inspector_height))
 	_fit_inspector()
+	_layout_guide()
 	_cancel_stroke()
 
 func _fit_inspector() -> void:
@@ -427,6 +444,7 @@ func _set_text_size(amount: int) -> void:
 	preview_label.add_theme_font_size_override("font_size", amount)
 	status_label.add_theme_font_size_override("font_size", amount)
 	demand_meter.set_font_size(14 + (amount - 16) / 2)
+	_refresh_guide()
 	_layout_ui()
 	_status("Interface text updated.")
 
@@ -507,6 +525,8 @@ func _shortcut_input(event: InputEvent) -> void:
 		_open_project()
 	elif event.is_action_pressed("show_summary"):
 		_open_summary()
+	elif event.is_action_pressed("toggle_guide"):
+		_set_guide_visible(not guide_visible)
 	elif event.is_action_pressed("show_budget"):
 		_open_budget()
 	elif event.is_action_pressed("display_settings"):
@@ -781,6 +801,7 @@ func _refresh_metrics() -> void:
 	var forecast: Dictionary = City.Economy.totals(city.budget)
 	demand_label.text = "Tax %d%% · Net %s%s" % [city.tax_rate, Balance.money(forecast.net), " · DEFICIT" if forecast.net < 0 else ""]
 	demand_meter.set_values(meter_values())
+	_refresh_guide()
 	budget_button.tooltip_text = "Current forecast; changes with services and development. Next settlement: day %d." % (city.tick + 31 - city.tick % 30)
 	day_label.text = "Day %d\n%s" % [city.tick + 1, "Paused" if speed == 0 or focus_paused else "%dx speed" % speed]
 	var grid = city.power
@@ -875,6 +896,8 @@ func _load_path(path: String) -> void:
 	else:
 		_status("Previous backup restored. Save to make it the current save." if path.ends_with(".bak") else "City restored. Time is paused; your layout and funds are intact.")
 	if path.ends_with(".bak"): dirty = true
+	# D29: keep the card's visibility and project flag; recheck steps for the loaded town.
+	_refresh_guide()
 	print("LOAD ", path, " sequence=", city.sequence, " tick=", city.tick)
 
 func _open_settings() -> void:
@@ -972,6 +995,8 @@ func _open_project() -> void:
 	if project_choice.item_count > 0: project_choice.select(0)
 	_refresh_project()
 	project_dialog.popup_centered(Vector2i(700, 520))
+	project_seen = true
+	_refresh_guide()
 
 func _project_index() -> int:
 	if city.project.completed: return int(city.project.park_index)
@@ -1070,6 +1095,70 @@ func _show_cell(cell: Vector2i) -> void:
 	zoom_label.text = "1x"
 	world.queue_redraw()
 	_inspect_cell(cell)
+
+func _build_guide() -> void:
+	guide_panel = _panel()
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	guide_panel.add_child(column)
+	guide_heading = _label("", 13, Style.MUTED)
+	column.add_child(guide_heading)
+	guide_text = _label("", 16)
+	guide_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	guide_text.custom_minimum_size.x = 448
+	column.add_child(guide_text)
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 8)
+	column.add_child(buttons)
+	guide_action = _button("Show", _guide_action_pressed)
+	guide_hide = _button("Hide", func(): _set_guide_visible(false))
+	for button: Button in [guide_action, guide_hide]:
+		for style_name in ["normal", "hover", "pressed", "focus"]:
+			var compact: StyleBox = theme.get_stylebox(style_name, "Button").duplicate()
+			compact.content_margin_top = 3
+			compact.content_margin_bottom = 3
+			button.add_theme_stylebox_override(style_name, compact)
+		buttons.add_child(button)
+
+## D29: read-only; evaluation and every card action leave the town and unsaved flag alone.
+func _refresh_guide() -> void:
+	if guide_panel == null: return
+	guide_state = Guide.evaluate(city, project_seen)
+	var state: String = String(guide_state.state)
+	guide_heading.text = "FIRST STEPS · DONE" if state == "done" else "FIRST STEPS" if state == "no_link" else "FIRST STEPS · %d OF %d" % [guide_state.step, guide_state.total]
+	guide_text.text = String(guide_state.text)
+	guide_text.add_theme_font_size_override("font_size", font_size)
+	guide_heading.add_theme_font_size_override("font_size", 13 + (font_size - 16) / 2)
+	var action: String = String(guide_state.action)
+	guide_action.visible = not action.is_empty()
+	guide_action.text = "Open Project" if action == "project" else "Show"
+	guide_hide.text = "Close" if state in ["done", "no_link"] else "Hide"
+	guide_panel.visible = guide_visible
+	world.guide_target = guide_state.target if guide_visible else Guide.NONE
+	world.guide_size = int(guide_state.size)
+	world.queue_redraw()
+	_layout_guide()
+	# Wrapped text settles its height a frame later; place the card again then.
+	call_deferred("_layout_guide")
+
+func _layout_guide() -> void:
+	if guide_panel == null or side == null or inspector_target.size == Vector2.ZERO: return
+	var left: float = side.position.x + side.size.x + 12
+	var width: float = minf(480, inspector_target.position.x - 12 - left)
+	guide_text.custom_minimum_size.x = width - 32
+	guide_panel.size = Vector2(width, 0)
+	var height: float = guide_panel.get_combined_minimum_size().y
+	guide_panel.size = Vector2(width, height)
+	guide_panel.position = Vector2(left, bottom.position.y - 12 - height)
+
+func _set_guide_visible(value: bool) -> void:
+	guide_visible = value
+	_refresh_guide()
+
+func _guide_action_pressed() -> void:
+	match String(guide_state.get("action", "")):
+		"show": _show_cell(guide_state.target)
+		"project": _open_project()
 
 func _show_project_park() -> void:
 	var i: int = _project_index()
