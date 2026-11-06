@@ -31,6 +31,7 @@ Recorded: 4 November 2026. Use this file to distinguish the user's requirements 
 | U23 | Make Modern City the game's default artwork now, keeping the original as a fallback | Owner instruction "Do it now yes", **6 November 2026** |
 | U24 | Build the classic city-builder systems before the M3b guide: M2f demand meter and tax rate, then M2g desirability and workshop nuisance, then M2h town summary; the guide is deferred, not cancelled | Owner "Can I choose now and you set that up...i want the city builder", **6 November 2026**; order recommended in [NEXT_SESSION.md](../NEXT_SESSION.md) |
 | U25 | Implement the M2f assignment (demand meter and adjustable tax rate) from the handoff through verification and delivery | Owner "Run next session", **6 November 2026** |
+| U26 | Implement the M2g assignment (neighbourhood desirability and workshop nuisance) from the handoff through verification and delivery | Owner "Keep gping run next one", **6 November 2026** |
 
 U06 superseded the earlier planning-only scope for M0/M1. U07 and U08 authorised M2a and M2b. U09 authorises M2c and source integration. U12 authorises M2d local implementation. The follow-up owner instruction authorises source delivery now and in future sessions: commit, push, merge and fast-forward completed work. Public game release remains separate.
 
@@ -71,8 +72,32 @@ D01–D06, D08, and the M1 part of D10 were adopted for the foundation. Later pr
 | <a id="d27"></a>D27 | Schema 4 / m2d-1 with last-budget inputs and schema-3 migration | Preserve earlier development and original save bytes; no retroactive collection. |
 | <a id="d31"></a>D31 | Selectable presentation-only art modes; Kenney Roguelike Modern City is the default since 0.7.1-m2e (U22/U23); original renderer is the fallback; Tiny City stays experimental | Still to add: documented supplementary sprites (water/shore, power station, roof edges). The art choice is never saved and never changes the model. |
 | <a id="d32"></a>D32 | M2f: always-visible demand meter; town tax rate 0-25% (standard 10%) scales taxes and demand appeal; above 10% surplus levels leave gently; schema 7 / m2f-1 | The trade-off is money per person against growth, recoverable by lowering the rate. Revisit the numbers with playtest evidence; M2g may add local effects. |
+| <a id="d33"></a>D33 | M2g: derived home desirability (park +2, water +1, developed workshops within 2 −2 each); orders home growth; below 0 holds homes at level 1 with a gentle drop; V overlay; schema 8 / m2g-1 | Generalises D26 park priority for homes; businesses unchanged. Revisit radii and values with playtest evidence; stations and traffic are not sources yet. |
 | <a id="d29"></a>D29 | Proposed: one dismissible, session-only First steps card derived from the current town; no save change | Replaces a start-up status line that vanishes after the first command. Deferred by U24 until after M2h; refresh its steps for M2f-M2h before adopting. Use lot wording. Revisit persistence of dismissal with M3 settings/autosaves or if observed players find it intrusive. |
 | <a id="d30"></a>D30 | Adopted and locally verified (M2e): freely placed 3x3 zone lots replace single-tile plots one-for-one, and power stations become 4x4; schema 6 / m2e-1; older zones and stations cleared on migration | Implements U16/U18/U19 while keeping D19-D28 numbers unchanged. Revisit prices and frontage costs after M3 playtests. |
+
+## D33 - M2g desirability and workshop nuisance, adopted and locally verified 6 November 2026
+
+**Adopted before model changes** under the owner's request to run the next session (U26), then implemented and locally verified as game 0.9.0-m2g / schema 8 / m2g-1. Evidence: [M2g record](sessions/2026-11-06-m2g.md). During implementation the inspector wording was shortened so it fits the fixed panel: the breakdown moved to the legend line, and the inspector widens at larger text. [The M2g specification](M2G_SPEC.md) holds the full rules and acceptance checklist; values are original provisional choices.
+
+- **Score.** Each home lot has a derived integer desirability:
+  - +2 for a park within 3 side-steps (D26 coverage, not stacking);
+  - +1 for water within 3;
+  - −2 for each developed (level 1-2) workshop lot within 2 side-steps, counting at most 3.
+  - Distances are footprint-to-footprint Manhattan distances. Shops and workshops have no score in M2g.
+- **Order.** Growth reserves home demand by score (higher first), then map order. This supersedes D26's two-group order, which it equals when no water or workshops are near.
+- **Held back.** A home lot with a score below 0 develops only to level 1. A serviced level-2 home whose score is below 0 drops one level at the next growth round; no lot loses more than one level per round.
+  - Nuisance drops count towards D32 leaving for that round, and tax leaving picks other lots.
+  - Nothing is demolished, and cash, zones and the project are untouched.
+  - Recovery is normal growth once the score is 0 or more.
+- **Overlay.** V and a Display toggle show the per-tile field. Plus marks show positive points and hatching shows negatives, so it does not rely on colour. Workshops get a smoke mark. The overlay is off by default and never saved.
+- **Inspector.** It lists each non-zero part and the held/dropping reason.
+- **Saves.** Game 0.9.0-m2g, schema 8, simulation/content `m2g-1`, with no new fields; desirability is never saved.
+  - Schema 7 migrates unchanged; schemas 1-6 migrate as before.
+  - Older originals are preserved once as `manual.schemaN.json`.
+  - Eight fixtures stay byte-identical, and a schema-8 fixture is added.
+
+D17-D25, D27, D28, D30 and D32 are otherwise unchanged.
 
 ## D32 - M2f demand meter and tax rate, adopted and locally verified 6 November 2026
 
@@ -228,3 +253,5 @@ None of these unanswered commercial questions prevents local prototype implement
 - 2026-11-06, U24: the owner chose the city-builder systems ahead of the M3b guide. Recorded the roadmap M2f (demand meter and tax rate), M2g (desirability and workshop nuisance), M2h (town summary), then the refreshed guide; civic services and traffic later on request; hazards only if asked. Planning only: no game code, saves or version changed. NEXT_SESSION now assigns M2f.
 
 - 2026-11-06, U25 M2f: adopted D32 before model changes. Implemented the town tax rate (0-25%, standard 10%), demand appeal, gentle leaving above 10%, the H/S/W demand meter, the Budget tax row and schema 7 / m2f-1 with schema-6 migration and preservation. Passed 565 source / 457 exported-PCK checks, release-EXE start-up and native EXE checks (schema-6 load, 15% via Budget, shrinking at 3x, schema-7 save, restart/load, final-build smoke). Packaged 0.8.0-m2f locally; not published. NEXT_SESSION now assigns M2g.
+
+- 2026-11-06, U26 M2g: adopted D33 before model changes. Implemented derived home desirability (park +2, water +1, developed workshops within 2 steps −2 each), desirability growth order, held homes below 0 with a gentle drop, the V/Display overlay, inspector parts and reasons, and schema 8 / m2g-1 with schema-7 migration and preservation. The standard test town now settles at 40 residents / 18 jobs with two homes held across from workshops; expectations were updated accordingly. Passed 600 source / 469 exported-PCK checks, release-EXE start-up and native EXE checks (pointer-built street, held home, overlay, park rescue, schema-8 save, restart/load, final-build smoke). Packaged 0.9.0-m2g locally; not published. NEXT_SESSION now assigns M2h.

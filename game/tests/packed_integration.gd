@@ -147,7 +147,8 @@ func run() -> void:
 				main.access_label.text = LONGEST_ACCESS
 				main.power_label.text = LONGEST_POWER
 				main.selection_label.text = "TILE 127, 127 · Workshop lot L2 · 8 jobs"
-				main.scope_label.text = "Demand 32768 · next check day 1000000001\nNo park priority. Loses a level in 2 check(s) unless services return."
+				main.scope_label.text = "Demand −32768 (taxes) · next check day 1000000001\nLoses a level in 2 check(s) unless services return."
+				main.legend_label.text = "Desirability −3: park +2, water +1, workshops −6"
 				await frames()
 				check(main.scope_label.get_global_rect().end.y <= main.inspector.get_global_rect().end.y and main.inspector.get_global_rect().end.y < main.bottom.position.y, "inspector text fits %s text %d cell %s" % [resolution,amount,cell])
 				check(main.power_label.get_global_rect().end.y <= main.legend_label.get_global_rect().position.y and main.inspector.size.y <= 320.5, "power reason does not overlap marks legend %s text %d cell %s" % [resolution,amount,cell])
@@ -372,6 +373,7 @@ func run() -> void:
 	await project_flow(isolated)
 	await artwork_flow(isolated)
 	await tax_flow(isolated)
+	await desirability_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -416,12 +418,15 @@ func growth_flow(isolated: IsolatedStore) -> void:
 	main._inspect_cell(Vector2i(43, 30))
 	check(main.city.growth.population == 12 and main.city.growth.jobs == 0 and "L1" in main.selection_label.text and "Demand met" in main.scope_label.text, "pack bootstrap updates residents, lot level, and demand explanation")
 	await growth_days(35)
-	check(main.city.growth.population == 48 and main.city.growth.jobs == 18 and "Residents 48" in main.population_label.text and main.demand_meter.summary() == "H 0 · S 0 · W 0" and "Tax 10%" in main.demand_label.text, "shipped growth reaches equilibrium with matching HUD")
+	# D33: the two homes across the street from developed workshops are held at level 1.
+	check(main.city.growth.population == 40 and main.city.growth.jobs == 18 and "Residents 40" in main.population_label.text and main.demand_meter.summary() == "H +2 · S 0 · W 0" and "Tax 10%" in main.demand_label.text, "shipped growth settles at 40 / 18 with matching HUD and the held homes' demand")
+	main._inspect_cell(Vector2i(52, 30))
+	check(main.city.growth.reason(main.city, main.city.index(Vector2i(52, 30))) == "held" and "Desirability −2: workshop −2" in main.legend_label.text and "Held at L1" in main.scope_label.text, "shipped inspector explains a home held by a workshop across the street")
 	await key(KEY_S, true)
 	var saved: String = main.city.canonical()
 	await fresh_scene(isolated)
 	await key(KEY_L, true)
-	check(main.city.canonical() == saved and main.speed == 0 and main.city.growth.population == 48, "new scene load restores developed mixed lot town paused")
+	check(main.city.canonical() == saved and main.speed == 0 and main.city.growth.population == 40, "new scene load restores developed mixed lot town paused")
 	# A second street and lots beyond capacity, then the shipped explanations.
 	var extra_roads: Array[Vector2i] = [Vector2i(41, 28), Vector2i(41, 29), Vector2i(41, 30)]
 	for x in range(42, 63): extra_roads.append(Vector2i(x, 28))
@@ -474,7 +479,7 @@ func economy_flow(isolated: IsolatedStore) -> void:
 	check("3 side-steps" in main.access_label.text and "Upkeep $10/month" in main.scope_label.text, "shipped park inspector explains coverage effect and upkeep")
 	await growth_days(5)
 	main._inspect_cell(Vector2i(58, 30))
-	check(main.city.development[main.city.index(Vector2i(57, 29))] == 1 and main.city.development[main.city.index(Vector2i(54, 29))] == 1 and "Park priority" in main.scope_label.text, "shipped park changes which lots receive starter growth")
+	check(main.city.development[main.city.index(Vector2i(57, 29))] == 1 and main.city.development[main.city.index(Vector2i(54, 29))] == 1 and "Desirability +2: park +2" in main.legend_label.text, "shipped park changes which lots receive starter growth")
 	await growth_days(25)
 	check(main.city.last_budget.tick == 30 and City.Economy.totals(main.city.last_budget).net == 3200 and main.city.cash == 906200, "shipped month: $124 income minus $92 upkeep gives $32")
 	await key(KEY_B)
@@ -670,12 +675,12 @@ func tax_flow(isolated: IsolatedStore) -> void:
 	check(main.city.tax_rate == 20 and (values[0] < 0 or values[1] < 0 or values[2] < 0) and "−" in main.demand_meter.summary(), "20% shows leaving levels as negative meter values")
 	var anchor: Vector2i = Vector2i(51, 29)
 	main._inspect_cell(anchor)
-	check("high taxes" in main.scope_label.text or "Taxes above 10%" in main.scope_label.text or "Demand" in main.scope_label.text, "inspector explains demand under high taxes")
+	check("(taxes)" in main.scope_label.text or "Taxes above 10%" in main.scope_label.text or "Demand" in main.scope_label.text, "inspector explains demand under high taxes")
 	await growth_days(15)
 	check(main.city.growth.population < grown and main.city.lot_anchors.size() == 8, "high taxes shrink the shipped town without removing lots")
 	await key(KEY_S, true)
 	var saved: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(isolated.test_path))
-	check(int(saved.schema_version) == 7 and int(saved.tax_rate) == 20 and saved.simulation_version == "m2f-1", "shipped save writes schema 7 with the 20% rate")
+	check(int(saved.schema_version) == City.SCHEMA and int(saved.tax_rate) == 20 and saved.simulation_version == City.SIMULATION, "shipped save writes the current schema with the 20% rate")
 	var canonical: String = main.city.canonical()
 	await fresh_scene(isolated)
 	await key(KEY_L, true)
@@ -687,7 +692,60 @@ func tax_flow(isolated: IsolatedStore) -> void:
 	await key(KEY_L, true)
 	check(main.city.lot_anchors.size() == 3 and main.city.tax_rate == 10 and "Earlier format 6" in main.status_label.text and "every lot kept" in main.status_label.text and "standard 10%" in main.status_label.text and "manual.schema6.json" in main.status_label.text, "UI schema-6 load keeps every lot at the standard rate and names the preserved original")
 	await key(KEY_S, true)
-	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 6)) == six and int(isolated.load_city(main.SAVE_PATH).schema) == 7, "UI save preserves schema-6 bytes and writes schema 7")
+	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 6)) == six and int(isolated.load_city(main.SAVE_PATH).schema) == City.SCHEMA, "UI save preserves schema-6 bytes and writes the current schema")
+
+## D33 / M2g: the shipped overlay, held home, park rescue and schema-7 migration.
+func desirability_flow(isolated: IsolatedStore) -> void:
+	await fresh_scene(isolated)
+	check(not main.world.desirability_visible and not "Overlay" in main.legend_label.text, "the desirability overlay starts off")
+	var roads: Array[Vector2i] = []
+	for x in range(42, 64): roads.append(Vector2i(x, 32))
+	project_command("road", roads)
+	project_command("power", [Vector2i(38, 31)])
+	project_command("home", [Vector2i(51, 29)])
+	project_command("workshop", [Vector2i(51, 33)])
+	main.city.development[main.city.index(Vector2i(51, 29))] = 2
+	main.city.development[main.city.index(Vector2i(51, 33))] = 1
+	main.city.rebuild_derived()
+	main._refresh_metrics()
+	await key(KEY_V)
+	main._inspect_cell(Vector2i(45, 40))
+	check(main.world.desirability_visible and "Overlay: + attracts" in main.legend_label.text and "Desirability overlay on" in main.status_label.text, "V turns the overlay on with a legend and status explanation")
+	var home: int = main.city.index(Vector2i(51, 29))
+	main._inspect_cell(Vector2i(52, 30))
+	check(main.city.desirability.tile_score[home] == -2 and "Drops to L1 next check" in main.scope_label.text, "shipped inspector warns that a level-2 home beside a developed workshop will drop")
+	await growth_days(5)
+	main._inspect_cell(Vector2i(52, 30))
+	check(main.city.development[home] == 1 and "Held at L1" in main.scope_label.text, "the home drops one level and is held")
+	await key(KEY_8)
+	await click(screen_cell(Vector2i(52, 27)))
+	main._inspect_cell(Vector2i(52, 30))
+	check(main.city.occupancy[main.city.index(Vector2i(52, 27))] == City.PARK and main.city.desirability.lot_score[home] == 0 and "Desirability 0: park +2, workshop −2" in main.legend_label.text, "a park placed by pointer offsets the workshop")
+	await growth_days(5)
+	check(main.city.development[home] == 2, "the rescued home regrows to level 2 in the shipped game")
+	main._open_settings()
+	await frames()
+	var toggle: Button = null
+	for child in main.settings.find_children("*", "Button", true, false):
+		if "Desirability overlay" in (child as Button).text: toggle = child
+	check(toggle != null and main.settings.size.y <= 720 and main.settings.get_ok_button().get_global_rect().end.y <= 720, "display dialog with the overlay toggle fits 720p")
+	if toggle != null:
+		toggle.pressed.emit()
+		await frames()
+	check(not main.world.desirability_visible and "overlay off" in main.status_label.text, "the Display toggle turns the overlay off")
+	main.settings.hide()
+	await key(KEY_V)
+	await key(KEY_S, true)
+	var saved: String = FileAccess.get_file_as_string(isolated.test_path)
+	check(not "desirab" in saved and int(JSON.parse_string(saved).schema_version) == 8, "overlay state is never saved; saves are schema 8")
+	var seven_path: String = (get_script() as Script).resource_path.get_base_dir().path_join("fixtures/m2f-schema7.json")
+	var seven: String = FileAccess.get_file_as_string(seven_path)
+	await fresh_scene(isolated)
+	isolated.files.write_text(isolated.test_path, seven)
+	await key(KEY_L, true)
+	check(main.city.tax_rate == 14 and "Earlier format 7" in main.status_label.text and "every lot kept" in main.status_label.text and not "standard 10%" in main.status_label.text, "UI schema-7 load keeps every lot and its own tax rate")
+	await key(KEY_S, true)
+	check(FileAccess.get_file_as_string(Store.preserved_path(isolated.test_path, 7)) == seven and int(isolated.load_city(main.SAVE_PATH).schema) == 8, "UI save preserves schema-7 bytes and writes schema 8")
 
 func project_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	return main.city.apply_command(kind, cells)

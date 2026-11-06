@@ -7,6 +7,7 @@ const Power = preload("res://scripts/sim/power_grid.gd")
 const Growth = preload("res://scripts/sim/growth.gd")
 const Economy = preload("res://scripts/sim/economy.gd")
 const Amenity = preload("res://scripts/sim/amenity.gd")
+const Desirability = preload("res://scripts/sim/desirability.gd")
 const LAND: int = 0
 const WATER: int = 1
 const EMPTY: int = 0
@@ -18,9 +19,9 @@ const WORKSHOP: int = 5
 const PARK: int = 6
 const MAX_TICK: int = 1_000_000_000
 const MAX_PENDING_US: int = 3_600_000_000
-const SCHEMA: int = 7
-const SIMULATION: String = "m2f-1"
-const CONTENT: String = "m2f-1"
+const SCHEMA: int = 8
+const SIMULATION: String = "m2g-1"
+const CONTENT: String = "m2g-1"
 ## Supported earlier format (M1/M2a): IDs 0..2 only, migrated in memory (D20).
 const LEGACY_SCHEMA: int = 1
 const LEGACY_VERSION: String = "m1-1"
@@ -52,6 +53,7 @@ var access: Access = Access.new()
 var power: Power = Power.new()
 var growth: Growth = Growth.new()
 var amenity: Amenity = Amenity.new()
+var desirability: Desirability = Desirability.new()
 var project: Dictionary = {"completed": false, "park_index": -1}
 var last_budget: Dictionary = {}
 var budget: Dictionary = {}
@@ -93,6 +95,7 @@ func rebuild_derived() -> void:
 	access.rebuild(self)
 	power.rebuild(self)
 	amenity.rebuild(self)
+	desirability.rebuild_terrain(self)
 	growth.refresh(self)
 	budget = Economy.inputs(self)
 

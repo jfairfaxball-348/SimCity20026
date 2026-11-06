@@ -16,7 +16,7 @@ class FaultFiles extends FileOps:
 		return super.write_text(path, "{" if fault == "truncate" else text)
 	func copy_file(from: String, to: String) -> Error:
 		if fault == "backup_copy": return ERR_CANT_CREATE
-		if fault == "preserve_copy" and (to.contains(".schema1.json") or to.contains(".schema2.json") or to.contains(".schema3.json") or to.contains(".schema4.json") or to.contains(".schema5.json") or to.contains(".schema6.json")): return ERR_CANT_CREATE
+		if fault == "preserve_copy" and (to.contains(".schema1.json") or to.contains(".schema2.json") or to.contains(".schema3.json") or to.contains(".schema4.json") or to.contains(".schema5.json") or to.contains(".schema6.json") or to.contains(".schema7.json")): return ERR_CANT_CREATE
 		return super.copy_file(from, to)
 	func replace_file(from: String, to: String) -> Error:
 		if fault == "backup_replace" and to.ends_with(".bak"): return ERR_CANT_CREATE
@@ -52,6 +52,7 @@ func run() -> void:
 	preload("res://tests/economy_tests.gd").new().run(self)
 	preload("res://tests/project_tests.gd").new().run(self)
 	preload("res://tests/tax_tests.gd").new().run(self)
+	preload("res://tests/desirability_tests.gd").new().run(self)
 	test_clock()
 	test_codec()
 	test_storage()
@@ -59,7 +60,7 @@ func run() -> void:
 	await test_scene()
 	if "--prove-failure-exit" in OS.get_cmdline_user_args():
 		check(false, "Deliberate runner failure to verify exit code")
-	print(JSON.stringify({"suite": "M2f", "checks": checks, "failed": failures.size(), "failures": failures}))
+	print(JSON.stringify({"suite": "M2g", "checks": checks, "failed": failures.size(), "failures": failures}))
 	quit(0 if failures.is_empty() else 1)
 
 func test_commands() -> void:
@@ -545,8 +546,11 @@ func migrated_text(legacy: String) -> String:
 		for field in ["occupancy", "development", "service_loss", "footprint_anchor"]: data[field] = Array(PackedByteArray(data[field]))
 	data.last_budget = data.get("last_budget", {})
 	for key in data.last_budget: data.last_budget[key] = int(data.last_budget[key])
-	if not data.last_budget.is_empty(): data.last_budget.tax_rate = Balance.TAX_STANDARD
-	data.tax_rate = Balance.TAX_STANDARD
+	if schema < 7:
+		if not data.last_budget.is_empty(): data.last_budget.tax_rate = Balance.TAX_STANDARD
+		data.tax_rate = Balance.TAX_STANDARD
+	else:
+		data.tax_rate = int(data.tax_rate)
 	if schema >= 5: data.project = {"completed": data.project.completed, "park_index": int(data.project.park_index)}
 	else: data.project = {"completed": false, "park_index": -1}
 	return JSON.stringify(data, "", true)

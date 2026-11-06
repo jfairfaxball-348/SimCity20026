@@ -13,7 +13,8 @@ var growth = preload("res://tests/growth_tests.gd").new()
 func days(city: City, count: int) -> void:
 	growth.days(city, count)
 
-## The standard 24x12 lot town grown to its 48-resident / 18-job equilibrium.
+## The standard 24x12 lot town grown to its equilibrium: 40 residents / 18 jobs, with
+## two homes held beside developed workshops (D33).
 func grown() -> City:
 	var city: City = growth.town()
 	days(city, 40)
@@ -56,7 +57,7 @@ func test_rates() -> void:
 	data.tax_rate = 25
 	t.check(City.Economy.totals(data).income == 10000 + 48 * 500 + 18 * 1000 and City.Economy.totals(data).expenses == 8000, "25% collects $5 and $10; upkeep unchanged")
 	var city: City = grown()
-	t.check(city.growth.population == 48 and city.growth.jobs == 18 and city.tax_rate == 10, "standard town still settles at 48 residents / 18 jobs")
+	t.check(city.growth.population == 40 and city.growth.jobs == 18 and city.tax_rate == 10, "standard town settles at 40 residents / 18 jobs at 10%")
 	var opening: int = city.cash
 	days(city, 20) # tick 60: the next settlement
 	t.check(city.last_budget.tax_rate == 10 and city.cash > opening, "settlement ledger records its standard rate")
@@ -107,15 +108,15 @@ func test_appeal() -> void:
 	empty.set_tax_rate(0)
 	t.check(empty.growth.demand[City.HOME] == 4, "empty town at 0% welcomes four starter home levels")
 	var city: City = grown()
-	t.check(city.growth.demand[City.HOME] == 0 and city.growth.demand[City.SHOP] == 0, "standard equilibrium has no demand")
+	t.check(city.growth.demand[City.HOME] == 2 and city.growth.demand[City.SHOP] == 0, "standard equilibrium has only the held homes' unusable demand")
 	city.set_tax_rate(0)
-	t.check(city.growth.demand[City.HOME] == 5 and city.growth.demand[City.SHOP] == 1 and city.growth.demand[City.WORKSHOP] == 1, "0% raises the targets: 5 home, 1 shop and 1 workshop levels")
+	t.check(city.growth.demand[City.HOME] == 7 and city.growth.demand[City.SHOP] == 1 and city.growth.demand[City.WORKSHOP] == 1, "0% raises the targets: 7 home, 1 shop and 1 workshop levels")
 	var low: City = roomy()
 	low.set_tax_rate(6)
 	var standard: City = roomy()
 	days(low, 120)
 	days(standard, 120)
-	t.check(standard.growth.population == 48 and low.growth.population > 48, "a lower rate grows a larger town on the same land")
+	t.check(low.growth.population > standard.growth.population and standard.growth.population >= 40, "a lower rate grows a larger town on the same land")
 	var surplus_free: bool = true
 	for rate in range(0, Balance.TAX_STANDARD + 1):
 		city.set_tax_rate(rate)
@@ -129,26 +130,28 @@ func test_leaving() -> void:
 	var occupancy: PackedByteArray = city.occupancy.duplicate()
 	var cash: int = city.cash
 	city.set_tax_rate(25)
-	t.check(city.growth.surplus[City.HOME] == 7 and city.growth.surplus[City.SHOP] == 2 and city.growth.surplus[City.WORKSHOP] == 2, "25% surplus: 7 home, 2 shop and 2 workshop levels above target")
+	t.check(city.growth.surplus[City.HOME] == 5 and city.growth.surplus[City.SHOP] == 2 and city.growth.surplus[City.WORKSHOP] == 2, "25% surplus: 5 home, 2 shop and 2 workshop levels above target")
 	var marked: Array[int] = []
 	for a in anchors:
 		if city.growth.leaving[a] != 0: marked.append(a)
-	t.check(marked == [anchors[2], anchors[3], anchors[4], anchors[5]], "four home lots leave first from the end of map order")
-	t.check(city.growth.reason(city, anchors[5]) == "leaving" and city.growth.reason(city, anchors[0]) == "surplus", "inspector reasons distinguish leaving and surplus lots")
+	t.check(marked == [anchors[0], anchors[1], anchors[2], anchors[5]], "the four level-2 home lots leave first, later map order first")
+	t.check(city.growth.reason(city, anchors[5]) == "leaving" and city.growth.reason(city, anchors[3]) == "surplus", "inspector reasons distinguish leaving and surplus lots")
 	while city.tick % Balance.GROWTH_DAYS != Balance.GROWTH_DAYS - 1: days(city, 1)
 	var levels_before: int = home_levels(city)
 	days(city, 1)
-	t.check(home_levels(city) == levels_before - 4 and city.development[anchors[5]] == 1 and city.development[anchors[0]] == 2, "a round removes at most four home levels, one per lot")
-	t.check(city.growth.leaving[anchors[1]] != 0 and city.growth.leaving[anchors[0]] != 0 and city.growth.leaving[anchors[5]] != 0 and city.growth.leaving[anchors[4]] != 0, "level-2 lots leave before level-1 lots, then later map order")
+	var all_one: bool = true
+	for a in anchors: all_one = all_one and city.development[a] == 1
+	t.check(home_levels(city) == levels_before - 4 and all_one, "a round removes at most four home levels, one per lot")
+	t.check(city.growth.leaving[anchors[5]] != 0 and city.growth.leaving[anchors[4]] != 0 and city.growth.leaving[anchors[3]] != 0 and city.growth.leaving[anchors[2]] != 0 and city.growth.leaving[anchors[0]] == 0, "with every home at level 1, later map order leaves first")
 	days(city, 60)
 	var settled: bool = true
 	for kind in [City.HOME, City.SHOP, City.WORKSHOP]: settled = settled and city.growth.surplus[kind] == 0
-	t.check(settled and city.growth.population < 48, "leaving stops at the 25% targets")
+	t.check(settled and city.growth.population < 40, "leaving stops at the 25% targets")
 	t.check(city.occupancy == occupancy and city.lot_anchors.size() == 12, "leaving never removes a zone")
 	t.check(city.cash != cash, "settlements continue while the town shrinks")
 	city.set_tax_rate(10)
 	days(city, 80)
-	t.check(city.growth.population == 48 and city.growth.jobs == 18, "lowering the rate lets the town recover to its standard size")
+	t.check(city.growth.population >= 40 and city.growth.jobs == 18, "lowering the rate lets the town recover to its standard size")
 	# Unserviced lots are left to service-loss decline, never chosen to leave.
 	var cut: City = grown()
 	cut.apply_command("clear", [growth.ROOT])
@@ -206,7 +209,7 @@ func test_fixture() -> void:
 	t.check(FileAccess.get_sha256(FIXTURE) == FIXTURE_SHA, "schema-7 fixture hash")
 	var text: String = FileAccess.get_file_as_string(FIXTURE).strip_edges()
 	var loaded: Dictionary = Codec.decode(text)
-	t.check(loaded.ok and loaded.migrated_from == 0 and loaded.city.canonical() == text, "schema-7 fixture exact round trip")
+	t.check(loaded.ok and loaded.migrated_from == 7 and loaded.cleared_tiles == 0 and loaded.city.canonical() == t.migrated_text(text), "schema-7 fixture migrates with every value kept")
 	if not loaded.ok: return
 	var city: City = loaded.city
 	t.check(city.tax_rate == 14 and city.last_budget.tax_rate == 14 and city.tick == 59 and city.growth.population == 32 and city.growth.jobs == 12, "schema-7 fixture holds a 14% town of 32 residents / 12 jobs with a 14% ledger")

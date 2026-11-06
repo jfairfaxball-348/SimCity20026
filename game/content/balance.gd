@@ -36,6 +36,16 @@ const STATION_UPKEEP: int = 6_000
 const PARK_UPKEEP: int = 1_000
 const PARK_COST: int = 10_000
 const PARK_RADIUS: int = 3
+## D33 home desirability: park and water bonuses within their radii; each developed
+## workshop lot within the nuisance radius deters (counted up to a limit). Homes below
+## zero are held at HELD_LEVEL.
+const DESIRABILITY_PARK: int = 2
+const DESIRABILITY_WATER: int = 1
+const WATER_RADIUS: int = 3
+const NUISANCE_PER_WORKSHOP: int = 2
+const NUISANCE_RADIUS: int = 2
+const NUISANCE_COUNT_LIMIT: int = 3
+const HELD_LEVEL: int = 1
 ## D30 footprints: zones are square lots; power stations are larger squares.
 const LOT_SIZE: int = 3
 const STATION_SIZE: int = 4

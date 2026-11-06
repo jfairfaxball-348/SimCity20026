@@ -179,7 +179,7 @@ func test_saves() -> void:
 	var store := Store.new(files)
 	var base: String = OS.get_environment("CITY_TEST_DIR")
 	if base.is_empty(): base = "user://tests"
-	for source in [["m2d-schema4", 4], ["m3a-schema5", 5], ["m2e-schema6", 6]]:
+	for source in [["m2d-schema4", 4], ["m3a-schema5", 5], ["m2e-schema6", 6], ["m2f-schema7", 7]]:
 		var legacy: String = FileAccess.get_file_as_string("res://tests/fixtures/%s.json" % source[0])
 		for backup in [false, true]:
 			var path: String = base.path_join("project_%d_%d_%s/manual.json" % [source[1], Time.get_ticks_usec(), str(backup)])

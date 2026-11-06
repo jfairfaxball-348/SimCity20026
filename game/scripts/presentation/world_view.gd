@@ -13,6 +13,8 @@ var zoom: int = 1
 var grid_visible: bool = true
 var access_visible: bool = true
 var power_visible: bool = true
+## D33: desirability overlay (off by default, never saved).
+var desirability_visible: bool = false
 var hover: Vector2i = Vector2i(-1, -1)
 var preview_cells: Array[Vector2i] = []
 var preview_valid: bool = true
@@ -69,6 +71,8 @@ func _draw() -> void:
 	ordered.sort()
 	for anchor in ordered:
 		_draw_footprint(int(anchor))
+	if desirability_visible:
+		_draw_desirability(first, last, ordered)
 	_draw_outside_link()
 	var cells: Array[Vector2i] = preview_cells.duplicate()
 	if cells.is_empty() and city.inside(hover):
@@ -150,6 +154,38 @@ func _draw_marks(i: int, at: Vector2, z: float) -> void:
 			draw_line(mark - Vector2(0, 2) * z, mark + Vector2(0, 2) * z, color, z)
 	if power_visible:
 		_draw_power_mark(i, at, z)
+
+## D33 overlay: + marks for each positive point, diagonal hatching for negatives
+## (one stripe per 2 points, at most 3), and a smoke mark on developed workshops.
+## Tints only reinforce the marks, so meaning never relies on colour alone.
+func _draw_desirability(first: Vector2i, last: Vector2i, anchors: Array) -> void:
+	var z: float = float(zoom)
+	for y in range(maxi(0, first.y), mini(city.height, last.y + 1)):
+		for x in range(maxi(0, first.x), mini(city.width, last.x + 1)):
+			var i: int = city.index(Vector2i(x, y))
+			if city.terrain[i] == City.WATER: continue
+			var score: int = city.desirability.tile_score[i]
+			if score == 0: continue
+			var at: Vector2 = tile_rect(Vector2i(x, y)).position
+			if score > 0:
+				draw_rect(Rect2(at, Vector2.ONE * TILE * z), Color(0.86, 1.0, 0.62, 0.22))
+				for k in range(mini(score, 3)):
+					var mark: Vector2 = at + Vector2(3 + 5 * k, 12) * z
+					draw_rect(Rect2(mark - Vector2(2, 2) * z, Vector2(5, 5) * z), Color("2f4a3a"))
+					draw_line(mark - Vector2(1, 0) * z, mark + Vector2(2, 0) * z, Color("e8f7c4"), z)
+					draw_line(mark - Vector2(0, 1) * z, mark + Vector2(0, 2) * z, Color("e8f7c4"), z)
+			else:
+				draw_rect(Rect2(at, Vector2.ONE * TILE * z), Color(0.55, 0.26, 0.12, 0.26))
+				for k in range(mini(3, (1 - score) / 2)):
+					var offset: float = 5 + 5 * k
+					draw_line(at + Vector2(0, offset) * z, at + Vector2(offset, 0) * z, Color(0.33, 0.15, 0.07, 0.9), 2 * z)
+	for anchor in anchors:
+		var a: int = int(anchor)
+		if city.occupancy[a] != City.WORKSHOP or city.development[a] == 0: continue
+		var top: Vector2 = tile_rect(city.cell_of(a)).position + Vector2(38, 6) * z
+		for puff in [[Vector2(0, 0), 3.0], [Vector2(4, -3), 2.5], [Vector2(8, -5), 2.0]]:
+			draw_circle(top + puff[0] * z, (puff[1] + 0.8) * z, Color("3d4446"))
+			draw_circle(top + puff[0] * z, puff[1] * z, Color("d9dcd6"))
 
 func _draw_footprint(anchor: int) -> void:
 	var kind: int = city.occupancy[anchor]

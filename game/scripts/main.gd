@@ -171,7 +171,7 @@ func _build_ui() -> void:
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.custom_minimum_size.y = 30
 		match kind:
-			"park": button.tooltip_text = "One park; $10/month. Homes within 3 side-steps get growth priority, with services and demand. Overlap does not stack."
+			"park": button.tooltip_text = "One park; $10/month. Homes within 3 side-steps gain +2 desirability: they grow first and it offsets one nearby workshop. Overlap does not stack."
 			"clear": button.tooltip_text = "Clear is free, with no refund."
 			"power": button.tooltip_text = "One 4x4 station per placement. It supplies %d zone lots through the roads it touches, including empty lots." % Balance.POWER_CAPACITY
 			"road": button.tooltip_text = "Price per tile; identical repainting is free."
@@ -296,11 +296,12 @@ func _build_dialogs() -> void:
 	for mode in ArtKit.MODES:
 		arts.add_child(_button(ArtKit.LABELS[mode], func(): _set_art(mode)))
 	column.add_child(_button("Toggle grid  [G]", func(): world.grid_visible = not world.grid_visible; world.queue_redraw()))
+	column.add_child(_button("Desirability overlay  [V]", _toggle_desirability))
 	column.add_child(_button("Center view  [Home]", _center_camera))
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_text = _label("1 Roads · 2 Homes · 6 Shops · 7 Workshops\nP Station · 8 Park · 3 Clear · B Budget\nJ Project: a square with three serviced home lots.\nZones are 3x3 lots; stations are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\n\nJoin roads from the gold flag; zone beside them.\nAdd a station: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nParks prioritize homes within 3 side-steps; no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
+	help_text = _label("1 Roads · 2 Homes · 6 Shops · 7 Workshops\nP Station · 8 Park · 3 Clear · B Budget\nJ Project: a square with three serviced home lots.\nZones are 3x3 lots; stations are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV desirability overlay.\n\nJoin roads from the gold flag; zone beside them.\nAdd a station: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level.\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nHome desirability: park within 3 +2, water within 3 +1,\neach developed workshop within 2 steps −2 (up to 3).\nHigher grows first; below 0 a home stops at level 1.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Notices bundled.", 16)
 	add_child(help_dialog)
 	var help_scroll := ScrollContainer.new()
 	help_scroll.custom_minimum_size = Vector2(640, 440)
@@ -376,7 +377,7 @@ func _layout_ui() -> void:
 	bottom.position = Vector2(16,available.y - 84)
 	bottom.size = Vector2(available.x - 32,68)
 	# Wider rather than taller at larger text, so the centred outside link stays uncovered.
-	var inspector_width: int = 380 if font_size == 16 else 430 if font_size == 18 else 460
+	var inspector_width: int = 380 if font_size == 16 else 480 if font_size == 18 else 520
 	var inspector_height: int = 320
 	for label: Label in [selection_label, access_label, power_label, legend_label, scope_label]:
 		label.custom_minimum_size.x = inspector_width - 32
@@ -473,6 +474,8 @@ func _shortcut_input(event: InputEvent) -> void:
 		_toggle_access()
 	elif event.is_action_pressed("toggle_power"):
 		_toggle_power()
+	elif event.is_action_pressed("toggle_desirability"):
+		_toggle_desirability()
 	elif event.is_action_pressed("center_camera"):
 		_center_camera()
 	elif event.is_action_pressed("cancel_stroke"):
@@ -559,6 +562,7 @@ func _update_hover() -> void:
 func _inspect_cell(cell: Vector2i) -> void:
 	_fit_inspector()
 	scope_label.text = _growth_text(cell)
+	_update_legend(cell)
 	if not city.inside(cell):
 		selection_label.text = "%d × %d coastal map" % [city.width, city.height]
 		access_label.text = "No boundary land for an outside link. Road access is unavailable."
@@ -598,21 +602,21 @@ func _growth_text(cell: Vector2i) -> String:
 	if city.inside(cell) and city.occupancy[city.index(cell)] == City.PARK:
 		if city.project.completed and int(city.project.park_index) == city.index(cell):
 			return "Project completed. Flowers only; park priority unchanged. Upkeep $10/month."
-		return "Covered homes grow first within demand and round caps. No extra demand. Upkeep $10/month."
+		return "Homes within 3 steps gain +2 desirability: they grow first and it offsets one workshop. No extra demand. Upkeep $10/month."
 	if not city.inside(cell) or not City.is_zone(city.occupancy[city.index(cell)]):
 		return "Next growth: day %d. Zones need road access, power and demand." % next_day
 	var i: int = city.anchor_at(cell)
 	var kind: int = city.occupancy[i]
-	var wanted: String = "Demand −%d (high taxes)" % city.growth.surplus[kind] if city.growth.surplus[kind] > 0 else "Demand %d" % city.growth.demand[kind]
+	var wanted: String = "Demand −%d (taxes)" % city.growth.surplus[kind] if city.growth.surplus[kind] > 0 else "Demand %d" % city.growth.demand[kind]
 	var prefix: String = "%s · next check day %d\n" % [wanted, next_day]
-	if city.occupancy[i] == City.HOME:
-		prefix += "Park priority. " if city.amenity.lot_covered[i] != 0 else "No park priority. "
 	match city.growth.reason(city, i):
 		"growing": return prefix + "Ready to gain one level."
 		"queued": return prefix + "Waiting turn; park homes first, then map order."
 		"demand": return prefix + "Demand met. More residents support jobs; jobs support homes."
 		"full": return prefix + "Fully developed (level 2)."
 		"leaving": return prefix + "High taxes: loses a level next check. Lower the rate to keep it."
+		"held": return prefix + "Held at L1 by workshops: add a park or move them."
+		"dropping": return prefix + "Drops to L1 next check (workshops): add a park."
 		"surplus": return prefix + "Taxes above %d%%: more levels may leave." % Balance.TAX_STANDARD
 		"declining": return prefix + "Loses a level in %d check(s) unless services return." % (Balance.DECLINE_ROUNDS - city.service_loss[i])
 	return prefix + "Waiting for road access and power."
@@ -646,17 +650,31 @@ func _network_use(network: int) -> String:
 	var short: int = grid.network_short[network]
 	return text + (", %d lot%s short" % [short, "" if short == 1 else "s"] if short > 0 else "")
 
-func _update_legend() -> void:
+func _update_legend(cell: Vector2i = inspected_cell) -> void:
 	var parts: Array[String] = []
 	parts.append("+/− road access" if world.access_visible else "road marks hidden (R)")
 	parts.append("bolt/× power" if world.power_visible else "power marks hidden (E)")
 	legend_label.text = "Marks: " + " · ".join(parts)
+	if world.desirability_visible:
+		legend_label.text = "Overlay: + attracts · hatching deters (V)"
+	# D33: a home lot's legend line lists its desirability parts instead.
+	var a: int = city.anchor_at(cell)
+	if a >= 0 and city.occupancy[a] == City.HOME:
+		var lot_parts: String = city.desirability.parts(city, a)
+		legend_label.text = "Desirability %s: %s" % [Meter.signed(city.desirability.lot_score[a]), "no park, water or workshop nearby" if lot_parts.is_empty() else lot_parts]
 
 func _toggle_access() -> void:
 	world.access_visible = not world.access_visible
 	access_button.set_pressed_no_signal(world.access_visible)
 	_update_legend()
 	world.queue_redraw()
+
+## D33: presentation only; the overlay state is never saved.
+func _toggle_desirability() -> void:
+	world.desirability_visible = not world.desirability_visible
+	world.queue_redraw()
+	_update_legend()
+	_status("Desirability overlay on: + marks attract homes (park +2, water +1); hatching deters (each developed workshop within 2 steps −2). Homes below 0 stop at level 1." if world.desirability_visible else "Desirability overlay off (V).")
 
 func _toggle_power() -> void:
 	world.power_visible = not world.power_visible
@@ -824,7 +842,7 @@ func _load_path(path: String) -> void:
 	# Formats 1-5 lose their single-tile zones and stations (D30); format 6 keeps
 	# everything. Every earlier format starts at the standard tax rate (D32).
 	var cleared: String = "every lot kept" if int(result.get("migrated_from", 0)) >= 6 else "%d old single-tile zone/station tiles cleared for 3x3 lots and 4x4 stations" % int(result.get("cleared_tiles", 0))
-	cleared += ", tax rate set to the standard %d%%" % Balance.TAX_STANDARD
+	if int(result.get("migrated_from", 0)) < 7: cleared += ", tax rate set to the standard %d%%" % Balance.TAX_STANDARD
 	if int(result.get("migrated_from", 0)) > 0 and path.ends_with(".bak"):
 		_status("Backup restored from earlier format %d; %s. Save to make it current; its bytes are kept as %s first." % [result.migrated_from, cleared, preserved_name])
 	elif int(result.get("migrated_from", 0)) > 0:
@@ -836,7 +854,7 @@ func _load_path(path: String) -> void:
 
 func _open_settings() -> void:
 	_cancel_stroke()
-	settings.popup_centered(Vector2i(680,440))
+	settings.popup_centered(Vector2i(680,480))
 
 ## Presentation only; the simulation, saves and controls are unchanged.
 func _set_art(mode: String) -> void:

@@ -1,9 +1,9 @@
-UNTITLED CITY BUILDER - M2f DEMAND METER AND TAX RATE (0.8.0-m2f)
+UNTITLED CITY BUILDER - M2g NEIGHBOURHOOD DESIRABILITY (0.9.0-m2g)
 
 Run citybuilder.exe. Keep citybuilder.pck beside it.
 Local development checkpoint; 3x3 zone lots, 4x4 power stations, a monthly
-economy with an adjustable tax rate, a demand meter, a pocket park, and one
-optional project.
+economy with an adjustable tax rate, a demand meter, neighbourhood
+desirability with a map overlay, a pocket park, and one optional project.
 
 1 Roads ($10 per tile) / 2 Homes / 6 Shops / 7 Workshops ($25 per 3x3 lot)
 P Power station (4x4, $500, 20 lots) / 8 Park ($100) / 3 Clear (free)
@@ -18,7 +18,8 @@ flowers do not.
 Left drag: preview a stroke; release to build. Right click/Escape: cancel.
 Invalid strokes never partially apply. Identical repainting is free.
 WASD/arrows/middle drag: pan. Wheel/+/-: zoom. Home: outside link.
-R: road marks (+/-). E: power marks (bolt/x). Hover a tile to inspect.
+R: road marks (+/-). E: power marks (bolt/x). V: desirability overlay.
+Hover a tile to inspect.
 Space: pause/resume. 4: normal speed. 5: fast speed.
 Ctrl+S: save. Ctrl+L: load. F6: display and text settings.
 Artwork: Kenney Roguelike Modern City (CC0) is the default; Display > Artwork
@@ -41,9 +42,14 @@ first, then map order. Satisfied demand stops new growth without evicting existi
 Two growth checks without road access or power lose one level. Reconnect
 or add capacity to stop decline; normal demand allows recovery.
 
+Home desirability: a park within 3 side-steps +2 (no stacking), water within
+3 +1, each developed workshop lot within 2 side-steps -2 (up to three).
+A workshop across a one-tile road counts. Higher-scoring homes grow first;
+below 0 a home stops at level 1, and a level-2 home drops one level at the
+next check. Add a park or move workshops away and it regrows. V shows the
+field: + marks attract, hatching deters, smoke marks developed workshops.
 Parks cover lots with a tile within 3 side-steps; overlap does not stack.
-They give priority within existing growth demand/caps, not extra capacity
-or demand. Parks need no services and carry neither road access nor power.
+They add no extra capacity or demand. Parks need no services and carry neither road access nor power.
 Tax rate (Budget): each point charges 20 cents per serviced resident and
 40 cents per serviced job a month; the standard 10% is $2 and $4. Lower
 rates raise demand (140% at 0%); higher rates lower it (40% at 25%), and
@@ -60,13 +66,14 @@ Time starts paused. Construction works while paused. Unfocused windows and
 dialogs suspend time. Save manually; after restarting, press Load.
 Saves: %APPDATA%/OriginalCityBuilder/saves/manual.json
 The previous valid save is manual.json.bak; failed loads leave the city intact.
-Format 7 stores the tax rate and lot and station anchors. Format 6 saves
-load unchanged at the standard 10% rate. Earlier formats (1-5) load with
+Format 8 (desirability rules) stores the same fields as format 7: the tax
+rate and lot and station anchors; desirability is derived, never saved.
+Format 7 saves load unchanged; format 6 saves load at the standard 10% rate. Earlier formats (1-5) load with
 their old single-tile zones and stations cleared; roads, parks, funds, time,
 budget history and project completion are kept. Loading changes no files.
 Saving preserves older primary/backup bytes once as manual.schema1.json to
-manual.schema6.json before replacement. No retroactive charges. Older builds
-cannot read format 7; use the preserved older-format copy to roll back.
+manual.schema7.json before replacement. No retroactive charges. Older builds
+cannot read format 8; use the preserved older-format copy to roll back.
 
 Windows x64, tested on the development machine. Other hardware, Windows DPI
 variants, other operating systems, and controllers remain unverified.

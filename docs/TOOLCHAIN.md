@@ -44,7 +44,7 @@ Run from the repo root:
 - **Run:** launches the game through the pinned editor runtime.
 - **Export:** imports and makes an unsigned x64 Windows release EXE/PCK, adds notices/README, writes `BUILD.json` with SHA256 file hashes and the game version/save schema read from `project.godot` and `city_state.gd`.
 - **Verify:** Test + Export, input/layout/save checks against the exported PCK, then headless startup of the actual release EXE. It does not replace native UI checks.
-- **Package:** validates the existing export against its manifest and an explicit file allowlist, then creates `builds/citybuilder-<game version>-windows-x64.zip` (currently `0.8.0-m2f`) and a SHA256 sidecar. It does not rebuild or upload the game. Exercise the export before packaging.
+- **Package:** validates the existing export against its manifest and an explicit file allowlist, then creates `builds/citybuilder-<game version>-windows-x64.zip` (currently `0.9.0-m2g`) and a SHA256 sidecar. It does not rebuild or upload the game. Exercise the export before packaging.
 
 Setup and project scripts stop on failures. Do not bypass checksum/version errors by using another editor silently. Local archives/tools, `.godot` caches, builds/logs, and export credentials are ignored. Keep Godot `.uid` source sidecars in Git.
 

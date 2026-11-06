@@ -29,3 +29,12 @@ Under M2e (D30) every earlier schema migrates by clearing its single-tile zone a
 **M2f (schema 7).** `m2f-schema7.json`, SHA256 `59f46e3f0b01d0f2b8b9e149b21cae97fce860b8849d5e9f48207e24639b339c`. Captured by the M2f model (`builds/validation/m2f/capture_fixture.gd`, ignored): the standard 24x12 lot town (seed 91, all land; road (4..23,6), 4x4 station at (0,5), six home lots from (4,3), three shop lots from (4,7), three workshop lots from (13,7)). The rate was set to 14% on day 10 (command sequence 6). After 59 days it has 32 residents / 12 jobs, 917680 cents and 234567 pending microseconds, with a ledger at tick 30 recording 14%. The next tick settles exactly 17680 cents at 14%. Tests check its hash, exact round trip and continuation.
 
 Under M2f (D32) the six earlier schemas still migrate as described above. Schema 6 now also migrates, keeping every value including its lots, and every earlier town gains the standard 10% rate (and a 10% rate on any recorded ledger). All seven earlier hashes are unchanged.
+
+**M2g (schema 8).** `m2g-schema8.json`, SHA256 `beaeb0b9fee8d13c091b1c995be90a33f57a418fbe219abe1f44a6219a51ee61`. Captured by the M2g model (`builds/validation/m2g/capture_fixture.gd`, ignored).
+
+- **Town.** The standard 24x12 lot town plus a park at (14,1), command sequence 6.
+- **State.** After 59 days the home lot at (13,3) scores "park +2, workshop −2" (0) and is at level 2, while its neighbour at (16,3) is held at level 1 by the developed workshop across the street. That gives 44 residents / 18 jobs, 905400 cents, 234567 pending microseconds and a ledger at tick 30.
+- **Continuation.** The next tick settles exactly 17000 cents.
+- **Tests.** They check its hash, exact round trip, the rescued and held homes, and the continuation.
+
+Under M2g (D33) schema 7 migrates with every value kept, and all eight earlier hashes are unchanged.
