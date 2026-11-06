@@ -1,6 +1,7 @@
 extends Node2D
 ## Original code-drawn placeholders. No game-derived textures or assets.
 const City = preload("res://scripts/sim/city_state.gd")
+const ArtKit = preload("res://scripts/presentation/art_kit.gd")
 const TILE: int = 16
 const VIEW: Vector2 = Vector2(640, 360)
 const GRASS := Color("82966b")
@@ -15,6 +16,14 @@ var power_visible: bool = true
 var hover: Vector2i = Vector2i(-1, -1)
 var preview_cells: Array[Vector2i] = []
 var preview_valid: bool = true
+## EXPERIMENTAL artwork evaluation: "original" (approved fallback) or a Kenney pack kit.
+var art_mode: String = "original"
+var art = null
+
+func set_art(mode: String) -> void:
+	art_mode = mode if mode in ArtKit.MODES else "original"
+	art = null if art_mode == "original" else ArtKit.new(art_mode)
+	queue_redraw()
 
 func cell_at(view_position: Vector2) -> Vector2i:
 	return Vector2i(((origin + view_position / zoom) / TILE).floor())
@@ -76,6 +85,13 @@ func _draw_cell(cell: Vector2i) -> void:
 	var z: float = float(zoom)
 	var i: int = city.index(cell)
 	var variation: int = posmod(cell.x * 317 + cell.y * 137 + city.seed_value, 97)
+	if art != null:
+		art.draw_cell(self, city, cell, i, rect, at, z, variation)
+		if city.terrain[i] == City.WATER: return
+		if city.occupancy[i] == City.PARK and city.project.completed and int(city.project.park_index) == i:
+			_draw_flowers(at, z)
+		_draw_grid_and_marks(i, at, z)
+		return
 	if city.terrain[i] == City.WATER:
 		draw_rect(rect, WATER if variation % 3 else Color("557f80"))
 		if variation % 4 == 0:
@@ -97,11 +113,7 @@ func _draw_cell(cell: Vector2i) -> void:
 			draw_rect(Rect2(at + Vector2(5, 7) * z, Vector2(2, 4) * z), Color("735d44"))
 			draw_circle(at + Vector2(6, 5) * z, 4 * z, Color("a7c880"))
 			if city.project.completed and int(city.project.park_index) == i:
-				# Original three-flower cluster beside the path; no simulation effect.
-				for flower in [Vector2(11, 4), Vector2(13, 7), Vector2(9, 14)]:
-					draw_line(at + flower * z, at + (flower + Vector2(0, 2)) * z, Color("dce8ab"), z)
-					draw_rect(Rect2(at + (flower - Vector2.ONE) * z, Vector2(3, 3) * z), Color("edb6a3"))
-					draw_rect(Rect2(at + flower * z, Vector2.ONE * z), Color("fff0bb"))
+				_draw_flowers(at, z)
 		_:
 			if variation < 13:
 				# Decorative shrubs, with no collision or simulation role.
@@ -110,11 +122,21 @@ func _draw_cell(cell: Vector2i) -> void:
 				draw_rect(Rect2(at + Vector2(5, 4) * z, Vector2(4, 3) * z), Color("9aaa75"))
 			elif variation < 40:
 				draw_rect(Rect2(at + Vector2(4, 10) * z, Vector2(2, 1) * z), Color("9ead7a"))
+	_draw_grid_and_marks(i, at, z)
+
+func _draw_grid_and_marks(i: int, at: Vector2, z: float) -> void:
 	if grid_visible:
 		draw_line(at, at + Vector2(16, 0) * z, Color(0.22, 0.33, 0.24, 0.13), z)
 		draw_line(at, at + Vector2(0, 16) * z, Color(0.22, 0.33, 0.24, 0.13), z)
 	if city.occupancy[i] == City.ROAD:
 		_draw_marks(i, at, z)
+
+## Original three-flower cluster for the completed project park; no simulation effect.
+func _draw_flowers(at: Vector2, z: float) -> void:
+	for flower in [Vector2(11, 4), Vector2(13, 7), Vector2(9, 14)]:
+		draw_line(at + flower * z, at + (flower + Vector2(0, 2)) * z, Color("dce8ab"), z)
+		draw_rect(Rect2(at + (flower - Vector2.ONE) * z, Vector2(3, 3) * z), Color("edb6a3"))
+		draw_rect(Rect2(at + flower * z, Vector2.ONE * z), Color("fff0bb"))
 
 ## Road access (+/-) and power (bolt/x) marks. Lots carry one set at their anchor.
 func _draw_marks(i: int, at: Vector2, z: float) -> void:
@@ -135,6 +157,18 @@ func _draw_footprint(anchor: int) -> void:
 	var at: Vector2 = tile_rect(Vector2i(anchor % city.width, anchor / city.width)).position
 	var z: float = float(zoom)
 	var rect := Rect2(at, Vector2.ONE * TILE * size * z)
+	if art != null:
+		if kind == City.POWER:
+			art.draw_station(self, at, size, z)
+			# Original bolt sign: neither pack has a power-station sprite.
+			draw_rect(Rect2(at + Vector2(25, 17) * z, Vector2(14, 14) * z), Color("3f5257"))
+			_draw_bolt(at + Vector2(32, 24) * z, 2 * z, Color("f2d36b"))
+		else:
+			var color := Color("577c62") if kind == City.HOME else Color("557f94") if kind == City.SHOP else Color("9a7954")
+			if not art.draw_lot(self, kind, city.development[anchor], at, size, z, color):
+				_draw_zone_symbol(kind, 0, at + Vector2(16, 16) * z, z)
+			_draw_marks(anchor, at, z)
+		return
 	if kind == City.POWER:
 		_draw_station(at, rect, z)
 	else:

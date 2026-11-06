@@ -50,6 +50,8 @@ Before public branding:
 
 No candidate name or logo has been cleared. That does not prevent a neutral local prototype.
 
+**Experimental third-party artwork (6 November 2026).** Two Kenney tile packs (Tiny City, Roguelike Modern City) were downloaded from their official pages for an owner-requested evaluation. Their CC0 1.0 licence was confirmed on the pages and in the bundled licence files, and their provenance is recorded in the [asset ledger](../licenses/ASSETS.md). They are candidates only; the original placeholders remain the approved fallback. See the [artwork evaluation](artwork-review/ARTWORK_EVALUATION.md). Any adopted pack must keep this provenance, and supplementary sprites must be original or similarly documented.
+
 ## Asset provenance workflow
 
 M1 uses self-created geometric placeholders, not downloaded retro packs. The current ledger is [licenses/ASSETS.md](../licenses/ASSETS.md); pinned engine/default-font notices are included in the export. Before adopting final assets, extend the ledger with one entry per asset or clearly bounded pack:

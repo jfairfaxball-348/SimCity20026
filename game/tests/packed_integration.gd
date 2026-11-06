@@ -368,6 +368,7 @@ func run() -> void:
 	await growth_flow(isolated)
 	await economy_flow(isolated)
 	await project_flow(isolated)
+	await artwork_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -571,6 +572,50 @@ func project_flow(isolated: IsolatedStore) -> void:
 	main._load_path(main.SAVE_PATH)
 	check(main.city.canonical() == before and "Current city unchanged" in main.status_label.text, "malformed project load retains live town")
 	main.recovery_dialog.hide()
+
+## EXPERIMENTAL artwork evaluation: both Kenney packs resolve inside the release PCK
+## and switching art through the shipped Display buttons never touches the model.
+func artwork_flow(isolated: IsolatedStore) -> void:
+	await fresh_scene(isolated)
+	for path in ["res://assets/experiments/city_art/tiny_city/tilemap_packed.png", "res://assets/experiments/city_art/roguelike_modern_city/tilemap_packed.png"]:
+		var texture: Texture2D = load(path)
+		check(texture != null and texture.get_size() == (Vector2(192, 176) if "tiny" in path else Vector2(592, 448)), "experimental atlas resolves in the exported pack: " + path.get_base_dir().get_file())
+	var roads: Array[Vector2i] = []
+	for x in range(42, 64): roads.append(Vector2i(x, 32))
+	project_command("road", roads)
+	project_command("power", [Vector2i(38, 31)])
+	project_command("home", [Vector2i(42, 29), Vector2i(45, 29)])
+	project_command("shop", [Vector2i(42, 33)])
+	project_command("workshop", [Vector2i(45, 33)])
+	project_command("park", [Vector2i(48, 28)])
+	await growth_days(15)
+	var before: String = main.city.canonical()
+	main._open_settings()
+	await frames()
+	check(main.settings.size.y <= 720 and main.settings.get_ok_button().get_global_rect().end.y <= 720, "display dialog with artwork row fits 720p")
+	var buttons: Array = []
+	for child in main.settings.find_children("*", "Button", true, false):
+		if (child as Button).text in ["Original", "Tiny City", "Modern City"]: buttons.append(child)
+	check(buttons.size() == 3, "display dialog offers three artwork modes")
+	for button in buttons:
+		(button as Button).pressed.emit()
+		await frames()
+		var expected: String = {"Original": "original", "Tiny City": "tiny_city", "Modern City": "modern_city"}[(button as Button).text]
+		check(main.world.art_mode == expected and (main.world.art == null) == (expected == "original") and "Presentation only" in main.status_label.text, "display button selects %s artwork" % expected)
+		check(main.city.canonical() == before, "switching to %s artwork leaves the town unchanged" % expected)
+	main.settings.hide()
+	await key(KEY_S, true)
+	var saved_modern: String = FileAccess.get_file_as_string(isolated.test_path)
+	main._set_art("original")
+	await key(KEY_S, true)
+	check(FileAccess.get_file_as_string(isolated.test_path) == saved_modern and not "art" in JSON.parse_string(saved_modern), "artwork mode is never written to saves")
+	main._set_art("tiny_city")
+	await growth_days(10)
+	main._set_art("modern_city")
+	await growth_days(10)
+	check(main.city.growth.population > 0 and main.city.tick == 35, "simulation keeps running under the experimental artwork modes")
+	main.world.set_art("unknown")
+	check(main.world.art_mode == "original" and main.world.art == null, "an unknown artwork mode falls back to the original renderer")
 
 func project_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	return main.city.apply_command(kind, cells)

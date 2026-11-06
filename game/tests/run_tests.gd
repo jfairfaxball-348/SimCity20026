@@ -58,7 +58,7 @@ func run() -> void:
 	await test_scene()
 	if "--prove-failure-exit" in OS.get_cmdline_user_args():
 		check(false, "Deliberate runner failure to verify exit code")
-	print(JSON.stringify({"suite": "M2e", "checks": checks, "failed": failures.size(), "failures": failures}))
+	print(JSON.stringify({"suite": "M2e-artwork", "checks": checks, "failed": failures.size(), "failures": failures}))
 	quit(0 if failures.is_empty() else 1)
 
 func test_commands() -> void:
@@ -468,6 +468,13 @@ func test_scene() -> void:
 	check(main.power_label.text.contains("Supplies 20 units") and main.grid_label.text.begins_with("Power 0 / 20"), "inspector and toolbar report station capacity")
 	main._inspect_cell(Vector2i(31,31))
 	check(main.selection_label.text.contains("Home lot L0") and main.power_label.text.contains("lot"), "any tile of a lot inspects the lot")
+	# EXPERIMENTAL artwork evaluation: every mode redraws the same model.
+	var art_before: String = main.city.canonical()
+	for mode in ["tiny_city", "modern_city", "original"]:
+		main._set_art(mode)
+		main.world.queue_redraw()
+		await process_frame
+		check(main.world.art_mode == mode and main.city.canonical() == art_before, "artwork mode %s draws without changing the model" % mode)
 	main.queue_free()
 	await process_frame
 	print("PASS group: scene initialization and model binding")

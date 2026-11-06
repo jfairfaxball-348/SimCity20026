@@ -6,6 +6,7 @@ const Balance = preload("res://content/balance.gd")
 const World = preload("res://scripts/presentation/world_view.gd")
 const Style = preload("res://scripts/presentation/ui_style.gd")
 const Bindings = preload("res://scripts/input/input_bindings.gd")
+const ArtKit = preload("res://scripts/presentation/art_kit.gd")
 const SAVE_PATH: String = "user://saves/manual.json"
 const SIZES: Array[Vector2i] = [Vector2i(1280,720), Vector2i(1366,768), Vector2i(1920,1080), Vector2i(1280,800)]
 const PAN_VECTORS: Dictionary = {"pan_left": Vector2.LEFT, "pan_right": Vector2.RIGHT, "pan_up": Vector2.UP, "pan_down": Vector2.DOWN}
@@ -95,6 +96,9 @@ func _ready() -> void:
 	_set_speed(0)
 	_center_camera()
 	_inspect_cell(city.access.root)
+	# EXPERIMENTAL artwork evaluation: optional launch argument, e.g. -- --art=tiny_city.
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--art="): world.set_art(argument.trim_prefix("--art="))
 	last_usec = Time.get_ticks_usec()
 	_status("Begin at the gold flag: lay a road on its tile, zone 3x3 home lots beside connected streets, then add a 4x4 power station (P) beside a street.")
 
@@ -275,6 +279,11 @@ func _build_dialogs() -> void:
 	column.add_child(texts)
 	for amount in [16,18,20]:
 		texts.add_child(_button("Standard" if amount == 16 else "Larger" if amount == 18 else "Largest", func(): _set_text_size(amount)))
+	column.add_child(_label("Artwork (experimental evaluation)", 18))
+	var arts := HBoxContainer.new()
+	column.add_child(arts)
+	for mode in ArtKit.MODES:
+		arts.add_child(_button(ArtKit.LABELS[mode], func(): _set_art(mode)))
 	column.add_child(_button("Toggle grid  [G]", func(): world.grid_visible = not world.grid_visible; world.queue_redraw()))
 	column.add_child(_button("Center view  [Home]", _center_camera))
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
@@ -765,7 +774,12 @@ func _load_path(path: String) -> void:
 
 func _open_settings() -> void:
 	_cancel_stroke()
-	settings.popup_centered(Vector2i(680,360))
+	settings.popup_centered(Vector2i(680,440))
+
+## EXPERIMENTAL: presentation only; the simulation, saves and controls are unchanged.
+func _set_art(mode: String) -> void:
+	world.set_art(mode)
+	_status("Artwork: %s%s. Presentation only; the town and simulation are unchanged." % [ArtKit.LABELS[world.art_mode], "" if world.art_mode == "original" else " (experimental Kenney CC0 pack)"])
 
 func _open_help() -> void:
 	_cancel_stroke()
