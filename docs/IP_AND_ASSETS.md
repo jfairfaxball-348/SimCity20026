@@ -6,6 +6,8 @@ Research dated 4 November 2026; owner study boundary added 5 November 2026 (U10)
 
 The goal is an original game in a familiar genre. Original code, art, music, text, and branding will themselves be intellectual property. Legitimately licensed tools and libraries can be used without taking material from the reference game.
 
+**Plain words (owner clarification U29, 6 November 2026).** Generic genre vocabulary is not anyone's property, so this project may use it freely: residential, commercial and industrial zones or blocks, power plant, police and fire stations, land value, pollution, crime, traffic, budget, tax rate and similar terms. Care is still needed with the reference game's distinctive expression (manual, message and dialogue text), its names and trademarks (including named characters, scenarios and buildings), and any copied code, data, numbers, art, sound or recognisable look.
+
 The US Copyright Office distinguishes a game's ideas and methods from copyrightable expression. That is not blanket permission to copy the overall audiovisual presentation, and it does not clear a title as a trade mark. [US Copyright Office: Games](https://www.copyright.gov/register/tx-games.html). UK guidance likewise distinguishes protection for brands, designs, and creative work. [UK IP overview](https://www.gov.uk/intellectual-property-an-overview).
 
 Use genre-level ideas as inputs to an independently designed product. The following are project boundaries, not assertions that each individual feature is legally exclusive.

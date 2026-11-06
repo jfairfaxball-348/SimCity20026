@@ -1,40 +1,116 @@
-# Next session: ask the owner for the next direction
+# Next session: structured gap analysis and roadmap
 
-Updated 6 November 2026 after M3b. **M0/M1 through M2d, the M3a project, M2e zone lots, M2f taxes, M2g desirability, the M2h town summary and the M3b first-steps guide are implemented and locally tested. The owner's U24 roadmap is complete. M3 as a whole is incomplete:** the five-person observed test, coherent original sample audio, the full controller route and autosaves remain. There is no public release and no human enjoyment evidence.
+Updated 6 November 2026 after M3b and owner directions U29/U30. **M0/M1 through M2d, the M3a project, M2e zone lots, M2f taxes, M2g desirability, the M2h town summary and the M3b first-steps guide are implemented and locally tested. The U24 roadmap is complete. M3 as a whole is incomplete.** There is no public release and no human enjoyment evidence.
 
 ## Start here
 
-Read README, AGENTS, docs/DECISIONS.md (U16-U28, D29-D34), docs/TOOLCHAIN.md, [genre candidates](docs/GENRE_ALIGNMENT.md), the [delivery plan](docs/DELIVERY_PLAN.md) and [M3b evidence](docs/sessions/2026-11-06-m3b.md). Inspect the local diff, and fetch and reconcile live remote refs before editing.
+Read README, AGENTS (including U29 on plain words), docs/DECISIONS.md (all U and D entries), docs/PRODUCT_BRIEF.md, docs/DELIVERY_PLAN.md, docs/GENRE_ALIGNMENT.md, the permitted [study notes](docs/research/MICROPOLIS_STUDY.md) and the session evidence under `docs/sessions/`. Inspect the local diff, and fetch and reconcile live remote refs before editing.
 
-- **Branches.** The default branch is still `codex/m2a-road-access`, whose name is historical; use live history for delivered commits. The M3b work branch was `codex/m3b-first-steps`. Create a new `codex/` branch for the next work.
+- **Branches.** The default branch is still `codex/m2a-road-access`, whose name is historical. Create a new `codex/` branch for this work.
 - **Delivery.** Standing commit/push/fast-forward delivery applies. Never force-push or discard unrelated work.
 
-Use the isolated Godot 4.7.2 Standard (`4.7.2.stable.official.ed1daf0bf`) through `tools/`; the global wrapper is still 4.6.3. The current build is game 0.11.0-m3b, save schema 8, simulation/content `m2g-1`. The export EXE/PCK and `builds/citybuilder-0.11.0-m3b-windows-x64.zip` are local, ignored and unpublished.
+The current build is game 0.11.0-m3b, save schema 8, simulation/content `m2g-1` (Godot 4.7.2 through `tools/`). This session changes **no game code**.
 
-**Artwork note:** Kenney Roguelike Modern City is the default style (U22/U23); the original renderer is the fallback.
+## Assignment (U30): audit, then roadmap
 
-## Assignment
+On a subsequent **"Run next session"**, do a planning-only session in three parts, then deliver.
 
-On a subsequent **"Run next session"**, first ask the owner **one question**: which direction comes next? Offer these options:
+### 1. Audit what we have
 
-1. **Civic services (recommended next gameplay system, candidate 5).** One or two coverage buildings with upkeep (for example a clinic or school) that raise home desirability or a growth cap nearby. Explained per lot, with no crime-as-danger or destruction.
-2. **Traffic (candidate 6).** Busy roads become visible, and congestion can slow growth. It is large, and it revises the product brief's routing exclusion.
-3. **Desirability for shops and workshops**, or nuisance from power stations: a smaller extension of D33.
-4. **M3 bundle items.** Autosaves with remembered settings (including remembering the guide's dismissal), the full controller route, or coherent original sample audio.
-5. **Prepare the five-person M3 playtest.** A test plan and build only; recruitment and external messages still need separate owner authorisation.
+Inventory every player-facing feature and system in 0.11.0-m3b from this project's own code, Decisions and evidence. For each, give its status (implemented, tested locally, limits) and its key numbers. Cover at least:
 
-If the owner says "you choose", do option 1.
+- zones and their levels;
+- demand and growth;
+- roads and the outside link;
+- power;
+- budget, taxes and upkeep;
+- parks and desirability;
+- the project, summary and guide;
+- overlays and the inspector;
+- saves;
+- input and accessibility;
+- map size and generation;
+- art, audio and platforms.
 
-For the chosen item, follow the milestone pattern:
+### 2. List what the full classic game has, then the gaps
 
-1. Write its specification and adopt its rules in Decisions before code, using this project's own numbers, wording and art.
-2. Implement it with tests.
-3. Run pinned `tools/verify.ps1`, the native EXE checks and `tools/package.ps1`.
-4. Record evidence, update the README, Decisions and this handoff, and deliver under the standing instruction.
+**Baseline.** Use the original classic city-builder (the 1989 game and its console ports) as the baseline, and mark features that only later editions added as optional.
 
-Bump the game version (`0.12.0-…`). Bump the schema only if saved meaning changes.
+**Feature list.** Describe its features at player level, in our own words: what the player can build, see and manage, and what the simulation responds to. Cover at least:
 
-**Stop after that one item.**
+- **Building and growth:**
+  - zone types and density or wealth growth;
+  - demand;
+  - land value;
+  - pollution;
+  - crime;
+  - traffic and transport (road, rail);
+  - power (plant types, lines, shortages);
+  - services (police, fire) and their funding;
+  - special buildings (stadium, seaport, airport);
+- **Money and rules:**
+  - budget, taxes and funding levels;
+  - disasters;
+  - scenarios;
+  - the city evaluation, public opinion and problems;
+  - city size milestones;
+  - rewards or gifts;
+- **Information and presentation:**
+  - map overlays and graphs;
+  - terrain, map generation and editing;
+  - time controls;
+  - sound and music;
+  - animation and presentation;
+  - map and population scale.
+
+**Allowed inputs (clean-room boundary).** General genre knowledge, the permitted study notes, and public non-source feature descriptions (such as encyclopedia overviews) for what features exist.
+
+- Never open source code, ROM data, decompilations or reproduced manuals.
+- Never copy numbers, formulas, tables, text or artwork.
+- Plain genre words are fine (U29).
+
+**Gap matrix.** Write `docs/GAP_ANALYSIS.md` with one row per feature, giving:
+
+- the classic behaviour, briefly and in our own words;
+- our status: done, partial, missing, or deliberately different (for example the relaxed no-debt rule);
+- the size of the gap (S, M or L);
+- what it depends on;
+- the player impact;
+- any rights note.
+
+Also give a one-paragraph verdict on the biggest gaps.
+
+### 3. Set the roadmap
+
+**The document.** Write `docs/ROADMAP.md`, which supersedes the candidate table in `docs/GENRE_ALIGNMENT.md`. It lays out ordered milestones from 0.11.0-m3b to a feature-complete, classic-style city builder. Each milestone gives:
+
+- its scope;
+- why it comes at that point;
+- its dependencies;
+- a size in sessions;
+- whether it changes the save format or schema;
+- its acceptance gate.
+
+**Items to place.**
+
+- **Early.** The U29 terminology pass: player-facing "Residential / Commercial / Industrial" in place of Homes / Shops / Workshops, where the owner wants it.
+- **Recommended first big milestone.** Growth depth: more density levels, land value for all zone types, and services needed for the top levels.
+- **The remaining M3 gate items** at sensible points: the five-person observed playtest, coherent original audio, the controller route, autosaves and remembered settings.
+
+**Owner questions.** End with at most four questions, only for choices that are genuinely the owner's:
+
+- disasters (off, optional or on by default);
+- failure states such as debt or bankruptcy versus the relaxed no-debt rule;
+- the target map and population scale;
+- whether to include later-edition extras.
+
+Record the answers as U entries.
+
+### Deliver
+
+Update README, Decisions, DELIVERY_PLAN (pointing at the roadmap), GENRE_ALIGNMENT (marked superseded) and this handoff, so the next "Run next session" starts the first roadmap milestone. Then deliver under the standing instruction.
+
+**Planning only.** Write no game code, change no version, and make no purchases, external messages or public release.
 
 ## Preserve the current contract
 
