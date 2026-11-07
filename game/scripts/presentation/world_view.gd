@@ -20,6 +20,8 @@ var services_visible: bool = false
 ## D29: the First steps target, outlined with corner brackets while the card is shown.
 var guide_target: Vector2i = Vector2i(-1, -1)
 var guide_size: int = 1
+## D40: real-time animation phase in seconds (0 = the static first frame).
+var anim_time: float = 0.0
 var hover: Vector2i = Vector2i(-1, -1)
 var preview_cells: Array[Vector2i] = []
 var preview_valid: bool = true
@@ -99,7 +101,9 @@ func _draw_cell(cell: Vector2i) -> void:
 	var variation: int = posmod(cell.x * 317 + cell.y * 137 + city.seed_value, 97)
 	if art != null:
 		art.draw_cell(self, city, cell, i, rect, at, z, variation)
-		if city.terrain[i] == City.WATER: return
+		if city.terrain[i] == City.WATER:
+			_draw_shimmer(at, z, variation)
+			return
 		if city.occupancy[i] == City.PARK and city.project.completed and int(city.project.park_index) == i:
 			_draw_flowers(at, z)
 		_draw_grid_and_marks(i, at, z)
@@ -108,6 +112,7 @@ func _draw_cell(cell: Vector2i) -> void:
 		draw_rect(rect, WATER if variation % 3 else Color("557f80"))
 		if variation % 4 == 0:
 			draw_line(at + Vector2(3, 9) * z, at + Vector2(8, 9) * z, Color("6a9796"), z)
+		_draw_shimmer(at, z, variation)
 		return
 	draw_rect(rect, GRASS_LIGHT if variation % 3 == 0 else GRASS)
 	if cell.x > 0 and city.terrain[i - 1] == City.WATER:
@@ -283,6 +288,27 @@ func _draw_footprint(anchor: int) -> void:
 	var size: int = City.footprint_size(kind)
 	var at: Vector2 = tile_rect(Vector2i(anchor % city.width, anchor / city.width)).position
 	var z: float = float(zoom)
+	_draw_footprint_body(anchor, kind, size, at, z)
+	if kind == City.WORKSHOP and city.development[anchor] > 0: _draw_smoke(at, z)
+
+## D40: a slow streak drifting across some water tiles (4-second cycle).
+func _draw_shimmer(at: Vector2, z: float, variation: int) -> void:
+	if variation % 5 != 0: return
+	var phase: float = fposmod(anim_time / 4.0 + variation * 0.137, 1.0)
+	var x: float = 2.0 + 9.0 * phase
+	var alpha: float = 0.25 + 0.35 * sin(PI * phase)
+	draw_line(at + Vector2(x, 5 + variation % 7) * z, at + Vector2(x + 4, 5 + variation % 7) * z, Color(0.9, 0.97, 1.0, alpha), z)
+
+## D40: three puffs rising and fading above a developed industrial lot (3-second cycle).
+func _draw_smoke(at: Vector2, z: float) -> void:
+	var base: Vector2 = at + Vector2(38, 4) * z
+	for k in range(3):
+		var p: float = fposmod(anim_time / 3.0 + k / 3.0, 1.0)
+		var centre: Vector2 = base + Vector2(3.0 * p, -10.0 * p) * z
+		var radius: float = (1.6 + 1.8 * p) * z
+		draw_circle(centre, radius, Color(0.86, 0.87, 0.84, 0.75 * (1.0 - p)))
+
+func _draw_footprint_body(anchor: int, kind: int, size: int, at: Vector2, z: float) -> void:
 	var rect := Rect2(at, Vector2.ONE * TILE * size * z)
 	if City.is_civic(kind):
 		if art != null: art.draw_civic(self, kind, at, size, z)
@@ -472,7 +498,9 @@ func _draw_outside_link() -> void:
 	var rect: Rect2 = tile_rect(city.access.root)
 	var z: float = float(zoom)
 	var color := Color("f0d68e")
-	draw_rect(rect.grow(-z), color, false, 2 * z)
+	# D40: the outline breathes slowly between two brightnesses (2.4-second cycle).
+	var breath: float = 0.8 + 0.2 * sin(TAU * anim_time / 2.4)
+	draw_rect(rect.grow(-z), Color(color, breath), false, 2 * z)
 	# Keep the original flag inside its tile so it never obscures nearby roads.
 	# The persistent inspector and Outside link button supply the readable name.
 	var pole: Vector2 = rect.position + Vector2(14, 13) * z

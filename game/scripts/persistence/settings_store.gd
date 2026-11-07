@@ -1,14 +1,18 @@
 extends RefCounted
 ## D39: remembered presentation settings in their own small, versioned file. Never part
 ## of a town save and never read by the model. Any invalid file gives all defaults.
+## D40: version 2 adds volumes, mute and animation; a valid version-1 file migrates.
 const FileOps = preload("res://scripts/persistence/file_ops.gd")
-const VERSION: int = 1
+const VERSION: int = 2
 const MAX_BYTES: int = 4096
 const DEFAULT_PATH: String = "user://settings.json"
 const WINDOW_SIZES: Array[Vector2i] = [Vector2i(1280,720), Vector2i(1366,768), Vector2i(1920,1080), Vector2i(1280,800)]
 const TEXT_SIZES: Array[int] = [16, 18, 20]
 const ARTS: Array[String] = ["original", "tiny_city", "modern_city"]
 const FLAGS: Array[String] = ["grid", "road_marks", "power_marks", "land_value", "services", "guide_hidden"]
+## D40 additions (version 2).
+const VOLUMES: Array[String] = ["master_volume", "effects_volume", "music_volume"]
+const FLAGS_V2: Array[String] = ["muted", "animation"]
 ## Tests point this at an isolated file before the main scene starts.
 static var override_path: String = ""
 var files: FileOps
@@ -20,7 +24,13 @@ static func path() -> String:
 	return override_path if not override_path.is_empty() else DEFAULT_PATH
 
 static func defaults() -> Dictionary:
-	return {"settings_version": VERSION, "window": [], "text_size": 16, "art": "modern_city",
+	var out: Dictionary = defaults_v1()
+	out.settings_version = VERSION
+	out.merge({"master_volume": 80, "effects_volume": 70, "music_volume": 30, "muted": false, "animation": true})
+	return out
+
+static func defaults_v1() -> Dictionary:
+	return {"settings_version": 1, "window": [], "text_size": 16, "art": "modern_city",
 		"grid": true, "road_marks": true, "power_marks": true, "land_value": false, "services": false, "guide_hidden": false}
 
 ## Returns {"settings": Dictionary, "ok": bool, "message": String}; ok is false when the
@@ -42,17 +52,29 @@ func load_settings() -> Dictionary:
 	out.text_size = int(data.text_size)
 	out.art = String(data.art)
 	for flag in FLAGS: out[flag] = bool(data[flag])
+	if int(data.settings_version) == 1:
+		return {"settings": out, "ok": true, "message": "Version-1 settings restored; sound and animation use the defaults."}
+	for key in VOLUMES: out[key] = int(data[key])
+	for flag in FLAGS_V2: out[flag] = bool(data[flag])
 	return {"settings": out, "ok": true, "message": "Settings restored."}
 
 static func whole(value: Variant) -> bool:
 	return typeof(value) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(value)) and floor(float(value)) == float(value)
 
-## Exactly the version-1 keys with allowed values.
+## Exactly the version-1 or version-2 keys with allowed values.
 static func valid(data: Variant) -> bool:
-	if typeof(data) != TYPE_DICTIONARY or data.size() != defaults().size(): return false
-	for key in defaults():
+	if typeof(data) != TYPE_DICTIONARY or not data.has("settings_version") or not whole(data.settings_version): return false
+	var version: int = int(data.settings_version)
+	if version != 1 and version != VERSION: return false
+	var expected: Dictionary = defaults_v1() if version == 1 else defaults()
+	if data.size() != expected.size(): return false
+	for key in expected:
 		if not data.has(key): return false
-	if not whole(data.settings_version) or int(data.settings_version) != VERSION: return false
+	if version == VERSION:
+		for key in VOLUMES:
+			if not whole(data[key]) or int(data[key]) < 0 or int(data[key]) > 100 or int(data[key]) % 10 != 0: return false
+		for flag in FLAGS_V2:
+			if typeof(data[flag]) != TYPE_BOOL: return false
 	if typeof(data.window) != TYPE_ARRAY: return false
 	if not data.window.is_empty():
 		if data.window.size() != 2 or not whole(data.window[0]) or not whole(data.window[1]): return false

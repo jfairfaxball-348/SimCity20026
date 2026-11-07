@@ -13,6 +13,7 @@ const Guide = preload("res://scripts/presentation/opening_guide.gd")
 const Calendar = preload("res://scripts/presentation/calendar.gd")
 const Settings = preload("res://scripts/persistence/settings_store.gd")
 const HistoryGraph = preload("res://scripts/presentation/history_graph.gd")
+const AudioDirector = preload("res://scripts/presentation/audio_director.gd")
 const SAVE_PATH: String = "user://saves/manual.json"
 const SIZES: Array[Vector2i] = Settings.WINDOW_SIZES
 const PAN_VECTORS: Dictionary = {"pan_left": Vector2.LEFT, "pan_right": Vector2.RIGHT, "pan_up": Vector2.UP, "pan_down": Vector2.DOWN}
@@ -103,6 +104,15 @@ var autosave_period: int = 0
 var graphs_dialog: AcceptDialog
 var graphs_view: HistoryGraph
 var graphs_note: Label
+## D40: sound, music and animation (presentation only).
+var audio: AudioDirector
+var animation_on: bool = true
+var anim_clock: float = 0.0
+var anim_since_draw: float = 0.0
+var sound_dialog: AcceptDialog
+var volume_labels: Dictionary = {}
+var mute_toggle: CheckButton
+var animation_toggle: CheckButton
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
@@ -125,6 +135,8 @@ func _ready() -> void:
 	world_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	world_texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	add_child(world_texture)
+	audio = AudioDirector.new()
+	add_child(audio)
 	_build_ui()
 	get_viewport().size_changed.connect(_layout_ui)
 	_layout_ui()
@@ -359,11 +371,17 @@ func _build_dialogs() -> void:
 	column.add_child(_button("Toggle grid  [G]", _toggle_grid))
 	column.add_child(_button("Land value overlay  [V]", _toggle_desirability))
 	column.add_child(_button("Services overlay  [C]", _toggle_services))
-	column.add_child(_button("Center view  [Home]", _center_camera))
+	# D40: Center view and Sound & motion share a row so Display still fits 720p.
+	var extras := HBoxContainer.new()
+	extras.add_theme_constant_override("separation", 8)
+	column.add_child(extras)
+	for button: Button in [_button("Center view  [Home]", _center_camera), _button("Sound & motion…", _open_sound)]:
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		extras.add_child(button)
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_text = _label("1 Roads · 2 Residential · 6 Commercial · 7 Industrial\nP Power plant · 8 Park · 9 Police · 0 Fire · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nH Graphs: residents, jobs and funds month by month.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced residential lots.\nZones and police/fire stations are 3x3; power plants are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV land value overlay · C services overlay.\nDemand meter: R residential, C commercial, I industrial.\nDates run in 30-day months from 1 Jan 1950.\n\nJoin roads from the gold flag; zone beside them.\nAdd a power plant: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level (0-4).\nLevels 3-4 hold far more; they need land value 1 / 2\n(commercial 3 / 4); industry needs 100 / 250 residents. Plain streets stop at level 2.\nLevel 4 also needs police and fire cover: a station with road\naccess and power covers lots within 12 steps ($30/month each).\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nLand value: park within 3 +2, water within 3 +1,\neach developed industrial lot within 2 steps −2 (up to 3).\nCommercial: +1 per developed residential lot within 3 (up to 2).\nResidential and commercial: higher grows first;\nbelow 0 a lot stops at level 1.\nIndustry ignores land value: nearest the link (by road) grows first.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Every 60 days of play\nthe game also autosaves to one of 3 slots (Load > Load autosave);\nautosaves never replace your manual save.\nDisplay, text, art, overlays and the First steps choice are remembered.", 16)
+	help_text = _label("1 Roads · 2 Residential · 6 Commercial · 7 Industrial\nP Power plant · 8 Park · 9 Police · 0 Fire · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nH Graphs: residents, jobs and funds month by month.\nM mutes or unmutes; Display > Sound & motion sets volumes and animation.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced residential lots.\nZones and police/fire stations are 3x3; power plants are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV land value overlay · C services overlay.\nDemand meter: R residential, C commercial, I industrial.\nDates run in 30-day months from 1 Jan 1950.\n\nJoin roads from the gold flag; zone beside them.\nAdd a power plant: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level (0-4).\nLevels 3-4 hold far more; they need land value 1 / 2\n(commercial 3 / 4); industry needs 100 / 250 residents. Plain streets stop at level 2.\nLevel 4 also needs police and fire cover: a station with road\naccess and power covers lots within 12 steps ($30/month each).\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nLand value: park within 3 +2, water within 3 +1,\neach developed industrial lot within 2 steps −2 (up to 3).\nCommercial: +1 per developed residential lot within 3 (up to 2).\nResidential and commercial: higher grows first;\nbelow 0 a lot stops at level 1.\nIndustry ignores land value: nearest the link (by road) grows first.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Every 60 days of play\nthe game also autosaves to one of 3 slots (Load > Load autosave);\nautosaves never replace your manual save.\nDisplay, text, art, overlays and the First steps choice are remembered.", 16)
 	add_child(help_dialog)
 	help_dialog.add_button("Show first steps", false, "guide")
 	help_dialog.custom_action.connect(func(action: String):
@@ -424,6 +442,7 @@ func _build_dialogs() -> void:
 			_load_autosave())
 	add_child(load_dialog)
 	_build_graphs_dialog()
+	_build_sound_dialog()
 	quit_dialog = ConfirmationDialog.new()
 	quit_dialog.title = "Keep your changes?"
 	quit_dialog.dialog_text = "Save this city before leaving?"
@@ -492,7 +511,10 @@ func _process(_delta: float) -> void:
 	var elapsed: int = now - last_usec
 	last_usec = now
 	if not focus_paused and not _modal_open():
+		var levels_before: int = _total_levels()
+		var settled_before: int = int(city.last_budget.get("tick", 0))
 		if Clock.advance(city, elapsed, speed) > 0:
+			_sound_after_time(levels_before, settled_before)
 			dirty = true
 			_refresh_metrics()
 			world.queue_redraw()
@@ -503,6 +525,27 @@ func _process(_delta: float) -> void:
 		if direction != Vector2.ZERO and not Input.is_physical_key_pressed(KEY_CTRL) and not Input.is_key_pressed(KEY_CTRL):
 			world.pan_pixels(direction.normalized() * 360 * minf(float(elapsed) / 1_000_000, 0.1))
 	_update_hover()
+	_animate(float(elapsed) / 1_000_000.0)
+
+## D40: real-time animation clock; about ten redraws a second while animation is on.
+func _animate(seconds: float) -> void:
+	if not animation_on or world == null: return
+	anim_clock = fmod(anim_clock + clampf(seconds, 0.0, 0.5), 1200.0)
+	anim_since_draw += seconds
+	if anim_since_draw >= 0.1:
+		anim_since_draw = 0.0
+		world.anim_time = anim_clock
+		world.queue_redraw()
+
+func _total_levels() -> int:
+	return city.growth.levels[City.HOME] + city.growth.levels[City.SHOP] + city.growth.levels[City.WORKSHOP]
+
+## D40: one grow chime when a round raised the town's levels; a bell for a deficit month.
+func _sound_after_time(levels_before: int, settled_before: int) -> void:
+	if int(city.last_budget.get("tick", 0)) != settled_before and City.Economy.totals(city.last_budget).net < 0:
+		audio.play("alert")
+	elif _total_levels() > levels_before:
+		audio.play("grow")
 
 func _input(event: InputEvent) -> void:
 	# A tap can begin and end between render frames, especially with virtual keys.
@@ -568,6 +611,8 @@ func _shortcut_input(event: InputEvent) -> void:
 		_open_summary()
 	elif event.is_action_pressed("show_graphs"):
 		_open_graphs()
+	elif event.is_action_pressed("toggle_mute"):
+		_set_muted(not audio.muted)
 	elif event.is_action_pressed("toggle_guide"):
 		_set_guide_visible(not guide_visible, true)
 	elif event.is_action_pressed("show_budget"):
@@ -601,7 +646,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_extend_stroke(world.cell_at(_view_position(event.position)))
 
 func _modal_open() -> bool:
-	return settings != null and (settings.visible or project_dialog.visible or summary_dialog.visible or budget_dialog.visible or help_dialog.visible or load_dialog.visible or quit_dialog.visible or recovery_dialog.visible or (graphs_dialog != null and graphs_dialog.visible))
+	return settings != null and (settings.visible or project_dialog.visible or summary_dialog.visible or budget_dialog.visible or help_dialog.visible or load_dialog.visible or quit_dialog.visible or recovery_dialog.visible or (graphs_dialog != null and graphs_dialog.visible) or (sound_dialog != null and sound_dialog.visible))
 
 func _is_world_position(point: Vector2) -> bool:
 	if not world_rect.has_point(point) or _modal_open(): return false
@@ -863,6 +908,9 @@ func _commit_stroke() -> void:
 	if result.ok and not result.changed.is_empty():
 		dirty = true
 		print("COMMAND ", JSON.stringify(result.record))
+		audio.play("clear" if tool == "clear" else "build")
+	elif not result.ok:
+		audio.play("reject")
 	_status(String(result.message))
 	_cancel_stroke()
 	_refresh_metrics()
@@ -1037,7 +1085,9 @@ func settings_values() -> Dictionary:
 	return {"settings_version": Settings.VERSION, "window": remembered_window.duplicate(), "text_size": font_size,
 		"art": world.art_mode, "grid": world.grid_visible, "road_marks": world.access_visible,
 		"power_marks": world.power_visible, "land_value": world.desirability_visible,
-		"services": world.services_visible, "guide_hidden": not guide_visible}
+		"services": world.services_visible, "guide_hidden": not guide_visible,
+		"master_volume": int(audio.volumes.master), "effects_volume": int(audio.volumes.effects),
+		"music_volume": int(audio.volumes.music), "muted": audio.muted, "animation": animation_on}
 
 func _remember_settings() -> void:
 	if applying_settings or world == null: return
@@ -1061,11 +1111,84 @@ func _apply_settings() -> void:
 		DisplayServer.window_set_size(Vector2i(int(remembered_window[0]), int(remembered_window[1])))
 	if int(values.text_size) != font_size: _set_text_size(int(values.text_size))
 	guide_visible = not bool(values.guide_hidden)
+	audio.volumes = {"master": int(values.master_volume), "effects": int(values.effects_volume), "music": int(values.music_volume)}
+	audio.muted = bool(values.muted)
+	audio.apply()
+	_set_animation(bool(values.animation))
+	_refresh_sound_dialog()
 	applying_settings = false
 	_refresh_guide()
 	_update_legend()
 	world.queue_redraw()
 	print("SETTINGS ", loaded.message)
+
+## D40: Sound & motion: three volumes, Mute all and Animation, all remembered.
+func _build_sound_dialog() -> void:
+	sound_dialog = AcceptDialog.new()
+	sound_dialog.title = "Sound & motion"
+	sound_dialog.get_ok_button().text = "Close"
+	add_child(sound_dialog)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	sound_dialog.add_child(column)
+	for entry in [["master", "Master"], ["effects", "Sounds"], ["music", "Music"]]:
+		var key: String = entry[0]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		column.add_child(row)
+		var label := _label("", 18)
+		label.custom_minimum_size.x = 190
+		row.add_child(label)
+		volume_labels[key] = label
+		row.add_child(_button("−", func(): _change_volume(key, -10)))
+		row.add_child(_button("+", func(): _change_volume(key, 10)))
+	mute_toggle = CheckButton.new()
+	mute_toggle.text = "Mute all  [M]"
+	mute_toggle.toggled.connect(func(value: bool): _set_muted(value))
+	column.add_child(mute_toggle)
+	animation_toggle = CheckButton.new()
+	animation_toggle.text = "Animation (water, smoke, flag)"
+	animation_toggle.toggled.connect(func(value: bool):
+		_set_animation(value)
+		_remember_settings())
+	column.add_child(animation_toggle)
+	column.add_child(_label("All sounds and music are made by this game's own code.", 15, Style.MUTED))
+
+func _open_sound() -> void:
+	_cancel_stroke()
+	settings.hide()
+	_refresh_sound_dialog()
+	sound_dialog.popup_centered(Vector2i(520, 360))
+
+func _refresh_sound_dialog() -> void:
+	if sound_dialog == null: return
+	for key in volume_labels:
+		(volume_labels[key] as Label).text = "%s %d%%" % [{"master": "Master", "effects": "Sounds", "music": "Music"}[key], int(audio.volumes[key])]
+		(volume_labels[key] as Label).add_theme_font_size_override("font_size", font_size + 2)
+	mute_toggle.set_pressed_no_signal(audio.muted)
+	animation_toggle.set_pressed_no_signal(animation_on)
+
+func _change_volume(key: String, step: int) -> void:
+	audio.volumes[key] = clampi(int(audio.volumes[key]) + step, 0, 100)
+	audio.apply()
+	_refresh_sound_dialog()
+	_remember_settings()
+	if key == "effects": audio.play("build")
+
+func _set_muted(value: bool) -> void:
+	audio.muted = value
+	audio.apply()
+	_refresh_sound_dialog()
+	_status("Sound muted (M to unmute)." if value else "Sound on (M to mute).")
+	_remember_settings()
+
+func _set_animation(value: bool) -> void:
+	animation_on = value
+	if not value:
+		anim_clock = 0.0
+		world.anim_time = 0.0
+	world.queue_redraw()
+	if animation_toggle != null: animation_toggle.set_pressed_no_signal(value)
 
 func _build_graphs_dialog() -> void:
 	graphs_dialog = AcceptDialog.new()

@@ -18,6 +18,19 @@ M2g (6 November 2026) adds an original code-drawn desirability overlay in `world
 
 M2h (6 November 2026) adds an original *Town summary* dialog and status-bar button in `main.gd`, with original item wording and ordering in `game/scripts/presentation/town_summary.gd`. It adds no images or sounds, and no external assets or reference sources were used.
 
+R4 (7 November 2026) adds the project's first audio. **Every sound and the music are synthesised at run time by this project's own code in `game/scripts/presentation/sound_kit.gd`; no audio file, sample, soundfont, pack, download or generation service is used.** Ledger:
+
+| Item | How it is made | Rights |
+| --- | --- | --- |
+| build | two triangle-wave notes (E5, A5) with an exponential envelope, 0.22 s | original, this project |
+| clear | a burst of our own linear-congruential noise through a one-pole low-pass, 0.2 s | original, this project |
+| reject | two short sine taps on A3, 0.2 s | original, this project |
+| grow | three sine notes (C6, E6, G6) 80 ms apart, 0.46 s | original, this project |
+| alert | two sine bells (G4, D5) with a soft octave partial, 0.62 s | original, this project |
+| music loop | a 16-beat, 80 BPM piece written for this project: a sine pad over four chords (C, F, Am, G) and a sparse triangle-wave melody whose notes are listed in the code; 12 s, looped | original composition and synthesis, this project |
+
+The chord sequence uses ordinary harmony; the melody and arrangement were written for this project and are not taken from or modelled on any existing piece. R4 also adds original code-drawn animation in `world_view.gd` (water shimmer streaks, rising smoke puffs and a breathing flag outline) and the original *Sound & motion* dialog and help wording in `main.gd`. No external assets or reference sources were used.
+
 R3 (6 November 2026) adds an original *Town history* dialog in `main.gd` and original code-drawn line graphs (solid and dashed lines, axes and text labels) in `game/scripts/presentation/history_graph.gd`, plus original autosave, settings, load and help wording. No images, sounds, external assets or reference sources were used.
 
 R2c (6 November 2026) adds original code-drawn police and fire stations in `world_view.gd` for the original renderer (a slate hall with a column porch, and a brick hall with two bay doors and a hose tower), an original shield sign and flame sign drawn from polygons on every station in all art modes, an original thin slate or brick band on the Kenney-tile stations in `art_kit.gd` (built from the packs' own wall, roof and front tiles), and an original Services overlay (small squares, triangles and a two-tone cross). Station, overlay, inspector, summary and help wording is original. No external assets or reference sources were used.

@@ -148,7 +148,7 @@ func test_settings() -> void:
 	var back: Dictionary = store.load_settings()
 	t.check(back.ok and back.settings == values, "settings round-trip exactly")
 	var good: String = FileAccess.get_file_as_string(Settings.path())
-	var bad_cases: Dictionary = {"malformed": "{", "list": "[]", "wrong version": good.replace("\"settings_version\":1", "\"settings_version\":2"),
+	var bad_cases: Dictionary = {"malformed": "{", "list": "[]", "wrong version": good.replace("\"settings_version\":2", "\"settings_version\":3"),
 		"odd window": good.replace("[1366,768]", "[1000,700]"), "text size": good.replace("\"text_size\":20", "\"text_size\":17"),
 		"art": good.replace("\"original\"", "\"pastel\""), "flag type": good.replace("\"services\":true", "\"services\":1"),
 		"extra key": good.replace("{", "{\"volume\":3,"), "missing key": good.replace("\"grid\":true,", ""),

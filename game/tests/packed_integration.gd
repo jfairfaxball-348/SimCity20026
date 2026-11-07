@@ -412,6 +412,7 @@ func run() -> void:
 	await density_flow(isolated)
 	await services_flow(isolated)
 	await r3_flow(isolated)
+	await r4_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -1246,6 +1247,95 @@ func r3_flow(isolated: IsolatedStore) -> void:
 	check(main.font_size == 16 and main.world.art_mode == "modern_city" and not main.world.services_visible and main.world.grid_visible and main.guide_panel.visible, "an invalid settings file starts with the defaults")
 	check(main.city.history.is_empty() and main.city.tick == 0, "settings never carry town state")
 	main._set_text_size(16)
+
+func run_days(target_tick: int) -> void:
+	main._set_speed(3)
+	var guard: int = 0
+	while main.city.tick < target_tick and guard < 400:
+		main.last_usec = Time.get_ticks_usec() - 3_000_000
+		main._process(0.0)
+		guard += 1
+	main._set_speed(0)
+
+## D40 / R4: sounds for actions and time, the Sound & motion dialog, M, animation and
+## remembered sound settings, through the shipped UI.
+func r4_flow(isolated: IsolatedStore) -> void:
+	await fresh_scene(isolated)
+	check(int(main.audio.volumes.master) == 80 and int(main.audio.volumes.effects) == 70 and int(main.audio.volumes.music) == 30 and not main.audio.muted and main.animation_on, "a new game starts at 80 / 70 / 30 with animation on")
+	var count: int = main.audio.effect_count
+	main._select_tool("road")
+	main.stroke.assign([Vector2i(63, 32), Vector2i(62, 32)])
+	main._commit_stroke()
+	check(main.audio.last_effect == "build" and main.audio.effect_count == count + 1, "a successful build plays the build sound")
+	main._select_tool("clear")
+	main.stroke.assign([Vector2i(62, 32)])
+	main._commit_stroke()
+	check(main.audio.last_effect == "clear", "clearing plays the clear sound")
+	main._select_tool("road")
+	main.stroke.assign([Vector2i(0, 0)])
+	main._commit_stroke()
+	check(main.audio.last_effect == "reject" and "Water" in main.status_label.text, "a refused stroke plays the reject sound")
+	main._select_tool("road")
+	var roads: Array[Vector2i] = []
+	for x in range(42, 64): roads.append(Vector2i(x, 32))
+	project_command("road", roads)
+	project_command("power", [Vector2i(38, 31)])
+	project_command("home", [Vector2i(42, 29), Vector2i(45, 29)])
+	count = main.audio.effect_count
+	await run_days(10)
+	check(main.audio.last_effect == "grow" and main.audio.effect_count > count, "growth during play plays the grow chime")
+	var extra: Array[Vector2i] = []
+	for y in range(0, 60): extra.append(Vector2i(30, y))
+	project_command("road", extra)
+	await run_days(31)
+	check(main.city.last_budget.tick == 30 and City.Economy.totals(main.city.last_budget).net < 0 and main.audio.last_effect == "alert", "a settlement that closes with a deficit plays the alert")
+	var before: String = main.city.canonical()
+	main._animate(0.35)
+	check(main.world.anim_time > 0.0 and main.city.canonical() == before, "animation advances in real time and never changes the town")
+	main._open_settings()
+	await frames()
+	var sound_button: Button = null
+	for child in main.settings.find_children("*", "Button", true, false):
+		if (child as Button).text.begins_with("Sound & motion"): sound_button = child
+	check(sound_button != null and main.settings.position.y >= 0 and main.settings.position.y + main.settings.size.y <= 720 and main.settings.get_ok_button().get_global_rect().end.y <= 720, "Display offers Sound & motion and still fits 720p (%s, %s)" % [main.settings.position, main.settings.size])
+	if sound_button != null:
+		sound_button.pressed.emit()
+		await frames()
+	check(main.sound_dialog.visible and not main.settings.visible and main._modal_open() and "Music 30%" in main.volume_labels.music.text, "Sound & motion opens from Display, suspends time and shows the volumes")
+	for resolution in [Vector2i(1280, 720), Vector2i(1366, 768)]:
+		root.size = resolution
+		for amount in [16, 18, 20]:
+			main._set_text_size(amount)
+			main._open_sound()
+			await frames()
+			check(main.sound_dialog.size.y <= resolution.y and main.sound_dialog.get_ok_button().get_global_rect().end.y <= resolution.y and main.sound_dialog.size.x <= resolution.x, "sound dialog fits %s text %d" % [resolution, amount])
+	root.size = Vector2i(1280, 720)
+	main._set_text_size(16)
+	main._open_sound()
+	await frames()
+	var minus: Button = null
+	for child in main.volume_labels.music.get_parent().get_children():
+		if child is Button and (child as Button).text == "−": minus = child
+	minus.pressed.emit()
+	minus.pressed.emit()
+	minus.pressed.emit()
+	check(int(main.audio.volumes.music) == 0 and AudioServer.is_bus_mute(AudioServer.get_bus_index("Music")) and "Music 0%" in main.volume_labels.music.text, "music − three times reaches 0% and silences the music bus")
+	main.animation_toggle.toggled.emit(false)
+	main.animation_toggle.button_pressed = false
+	await frames()
+	main._animate(1.0)
+	check(not main.animation_on and main.world.anim_time == 0.0, "Animation off holds the static first frame")
+	main.sound_dialog.hide()
+	await key(KEY_M)
+	check(main.audio.muted and AudioServer.is_bus_mute(AudioServer.get_bus_index("Master")) and "Sound muted" in main.status_label.text, "M mutes all sound")
+	var stored: Dictionary = main.settings_store.load_settings()
+	check(stored.ok and int(stored.settings.music_volume) == 0 and bool(stored.settings.muted) and not bool(stored.settings.animation), "volumes, mute and animation are written to settings")
+	await fresh_scene(isolated, false, true)
+	check(int(main.audio.volumes.music) == 0 and main.audio.muted and not main.animation_on and AudioServer.is_bus_mute(AudioServer.get_bus_index("Master")), "a restarted game restores volumes, mute and animation")
+	await key(KEY_M)
+	check(not main.audio.muted and not AudioServer.is_bus_mute(AudioServer.get_bus_index("Master")) and "Sound on" in main.status_label.text, "M unmutes")
+	await fresh_scene(isolated)
+	check(int(main.audio.volumes.music) == 30 and not main.audio.muted, "flows after this start from the default sound settings")
 
 func project_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	return main.city.apply_command(kind, cells)
