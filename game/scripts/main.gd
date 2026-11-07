@@ -113,6 +113,24 @@ var sound_dialog: AcceptDialog
 var volume_labels: Dictionary = {}
 var mute_toggle: CheckButton
 var animation_toggle: CheckButton
+## D41: gamepad route, Menu, prompts and remappable controls.
+var pad_active: bool = false
+var pad_cursor: Vector2i = Vector2i(-1, -1)
+var pad_held: Vector2i = Vector2i.ZERO
+var pad_repeat: float = 0.0
+var bindings: Dictionary = Bindings.empty()
+var prompt_panel: PanelContainer
+var prompt_label: Label
+var pad_menu: AcceptDialog
+var controls_dialog: AcceptDialog
+var controls_note: Label
+var controls_rows: Dictionary = {}
+var rebind_wait: Dictionary = {}
+## [button, action, format] for buttons whose text names a remappable key.
+var key_labels: Array = []
+var modal_windows: Array[Window] = []
+const PAD_REPEAT_DELAY: float = 0.3
+const PAD_REPEAT_RATE: float = 12.0
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
@@ -176,6 +194,7 @@ func _build_ui() -> void:
 	row.add_child(funds)
 	funds.add_child(cash_label)
 	budget_button = _button("Budget [B]", _open_budget)
+	key_labels.append([budget_button, "show_budget", "Budget [%s]"])
 	budget_button.add_theme_font_size_override("font_size", 14)
 	for style_name in ["normal", "hover", "pressed", "focus"]:
 		var compact: StyleBox = theme.get_stylebox(style_name, "Button").duplicate()
@@ -186,6 +205,7 @@ func _build_ui() -> void:
 	funds.add_child(town_actions)
 	town_actions.add_child(budget_button)
 	project_button = _button("Project [J]", _open_project)
+	key_labels.append([project_button, "show_project", "Project [%s]"])
 	project_button.add_theme_font_size_override("font_size", 14)
 	town_actions.add_child(project_button)
 	day_label = _label("", 16)
@@ -233,8 +253,12 @@ func _build_ui() -> void:
 		else:
 			column.add_child(button)
 		tool_buttons[kind] = button
+		var label_text: String = entry[1]
+		var gap: String = "  " if label_text.contains("  ") else " "
+		key_labels.append([button, "tool_" + kind, "%s" + gap + label_text.substr(label_text.find(gap) + gap.length())])
 	column.add_child(HSeparator.new())
 	var outside_button := _button("Link [Home]", _center_camera)
+	key_labels.append([outside_button, "center_camera", "Link [%s]"])
 	var navigation := HBoxContainer.new()
 	column.add_child(navigation)
 	outside_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -245,8 +269,10 @@ func _build_ui() -> void:
 	marks.add_theme_constant_override("separation", 6)
 	column.add_child(marks)
 	access_button = _button("Road [R]", _toggle_access)
+	key_labels.append([access_button, "toggle_access", "Road [%s]"])
 	access_button.tooltip_text = "Road access marks: + connected / − missing"
 	power_button = _button("Power [E]", _toggle_power)
+	key_labels.append([power_button, "toggle_power", "Power [%s]"])
 	power_button.tooltip_text = "Power marks: bolt powered / × unpowered lot"
 	for toggle: Button in [access_button, power_button]:
 		toggle.toggle_mode = true
@@ -308,6 +334,7 @@ func _build_ui() -> void:
 	status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	footer.add_child(status_label)
 	summary_button = _button("Town summary [T]", _open_summary)
+	key_labels.append([summary_button, "show_summary", "Town summary [%s]"])
 	summary_button.tooltip_text = "The biggest measurable causes holding the town back, with where to look."
 	summary_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	summary_button.add_theme_font_size_override("font_size", 14)
@@ -318,7 +345,20 @@ func _build_ui() -> void:
 		summary_button.add_theme_stylebox_override(style_name, compact)
 	footer.add_child(summary_button)
 	_build_guide()
+	# D41: gamepad prompts below the top bar, shown only while the gamepad is in use.
+	prompt_panel = _panel()
+	prompt_panel.visible = false
+	prompt_label = _label("South build · East cancel · LB/RB tool · LT/RT zoom · West speed · North summary · Back menu", 14)
+	prompt_panel.add_child(prompt_label)
 	_build_dialogs()
+	# D41: every dialog suspends time and puts focus on a button when it opens.
+	for window: AcceptDialog in [settings, project_dialog, summary_dialog, budget_dialog, help_dialog, load_dialog, quit_dialog, recovery_dialog, graphs_dialog, sound_dialog, pad_menu, controls_dialog]:
+		modal_windows.append(window)
+		var target: AcceptDialog = window
+		window.visibility_changed.connect(func(): if target.visible: _focus_dialog.call_deferred(target))
+		# Dialogs take their own input: East closes them (Back also closes the Menu),
+		# except while a Controls row is waiting for a button.
+		window.window_input.connect(func(event: InputEvent): _dialog_pad_input(target, event))
 	_refresh_metrics()
 
 func _panel() -> PanelContainer:
@@ -375,13 +415,13 @@ func _build_dialogs() -> void:
 	var extras := HBoxContainer.new()
 	extras.add_theme_constant_override("separation", 8)
 	column.add_child(extras)
-	for button: Button in [_button("Center view  [Home]", _center_camera), _button("Sound & motion…", _open_sound)]:
+	for button: Button in [_button("Center view  [Home]", _center_camera), _button("Sound & motion…", _open_sound), _button("Controls…", _open_controls)]:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		extras.add_child(button)
 	column.add_child(_label("Pixel world stays crisp; interface text scales separately.", 15, Style.MUTED))
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = "Controls & notes"
-	help_text = _label("1 Roads · 2 Residential · 6 Commercial · 7 Industrial\nP Power plant · 8 Park · 9 Police · 0 Fire · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nH Graphs: residents, jobs and funds month by month.\nM mutes or unmutes; Display > Sound & motion sets volumes and animation.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced residential lots.\nZones and police/fire stations are 3x3; power plants are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV land value overlay · C services overlay.\nDemand meter: R residential, C commercial, I industrial.\nDates run in 30-day months from 1 Jan 1950.\n\nJoin roads from the gold flag; zone beside them.\nAdd a power plant: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level (0-4).\nLevels 3-4 hold far more; they need land value 1 / 2\n(commercial 3 / 4); industry needs 100 / 250 residents. Plain streets stop at level 2.\nLevel 4 also needs police and fire cover: a station with road\naccess and power covers lots within 12 steps ($30/month each).\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nLand value: park within 3 +2, water within 3 +1,\neach developed industrial lot within 2 steps −2 (up to 3).\nCommercial: +1 per developed residential lot within 3 (up to 2).\nResidential and commercial: higher grows first;\nbelow 0 a lot stops at level 1.\nIndustry ignores land value: nearest the link (by road) grows first.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Every 60 days of play\nthe game also autosaves to one of 3 slots (Load > Load autosave);\nautosaves never replace your manual save.\nDisplay, text, art, overlays and the First steps choice are remembered.", 16)
+	help_text = _label("1 Roads · 2 Residential · 6 Commercial · 7 Industrial\nP Power plant · 8 Park · 9 Police · 0 Fire · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nH Graphs: residents, jobs and funds month by month.\nM mutes or unmutes; Display > Sound & motion sets volumes and animation.\nKeys shown here are the defaults; Display > Controls changes keys and buttons.\nGamepad: stick / d-pad cursor, South build, East cancel, LB/RB tool,\nLT/RT zoom, right stick pan, Start pause, West speed, North summary,\nBack menu (every dialog and command), L3 back to the link.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced residential lots.\nZones and police/fire stations are 3x3; power plants are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV land value overlay · C services overlay.\nDemand meter: R residential, C commercial, I industrial.\nDates run in 30-day months from 1 Jan 1950.\n\nJoin roads from the gold flag; zone beside them.\nAdd a power plant: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level (0-4).\nLevels 3-4 hold far more; they need land value 1 / 2\n(commercial 3 / 4); industry needs 100 / 250 residents. Plain streets stop at level 2.\nLevel 4 also needs police and fire cover: a station with road\naccess and power covers lots within 12 steps ($30/month each).\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nLand value: park within 3 +2, water within 3 +1,\neach developed industrial lot within 2 steps −2 (up to 3).\nCommercial: +1 per developed residential lot within 3 (up to 2).\nResidential and commercial: higher grows first;\nbelow 0 a lot stops at level 1.\nIndustry ignores land value: nearest the link (by road) grows first.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Every 60 days of play\nthe game also autosaves to one of 3 slots (Load > Load autosave);\nautosaves never replace your manual save.\nDisplay, text, art, overlays and the First steps choice are remembered.", 16)
 	add_child(help_dialog)
 	help_dialog.add_button("Show first steps", false, "guide")
 	help_dialog.custom_action.connect(func(action: String):
@@ -443,6 +483,9 @@ func _build_dialogs() -> void:
 	add_child(load_dialog)
 	_build_graphs_dialog()
 	_build_sound_dialog()
+	_build_pad_menu()
+	_build_controls_dialog()
+
 	quit_dialog = ConfirmationDialog.new()
 	quit_dialog.title = "Keep your changes?"
 	quit_dialog.dialog_text = "Save this city before leaving?"
@@ -480,6 +523,7 @@ func _layout_ui() -> void:
 	inspector_target = Rect2(Vector2(available.x - inspector_width - 16, bottom.position.y - inspector_height - 12), Vector2(inspector_width, inspector_height))
 	_fit_inspector()
 	_layout_guide()
+	_layout_prompts()
 	_cancel_stroke()
 
 func _fit_inspector() -> void:
@@ -522,8 +566,12 @@ func _process(_delta: float) -> void:
 		var direction := Vector2.ZERO
 		for action in PAN_VECTORS:
 			if Input.is_action_pressed(action, true): direction += PAN_VECTORS[action]
+		# D41: the right stick pans through the same actions (analog, so not exact-matched).
+		if direction == Vector2.ZERO and pad_active:
+			direction = Input.get_vector("pan_left", "pan_right", "pan_up", "pan_down")
 		if direction != Vector2.ZERO and not Input.is_physical_key_pressed(KEY_CTRL) and not Input.is_key_pressed(KEY_CTRL):
 			world.pan_pixels(direction.normalized() * 360 * minf(float(elapsed) / 1_000_000, 0.1))
+	if not focus_paused and not _modal_open(): _pad_cursor_step(float(elapsed) / 1_000_000.0)
 	_update_hover()
 	_animate(float(elapsed) / 1_000_000.0)
 
@@ -548,6 +596,20 @@ func _sound_after_time(levels_before: int, settled_before: int) -> void:
 		audio.play("grow")
 
 func _input(event: InputEvent) -> void:
+	# D41: a Controls row waiting for a new key or button takes the next press.
+	if not rebind_wait.is_empty():
+		if _capture_rebind(event): get_viewport().set_input_as_handled()
+		return
+	if event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf(event.axis_value) >= Bindings.DEADZONE):
+		_set_pad_active(true)
+		if not _modal_open():
+			if _pad_input(event): get_viewport().set_input_as_handled()
+		elif event.is_action_pressed("pad_menu") and pad_menu.visible:
+			pad_menu.hide()
+			get_viewport().set_input_as_handled()
+		return
+	if (event is InputEventMouseMotion and event.relative.length() > 0.5) or (event is InputEventKey and event.pressed) or event is InputEventMouseButton:
+		_set_pad_active(false)
 	# A tap can begin and end between render frames, especially with virtual keys.
 	# Give it a visible step; held keys continue through the camera polling above.
 	if event is InputEventKey and event.pressed and not event.echo and not event.ctrl_pressed and not event.alt_pressed and not event.meta_pressed and not _modal_open():
@@ -646,7 +708,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_extend_stroke(world.cell_at(_view_position(event.position)))
 
 func _modal_open() -> bool:
-	return settings != null and (settings.visible or project_dialog.visible or summary_dialog.visible or budget_dialog.visible or help_dialog.visible or load_dialog.visible or quit_dialog.visible or recovery_dialog.visible or (graphs_dialog != null and graphs_dialog.visible) or (sound_dialog != null and sound_dialog.visible))
+	for window in modal_windows:
+		if window.visible: return true
+	return false
 
 func _is_world_position(point: Vector2) -> bool:
 	if not world_rect.has_point(point) or _modal_open(): return false
@@ -686,6 +750,7 @@ func _extend_stroke(cell: Vector2i) -> void:
 func _update_hover() -> void:
 	var position_now: Vector2 = get_global_mouse_position()
 	var next: Vector2i = world.cell_at(_view_position(position_now)) if _is_world_position(position_now) else Vector2i(-1,-1)
+	if pad_active: next = pad_cursor
 	if next != world.hover:
 		world.hover = next
 		_update_preview()
@@ -1087,7 +1152,8 @@ func settings_values() -> Dictionary:
 		"power_marks": world.power_visible, "land_value": world.desirability_visible,
 		"services": world.services_visible, "guide_hidden": not guide_visible,
 		"master_volume": int(audio.volumes.master), "effects_volume": int(audio.volumes.effects),
-		"music_volume": int(audio.volumes.music), "muted": audio.muted, "animation": animation_on}
+		"music_volume": int(audio.volumes.music), "muted": audio.muted, "animation": animation_on,
+		"bindings": bindings.duplicate(true)}
 
 func _remember_settings() -> void:
 	if applying_settings or world == null: return
@@ -1115,6 +1181,9 @@ func _apply_settings() -> void:
 	audio.muted = bool(values.muted)
 	audio.apply()
 	_set_animation(bool(values.animation))
+	bindings = values.bindings.duplicate(true)
+	Bindings.install(bindings)
+	_refresh_key_labels()
 	_refresh_sound_dialog()
 	applying_settings = false
 	_refresh_guide()
@@ -1189,6 +1258,275 @@ func _set_animation(value: bool) -> void:
 		world.anim_time = 0.0
 	world.queue_redraw()
 	if animation_toggle != null: animation_toggle.set_pressed_no_signal(value)
+
+## D41: the gamepad's own actions while no dialog is open. Returns true when handled.
+func _pad_input(event: InputEvent) -> bool:
+	if event.is_action_pressed("pad_place"):
+		_ensure_cursor()
+		_extend_stroke(pad_cursor)
+		return true
+	if event.is_action_released("pad_place"):
+		if not stroke.is_empty():
+			_extend_stroke(pad_cursor)
+			_commit_stroke()
+		return true
+	if event.is_action_pressed("cancel_stroke"):
+		_cancel_stroke()
+		return true
+	if event.is_action_pressed("tool_prev") or event.is_action_pressed("tool_next"):
+		var order: Array[String] = Bindings.TOOL_ORDER
+		var step: int = 1 if event.is_action_pressed("tool_next") else -1
+		_select_tool(order[posmod(order.find(tool) + step, order.size())])
+		_status("Tool: %s." % tool_buttons[tool].text)
+		return true
+	if event.is_action_pressed("zoom_in"):
+		_zoom(1)
+		return true
+	if event.is_action_pressed("zoom_out"):
+		_zoom(-1)
+		return true
+	if event.is_action_pressed("pause_city"):
+		_set_speed(1 if speed == 0 else 0)
+		return true
+	if event.is_action_pressed("cycle_speed"):
+		_set_speed({0: 1, 1: 3, 3: 0}[speed])
+		_status("Speed: %s." % ("paused" if speed == 0 else "%dx" % speed))
+		return true
+	if event.is_action_pressed("show_summary"):
+		_open_summary()
+		return true
+	if event.is_action_pressed("pad_menu"):
+		_open_pad_menu()
+		return true
+	if event.is_action_pressed("center_camera"):
+		_center_camera()
+		pad_cursor = city.access.root
+		return true
+	return false
+
+func _set_pad_active(value: bool) -> void:
+	if value == pad_active: return
+	pad_active = value
+	if value: _ensure_cursor()
+	prompt_panel.visible = value
+	world.pad_cursor_visible = value
+	_layout_prompts()
+	world.queue_redraw()
+
+## Starts the cursor at the cell under the mouse, else at the centre of the view.
+func _ensure_cursor() -> void:
+	if city.inside(pad_cursor): return
+	pad_cursor = world.hover if city.inside(world.hover) else world.cell_at(World.VIEW / 2)
+	pad_cursor = Vector2i(clampi(pad_cursor.x, 0, city.width - 1), clampi(pad_cursor.y, 0, city.height - 1))
+
+## Tile steps from the stick or d-pad: one at once, then about 12 a second when held.
+func _pad_cursor_step(seconds: float) -> void:
+	var vector: Vector2 = Input.get_vector("cursor_left", "cursor_right", "cursor_up", "cursor_down")
+	var direction := Vector2i(signi(roundi(vector.x * 1.4)), signi(roundi(vector.y * 1.4)))
+	if direction == Vector2i.ZERO:
+		pad_held = Vector2i.ZERO
+		return
+	_set_pad_active(true)
+	if direction != pad_held:
+		pad_held = direction
+		pad_repeat = PAD_REPEAT_DELAY
+		_move_cursor(direction)
+		return
+	pad_repeat -= seconds
+	while pad_repeat <= 0.0:
+		pad_repeat += 1.0 / PAD_REPEAT_RATE
+		_move_cursor(direction)
+
+func _move_cursor(direction: Vector2i) -> void:
+	_ensure_cursor()
+	pad_cursor = Vector2i(clampi(pad_cursor.x + direction.x, 0, city.width - 1), clampi(pad_cursor.y + direction.y, 0, city.height - 1))
+	# Keep the cursor two tiles inside the visible map, panning when it nears an edge.
+	var rect: Rect2 = world.tile_rect(pad_cursor)
+	var margin: float = World.TILE * 2 * world.zoom
+	var shift := Vector2.ZERO
+	if rect.position.x < margin: shift.x = rect.position.x - margin
+	elif rect.end.x > World.VIEW.x - margin: shift.x = rect.end.x - World.VIEW.x + margin
+	if rect.position.y < margin + 40: shift.y = rect.position.y - margin - 40
+	elif rect.end.y > World.VIEW.y - margin - 40: shift.y = rect.end.y - World.VIEW.y + margin + 40
+	if shift != Vector2.ZERO: world.pan_pixels(shift)
+	if not stroke.is_empty(): _extend_stroke(pad_cursor)
+	world.hover = pad_cursor
+	_update_preview()
+
+func _layout_prompts() -> void:
+	if prompt_panel == null or side == null: return
+	prompt_label.add_theme_font_size_override("font_size", 14 + (font_size - 16) / 2)
+	var left: float = side.position.x + side.size.x + 12
+	var width: float = inspector_target.position.x + inspector_target.size.x - left
+	prompt_panel.size = Vector2(width, 0)
+	prompt_panel.size = Vector2(width, prompt_panel.get_combined_minimum_size().y)
+	prompt_panel.position = Vector2(left, top.position.y + top.size.y + 6)
+
+func _dialog_pad_input(dialog: AcceptDialog, event: InputEvent) -> void:
+	if not (event is InputEventJoypadButton) or not event.pressed or not rebind_wait.is_empty(): return
+	_set_pad_active(true)
+	if event.button_index == JOY_BUTTON_B or (dialog == pad_menu and event.is_action_pressed("pad_menu")):
+		dialog.hide()
+		dialog.set_input_as_handled()
+
+## D41: focus the OK button (Cancel for confirmations) so the gamepad starts somewhere visible.
+func _focus_dialog(dialog: AcceptDialog) -> void:
+	if not dialog.visible: return
+	if dialog == pad_menu:
+		var buttons: Array = pad_menu.find_children("*", "Button", true, false)
+		buttons.erase(pad_menu.get_ok_button())
+		if not buttons.is_empty(): (buttons[0] as Button).grab_focus()
+		return
+	var focused: Control = dialog.gui_get_focus_owner()
+	if focused != null and focused.is_visible_in_tree(): return
+	var target: Button = dialog.get_cancel_button() if dialog is ConfirmationDialog else dialog.get_ok_button()
+	target.grab_focus()
+
+func _build_pad_menu() -> void:
+	pad_menu = AcceptDialog.new()
+	pad_menu.title = "Menu"
+	pad_menu.get_ok_button().text = "Resume"
+	add_child(pad_menu)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 8)
+	pad_menu.add_child(grid)
+	var entries: Array = [["Budget", _open_budget], ["Town summary", _open_summary], ["Graphs", _open_graphs], ["Project", _open_project],
+		["Help", _open_help], ["Display", _open_settings], ["Sound & motion", _open_sound], ["Controls", _open_controls],
+		["Save", _save_clicked], ["Load", _load_clicked], ["First steps: show / hide", func(): _set_guide_visible(not guide_visible, true)],
+		["First steps: next step", _guide_action_pressed], ["Pause / resume", func(): _set_speed(1 if speed == 0 else 0)], ["Back to the link", _center_camera]]
+	for entry in entries:
+		var action: Callable = entry[1]
+		var button := _button(entry[0], func():
+			pad_menu.hide()
+			action.call())
+		button.custom_minimum_size = Vector2(250, 36)
+		grid.add_child(button)
+
+func _open_pad_menu() -> void:
+	_cancel_stroke()
+	pad_menu.popup_centered(Vector2i(560, 440))
+
+## D41: the Controls dialog lists every remappable key and button.
+func _build_controls_dialog() -> void:
+	controls_dialog = AcceptDialog.new()
+	controls_dialog.title = "Controls"
+	controls_dialog.get_ok_button().text = "Close"
+	add_child(controls_dialog)
+	controls_dialog.add_button("Reset all", false, "reset")
+	controls_dialog.custom_action.connect(func(action: String):
+		if action == "reset": _reset_bindings())
+	# The dialog is its own embedded window, so a waiting row reads input here.
+	controls_dialog.window_input.connect(func(event: InputEvent):
+		if not rebind_wait.is_empty() and _capture_rebind(event): controls_dialog.set_input_as_handled())
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	controls_dialog.add_child(column)
+	controls_note = _label("Choose a Key or Pad button, then press the new key or gamepad button. Escape or East cancels.", 15, Style.MUTED)
+	controls_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	controls_note.custom_minimum_size.x = 640
+	column.add_child(controls_note)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(660, 360)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(scroll)
+	var rows := VBoxContainer.new()
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rows.add_theme_constant_override("separation", 4)
+	scroll.add_child(rows)
+	var actions: Array[String] = Bindings.REMAP_KEYS.duplicate()
+	for action in Bindings.REMAP_PAD:
+		if not action in actions: actions.append(action)
+	for action in actions:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		rows.add_child(row)
+		var name := _label(Bindings.ACTION_NAMES[action], 16)
+		name.custom_minimum_size.x = 230
+		row.add_child(name)
+		var entry: Dictionary = {}
+		for kind in ["key", "pad"]:
+			var allowed: bool = (action in Bindings.REMAP_KEYS) if kind == "key" else (action in Bindings.REMAP_PAD)
+			var kind_name: String = kind
+			var button := _button("", func(): _start_rebind(action, kind_name))
+			button.custom_minimum_size.x = 200
+			button.disabled = not allowed
+			row.add_child(button)
+			entry[kind] = button
+		controls_rows[action] = entry
+
+func _open_controls() -> void:
+	_cancel_stroke()
+	settings.hide()
+	pad_menu.hide()
+	rebind_wait = {}
+	_refresh_controls()
+	controls_dialog.popup_centered(Vector2i(720, 560))
+
+func _refresh_controls() -> void:
+	if rebind_wait.is_empty(): controls_dialog.dialog_close_on_escape = true
+	for action in controls_rows:
+		var entry: Dictionary = controls_rows[action]
+		entry.key.text = ("Key: " + Bindings.key_name(Bindings.key_for(action, bindings))) if action in Bindings.REMAP_KEYS else "Key: —"
+		entry.pad.text = ("Pad: " + Bindings.pad_name(Bindings.pad_for(action, bindings))) if action in Bindings.REMAP_PAD else "Pad: —"
+		if rebind_wait.get("action", "") == action:
+			(entry[rebind_wait.kind] as Button).text = "Press a key…" if rebind_wait.kind == "key" else "Press a button…"
+
+func _start_rebind(action: String, kind: String) -> void:
+	rebind_wait = {"action": action, "kind": kind}
+	# Escape and East cancel the wait instead of closing Controls.
+	controls_dialog.dialog_close_on_escape = false
+	controls_note.text = "Press the new %s for %s. Escape or East cancels." % ["key" if kind == "key" else "gamepad button", Bindings.ACTION_NAMES[action]]
+	_refresh_controls()
+
+## Returns true when the event was used by a waiting Controls row.
+func _capture_rebind(event: InputEvent) -> bool:
+	var kind: String = rebind_wait.kind
+	var action: String = rebind_wait.action
+	var cancel: bool = (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE) or (event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_B)
+	if cancel:
+		rebind_wait = {}
+		controls_note.text = "Unchanged."
+		_refresh_controls()
+		return true
+	var value: int = -1
+	if kind == "key" and event is InputEventKey and event.pressed and not event.echo:
+		value = int(event.keycode) if event.keycode != KEY_NONE else int(event.physical_keycode)
+	elif kind == "pad" and event is InputEventJoypadButton and event.pressed:
+		value = int(event.button_index)
+	if value < 0: return event is InputEventKey or event is InputEventJoypadButton
+	var candidate: Dictionary = bindings.duplicate(true)
+	var group: String = "keys" if kind == "key" else "pad"
+	var default: int = int(Bindings.KEY_DEFAULTS[action][0]) if kind == "key" else int(Bindings.PAD_DEFAULTS[action])
+	if value == default: candidate[group].erase(action)
+	else: candidate[group][action] = value
+	var problem: String = Bindings.problem(candidate)
+	rebind_wait = {}
+	if not problem.is_empty():
+		controls_note.text = "Not changed: " + problem
+	else:
+		_apply_bindings(candidate)
+		controls_note.text = "%s is now %s." % [Bindings.ACTION_NAMES[action], Bindings.key_name(value) if kind == "key" else Bindings.pad_name(value)]
+	_refresh_controls()
+	return true
+
+func _apply_bindings(candidate: Dictionary) -> void:
+	bindings = candidate
+	Bindings.install(bindings)
+	_refresh_key_labels()
+	_remember_settings()
+
+func _reset_bindings() -> void:
+	rebind_wait = {}
+	_apply_bindings(Bindings.empty())
+	controls_note.text = "All keys and buttons are back to their defaults."
+	_refresh_controls()
+
+## Buttons that name a key show the current binding.
+func _refresh_key_labels() -> void:
+	for entry in key_labels:
+		(entry[0] as Button).text = String(entry[2]) % Bindings.key_name(Bindings.key_for(String(entry[1]), bindings))
 
 func _build_graphs_dialog() -> void:
 	graphs_dialog = AcceptDialog.new()

@@ -49,6 +49,13 @@ func _music_ready(stream: AudioStreamWAV) -> void:
 
 func _exit_tree() -> void:
 	if music_thread != null and music_thread.is_started(): music_thread.wait_to_finish()
+	# Stop playback so no stream outlives the scene (and none leaks at exit).
+	for player in players:
+		player.stop()
+		player.stream = null
+	if music_player != null:
+		music_player.stop()
+		music_player.stream = null
 
 static func db(percent: int) -> float:
 	return linear_to_db(maxf(0.0001, percent / 100.0))
@@ -79,6 +86,8 @@ func play(name: String) -> void:
 	last_effect = name
 	effect_count += 1
 	if not audible("effects"): return
+	# Headless test runs have no audio output; recording the request is enough there.
+	if DisplayServer.get_name() == "headless": return
 	for player in players:
 		if not player.playing:
 			player.stream = streams[name]

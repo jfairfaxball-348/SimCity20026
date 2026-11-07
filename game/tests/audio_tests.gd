@@ -53,13 +53,13 @@ func test_settings_v2() -> void:
 	Settings.override_path = base.path_join("settings_v2_%d/settings.json" % Time.get_ticks_usec())
 	var store := Settings.new()
 	var d: Dictionary = Settings.defaults()
-	t.check(int(d.settings_version) == 2 and int(d.master_volume) == 80 and int(d.effects_volume) == 70 and int(d.music_volume) == 30 and not bool(d.muted) and bool(d.animation), "version-2 defaults: 80 / 70 / 30, not muted, animation on")
+	t.check(int(d.settings_version) == Settings.VERSION and int(d.master_volume) == 80 and int(d.effects_volume) == 70 and int(d.music_volume) == 30 and not bool(d.muted) and bool(d.animation), "version-2 defaults: 80 / 70 / 30, not muted, animation on")
 	var v1: Dictionary = Settings.defaults_v1()
 	v1.text_size = 20
 	v1.services = true
 	FileOps.new().write_text(Settings.path(), JSON.stringify(v1))
 	var migrated: Dictionary = store.load_settings()
-	t.check(migrated.ok and int(migrated.settings.text_size) == 20 and bool(migrated.settings.services) and int(migrated.settings.settings_version) == 2 and int(migrated.settings.music_volume) == 30 and bool(migrated.settings.animation), "a valid version-1 file keeps its values and gains the sound defaults")
+	t.check(migrated.ok and int(migrated.settings.text_size) == 20 and bool(migrated.settings.services) and int(migrated.settings.settings_version) == Settings.VERSION and int(migrated.settings.music_volume) == 30 and bool(migrated.settings.animation), "a valid version-1 file keeps its values and gains the sound defaults")
 	var values: Dictionary = Settings.defaults()
 	values.music_volume = 0
 	values.muted = true

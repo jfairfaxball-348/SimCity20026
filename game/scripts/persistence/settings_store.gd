@@ -2,8 +2,10 @@ extends RefCounted
 ## D39: remembered presentation settings in their own small, versioned file. Never part
 ## of a town save and never read by the model. Any invalid file gives all defaults.
 ## D40: version 2 adds volumes, mute and animation; a valid version-1 file migrates.
+## D41: version 3 adds remapped `bindings`; versions 1 and 2 migrate with none.
 const FileOps = preload("res://scripts/persistence/file_ops.gd")
-const VERSION: int = 2
+const Bindings = preload("res://scripts/input/input_bindings.gd")
+const VERSION: int = 3
 const MAX_BYTES: int = 4096
 const DEFAULT_PATH: String = "user://settings.json"
 const WINDOW_SIZES: Array[Vector2i] = [Vector2i(1280,720), Vector2i(1366,768), Vector2i(1920,1080), Vector2i(1280,800)]
@@ -24,8 +26,14 @@ static func path() -> String:
 	return override_path if not override_path.is_empty() else DEFAULT_PATH
 
 static func defaults() -> Dictionary:
-	var out: Dictionary = defaults_v1()
+	var out: Dictionary = defaults_v2()
 	out.settings_version = VERSION
+	out["bindings"] = Bindings.empty()
+	return out
+
+static func defaults_v2() -> Dictionary:
+	var out: Dictionary = defaults_v1()
+	out.settings_version = 2
 	out.merge({"master_volume": 80, "effects_volume": 70, "music_volume": 30, "muted": false, "animation": true})
 	return out
 
@@ -56,21 +64,28 @@ func load_settings() -> Dictionary:
 		return {"settings": out, "ok": true, "message": "Version-1 settings restored; sound and animation use the defaults."}
 	for key in VOLUMES: out[key] = int(data[key])
 	for flag in FLAGS_V2: out[flag] = bool(data[flag])
+	if int(data.settings_version) == 2:
+		return {"settings": out, "ok": true, "message": "Version-2 settings restored; controls use the defaults."}
+	var bindings: Dictionary = Bindings.empty()
+	for kind in ["keys", "pad"]:
+		for action in data["bindings"][kind]: bindings[kind][String(action)] = int(data["bindings"][kind][action])
+	out["bindings"] = bindings
 	return {"settings": out, "ok": true, "message": "Settings restored."}
 
 static func whole(value: Variant) -> bool:
 	return typeof(value) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(value)) and floor(float(value)) == float(value)
 
-## Exactly the version-1 or version-2 keys with allowed values.
+## Exactly the version-1, -2 or -3 keys with allowed values.
 static func valid(data: Variant) -> bool:
 	if typeof(data) != TYPE_DICTIONARY or not data.has("settings_version") or not whole(data.settings_version): return false
 	var version: int = int(data.settings_version)
-	if version != 1 and version != VERSION: return false
-	var expected: Dictionary = defaults_v1() if version == 1 else defaults()
+	if version < 1 or version > VERSION: return false
+	var expected: Dictionary = [defaults_v1(), defaults_v2(), defaults()][version - 1]
 	if data.size() != expected.size(): return false
 	for key in expected:
 		if not data.has(key): return false
-	if version == VERSION:
+	if version == VERSION and not Bindings.problem(data["bindings"]).is_empty(): return false
+	if version >= 2:
 		for key in VOLUMES:
 			if not whole(data[key]) or int(data[key]) < 0 or int(data[key]) > 100 or int(data[key]) % 10 != 0: return false
 		for flag in FLAGS_V2:

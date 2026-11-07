@@ -18,6 +18,8 @@ M2g (6 November 2026) adds an original code-drawn desirability overlay in `world
 
 M2h (6 November 2026) adds an original *Town summary* dialog and status-bar button in `main.gd`, with original item wording and ordering in `game/scripts/presentation/town_summary.gd`. It adds no images or sounds, and no external assets or reference sources were used.
 
+R5 (7 November 2026) adds an original code-drawn gamepad cursor (a two-tone square with corner ticks) in `world_view.gd`, and original *Menu*, *Controls* and prompt wording in `main.gd` and `input_bindings.gd`. Gamepad buttons are named in plain words by position (South, East, LB, Start); no console maker's button artwork, logos or trade marks are used. No external assets or reference sources were used.
+
 R4 (7 November 2026) adds the project's first audio. **Every sound and the music are synthesised at run time by this project's own code in `game/scripts/presentation/sound_kit.gd`; no audio file, sample, soundfont, pack, download or generation service is used.** Ledger:
 
 | Item | How it is made | Rights |

@@ -1,38 +1,36 @@
-# Next session: roadmap R5, controller route
+# Next session: roadmap R6, the owner solo playtest kit
 
-Updated 7 November 2026 after R4. **M0/M1 through M2d, the M3a project, M2e zone lots, M2f taxes, M2g desirability, the M2h town summary, the M3b first-steps guide, roadmap R1 (terminology and calendar), R2a (land value), R2b part 1 (levels 0-4), R2c (police and fire), R3 (autosaves, settings and history) and R4 (sound sample and animation) are implemented and locally tested. M3 as a whole is incomplete.** The ordered [roadmap](docs/ROADMAP.md) (R1-R17) and [gap analysis](docs/GAP_ANALYSIS.md) set the direction; owner answers U31-U34 are recorded, and under **U39** the R6 playtest will be the owner playing alone, after R5. There is no public release and no human enjoyment evidence.
+Updated 7 November 2026 after R5. **M0/M1 through M2d, the M3a project, M2e zone lots, M2f taxes, M2g desirability, the M2h town summary, the M3b first-steps guide, roadmap R1 (terminology and calendar), R2a (land value), R2b part 1 (levels 0-4), R2c (police and fire), R3 (autosaves, settings and history), R4 (sound sample and animation) and R5 (controller route) are implemented and locally tested. M3 as a whole is incomplete.** The ordered [roadmap](docs/ROADMAP.md) (R1-R17) and [gap analysis](docs/GAP_ANALYSIS.md) set the direction; owner answers U31-U34 are recorded, and under **U39** the R6 playtest is the owner playing alone. There is no public release and no human enjoyment evidence.
 
 ## Start here
 
-Read README, AGENTS (including U29 on plain words), docs/DECISIONS.md (all U and D entries, especially D03, D21, D39, D40), docs/ROADMAP.md, docs/R4_SPEC.md and the session evidence under `docs/sessions/`. Inspect the local diff, and fetch and reconcile live remote refs before editing.
+Read README, AGENTS (including U29 on plain words), docs/DECISIONS.md (all U and D entries, especially D29, U39, D41), docs/PRODUCT_BRIEF.md (the gates the playtest checks), docs/DELIVERY_PLAN.md (the M3 gate), docs/ROADMAP.md, docs/M3B_SPEC.md and the session evidence under `docs/sessions/`. Inspect the local diff, and fetch and reconcile live remote refs before editing.
 
-- **Branches.** The default branch is still `codex/m2a-road-access`, whose name is historical. Create a new `codex/` branch (for example `codex/r5-controller`).
+- **Branches.** The default branch is still `codex/m2a-road-access`, whose name is historical. Create a new `codex/` branch (for example `codex/r6-playtest-kit`).
 - **Delivery.** Standing commit/push/fast-forward delivery applies. Never force-push or discard unrelated work.
 
-The current build is game **0.17.0-r4**, save schema 12, simulation/content `r3-1`, settings version 2 (Godot 4.7.2 through `tools/`).
+The current build is game **0.18.0-r5**, save schema 12, simulation/content `r3-1`, settings version 3 (Godot 4.7.2 through `tools/`).
 
-## Assignment: roadmap R5 (controller route)
+## Assignment: roadmap R6 (the owner solo playtest kit)
 
-On **"Run next session"**, write `docs/R5_SPEC.md`, adopt its rules as D41 in Decisions **before code** (stating exactly which D03/D21/D39/D40 rules it changes), then implement, test and deliver. Proposed game version **0.18.0-r5**. Choose every mapping and number ourselves.
+On **"Run next session"**, write `docs/R6_SPEC.md`, adopt its rules as D42 before code, then implement, test and deliver. Proposed game version **0.19.0-r6**. The agent prepares; **the owner plays**. No automated run counts as the playtest.
 
 ### Scope
 
-1. **Controller play.** A standard gamepad can do everything: move a map cursor (stick and d-pad), place and drag strokes, pick tools (our own tool bar or wheel), pan and zoom, pause and speed, and inspect.
-2. **Dialogs and panels.** Budget, Town summary, Graphs, Project, Help, Display, Sound & motion, Load (including Load autosave), the quit prompt and the First steps card are all reachable and usable with the controller; focus is always visible and never lost behind the map.
-3. **On-screen prompts.** Button prompts drawn by our own code (shapes and letters, not any console maker's artwork or trade marks), shown when a controller is in use and hidden for mouse and keyboard.
-4. **Remapping.** Keyboard and controller bindings can be changed and reset, remembered in the settings file (settings version 3 migrating version 2 with every D39 fallback rule kept).
-5. **No save change** expected (schema 12 stays). Mouse and keyboard keep working exactly as now.
+1. **First steps refresh.** Bring the D29 card up to date for R1-R5 (police and fire, graphs, autosaves, sound, the gamepad), and make it, Help and the BUILD_README name the player's **current** keys (R5 left them naming the defaults). Keep it session-light and never blocking.
+2. **Solo playtest kit** in the repository (for example `docs/playtest/`): a one-page guide for the owner (how to install the build, how long to play, what to try), three or four session goals of rising depth (for example: reach level 4 with police and fire; run a town for ten game years; play twenty minutes with only a gamepad, if one is available), a notes sheet with the product brief's questions (fun, clarity, pacing, annoyance, wanting to continue), and how to hand back saves, autosaves, settings and notes. Plain, friendly wording; no consent note is needed (U39).
+3. **Easy save capture.** A way for the owner to find and copy their saves and notes (for example a Display button that opens the save folder, or clear paths), without sending anything anywhere automatically.
+4. **Packaged build** for the owner, local only. **No external messages, uploads, purchases or public release.**
+5. **Record results honestly** in a later session when the owner reports back; this session only prepares.
 
 ### Acceptance
 
-- Unit tests for the bindings, remapping validation, settings version 3 and migration.
-- Packed tests that drive every action and dialog with simulated joypad events at every layout and text size; `tools/verify.ps1` passes.
-- **A real controller** cannot be connected by an agent; record that clearly and ask the owner to try one (the R6 solo playtest is a natural place). Native runs may use posted keyboard input only.
-- Update README, Decisions, ROADMAP (R5 done), an evidence record and this handoff so the next "Run next session" starts **R6 (the owner solo playtest kit)**, then deliver. No purchases, external messages or public release.
+- Tests for any guide or code change (packed checks at every layout and text size for new text and buttons); `tools/verify.ps1` passes; a native run of the actual EXE showing the refreshed card and any new button.
+- Update README, Decisions, ROADMAP (R6 kit ready, playtest pending), an evidence record and this handoff so the next session either records the owner's playtest results or, if they are not in yet, waits for them and proposes R7 only with the owner's agreement. Deliver. No purchases, external messages or public release.
 
 ### Still deferred
 
-The remaining R2b items (wealth effects and art variants, per-level power, demand counted in people) stay for a later balance pass; take them on only if the owner asks.
+The remaining R2b items (wealth effects and art variants, per-level power, demand counted in people) stay for a later balance pass; take them on only if the owner asks (the playtest may say).
 
 ## Preserve the current contract
 
@@ -48,6 +46,7 @@ The remaining R2b items (wealth effects and art variants, per-level power, deman
   - **Order.** Residential and commercial lots with higher value reserve growth first; industry by fewest road steps from the link road; then map order.
   - **Held.** Residential and commercial lots below 0 are held at level 1; serviced level-2 lots drop one level per round, and drops count towards that type's D32 leaving.
   - **Overlay.** V or Display (Land value); never saved. Derived in `scripts/sim/desirability.gd` (module name kept).
+- **Controller and controls (D41).** `scripts/input/input_bindings.gd` holds every default, the remappable lists (23 keyboard actions, 7 gamepad buttons), the fixed and reserved inputs, `problem()` validation and `install()`; it also adds the gamepad to Godot's `ui_*` actions. Gamepad: stick / d-pad cursor (tile steps, 0.3 s delay then 12 a second), South hold to build, East cancel / close, LB/RB tool, LT/RT zoom, right stick pan, Start pause, West speed, North summary, Back Menu, L3 link. `main.gd` routes gamepad events in `_input` when no dialog is open; every dialog is in `modal_windows` and focuses a button when it opens; the Controls dialog reads a waiting change through its own `window_input`. Prompts sit below the top bar only while the gamepad is in use. Settings version 3 adds `bindings` (changes only). Effects do not play in headless runs (requests are still recorded) so test runs leak no audio playback.
 - **Sound and animation (D40).** Five sounds (build, clear, reject, grow once per round, alert on a deficit settlement) and a 12-second, 80 BPM music loop are synthesised at run time by `scripts/presentation/sound_kit.gd` (no audio files); `audio_director.gd` owns the Effects and Music buses, effect players and the background-made music. Volumes Master / Sounds / Music default 80 / 70 / 30%, Mute all and M, in Sound & motion (opened from Display, on a row with Center view). Animation (water shimmer, industry smoke, breathing flag) follows real time at about ten redraws a second and can be turned off. Settings version 2 adds `master_volume`, `effects_volume`, `music_volume`, `muted`, `animation`; version 1 migrates. Every asset is in the `licenses/ASSETS.md` ledger.
 - **Autosaves, settings and history (D39).**
   - **Autosaves.** `autosave1-3.json` and `autosave.index` beside the manual save, written while time runs after the frame that passes each multiple of 60 days, rotating 1 → 2 → 3, with the D15 validated write; they never touch `manual.json`, its `.bak` or preserved copies, and do not clear the unsaved flag. With any autosave on disk, Load always opens its dialog, which offers Load autosave (newest valid slot, falling back to older ones).
@@ -65,7 +64,7 @@ The remaining R2b items (wealth effects and art variants, per-level power, deman
   - **No side effects.** It saves nothing, never pauses time and never locks tools.
   - **Packed tests.** Feature flows hide the card (`fresh_scene(…, guide = false)`), and `guide_flow` tests it shown.
 - **Wording and calendar (D35).** Player-facing text says Residential / Commercial / Industrial lots and power plant; the meter reads R / C / I. Internal identifiers (`home`, `shop`, `workshop`, `power`), keys and save fields are unchanged. The calendar is derived from the tick (tick 0 = 1 Jan 1950, 30-day months, 12-month years) by `scripts/presentation/calendar.gd` and never saved.
-- **Unchanged numbers.** D17-D28 prices, capacities, caps, clock order, budget, park priority and project rules are unchanged except as D32/D33/D36/D37/D38/D39 specify; D40 changed presentation only. Each roadmap milestone's decision must state exactly which earlier rules it changes.
+- **Unchanged numbers.** D17-D28 prices, capacities, caps, clock order, budget, park priority and project rules are unchanged except as D32/D33/D36/D37/D38/D39 specify; D40 and D41 changed presentation and input only. Each roadmap milestone's decision must state exactly which earlier rules it changes.
 - **Owner answers (U31-U34).** Disasters optional and off by default; the no-debt waiver stays the default; target map and population scale match the original game with our own numbers; no later-edition extras for now.
 - **Determinism.** No commands or ticks consume RNG. The fixed clock, dialog/focus suspension, eight ticks per frame and bounded backlog stay.
 - **Saves.**
@@ -76,21 +75,22 @@ The remaining R2b items (wealth effects and art variants, per-level power, deman
   - **Limits.** JSON cap 512 KiB; maps 8-128 per dimension; seed and RNG state remain signed-64 decimal strings.
 - **Evidence profile.**
   - **Which profile.** Processes started from a packaged app (such as the Codex desktop app) use a redirected profile under `%LOCALAPPDATA%\Packages\…\LocalCache\Roaming\OriginalCityBuilder\`. Processes started from an ordinary shell use `%APPDATA%\OriginalCityBuilder\`, which had no `saves` folder before the M2f-R1 native runs and was restored to that state after each. In the R1 session (started from the Claude desktop app) the redirected `Claude_pzs8sxrjxfjjc` profile and `%APPDATA%` showed the same contents from the shell; both had no `saves` folder before and after.
+  - **R5.** The native runs wrote only `settings.json` (with the Q remap); it was moved to `builds/validation/r5/profile-saves/`, leaving no `saves` folder or settings file. Seven older packed-test folders remain under `tests` as found.
   - **R4.** The native runs wrote only `settings.json` (no saves); it was moved to `builds/validation/r4/profile-saves/`, leaving no `saves` folder or settings file, as before.
   - **R3.** The native runs also create `settings.json` and autosave files in the profile; record and restore them too. In R3 the profile had no `saves` folder and no `settings.json` before, and again none after.
   - **R2c.** The tested process again resolved `%APPDATA%\OriginalCityBuilder\` (the redirected `Claude_pzs8sxrjxfjjc` profile showed the same contents); no `saves` folder before or after. Seven older packed-test folders from earlier sessions remain under `tests` as found.
   - **Recording and restoring.** Record the path the tested process actually resolved, and restore it exactly afterwards (including any leftover `.recovery_mode_lock`).
   - **Packed tests.** They use an isolated `user://tests/…` store, and their folders are moved out after runs.
-- **Native driver.** When computer-use tools are unavailable, `builds/validation/r4/native/native_driver.py` (ignored, copied from R3, with M added). Lots below the road at the right of the default view sit under the inspector; place lots above the road or pan first posts input only to the game's window handle and captures it with `PrintWindow`.
+- **Native driver.** When computer-use tools are unavailable, `builds/validation/r5/native/native_driver.py` (ignored, copied from R4, with Q added). It posts keyboard and mouse messages only; it cannot simulate a gamepad. Lots below the road at the right of the default view sit under the inspector; place lots above the road or pan first posts input only to the game's window handle and captures it with `PrintWindow`.
   - Posted Ctrl shortcuts do not register, because Godot reads modifiers from the real keyboard, so use the Save/Load buttons.
   - Do not use the hover action unless the owner agrees, because hover moves the real cursor.
 - **Packed-test hangs.** A script error inside the packed driver stops it before it quits, so `tools/verify.ps1` then waits indefinitely. If a run exceeds about 10 minutes, stop it and rerun the packed driver directly with a timeout to see the error.
 
 ## Actual evidence and limits
 
-R4 passed 883 source / 654 exported-PCK checks and release-EXE start-up; thirteen fixtures byte-identical. A posted-window-message run of the actual EXE built a street with industry and captured two frames 1.3 seconds apart that differ only at the rising smoke and the breathing flag; it showed the Display dialog (fixed to fit 720p after this run first showed it overflowing), the Sound & motion dialog, and M muting with the choice written to `settings.json`. **No automated run can judge how the sounds and music sound**; the owner should listen during play.
+R5 passed 912 source / 701 exported-PCK checks and release-EXE start-up; thirteen fixtures byte-identical. Packed checks drove the whole game with simulated Godot joypad events (cursor and repeat, a road built with South, tools, zoom, pan, speeds, summary, East closing a dialog, the Menu reaching every dialog, dialog focus, prompts shown and hidden, remapping and reset, settings after a restart). A posted-window-message run of the actual EXE opened Display (now with Controls on a shared row) and Controls, remapped Residential to Q, and showed the sidebar relabelled and Q working. **No real controller has been tried**; the owner should try one if they have it.
 
-Native evidence is 1280x720 on one machine. Human enjoyment and usability, audio quality, DPI variants, other hardware and operating systems, the controller, performance targets and CI remain unverified. Do not count automated scenarios as the R6 owner playtest.
+Native evidence is 1280x720 on one machine. Human enjoyment and usability, audio quality, a real gamepad, DPI variants, other hardware and operating systems, performance targets and CI remain unverified. The R6 owner playtest is still to come.
 
 ## Rights and source-study boundary
 

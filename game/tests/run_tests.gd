@@ -65,6 +65,7 @@ func run() -> void:
 	preload("res://tests/services_tests.gd").new().run(self)
 	preload("res://tests/history_tests.gd").new().run(self)
 	await preload("res://tests/audio_tests.gd").new().run(self)
+	preload("res://tests/controls_tests.gd").new().run(self)
 	test_clock()
 	test_codec()
 	test_storage()
@@ -72,7 +73,7 @@ func run() -> void:
 	await test_scene()
 	if "--prove-failure-exit" in OS.get_cmdline_user_args():
 		check(false, "Deliberate runner failure to verify exit code")
-	print(JSON.stringify({"suite": "R4", "checks": checks, "failed": failures.size(), "failures": failures}))
+	print(JSON.stringify({"suite": "R5", "checks": checks, "failed": failures.size(), "failures": failures}))
 	quit(0 if failures.is_empty() else 1)
 
 func test_commands() -> void:

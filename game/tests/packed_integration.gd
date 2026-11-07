@@ -413,6 +413,7 @@ func run() -> void:
 	await services_flow(isolated)
 	await r3_flow(isolated)
 	await r4_flow(isolated)
+	await r5_flow(isolated)
 	var metadata: Dictionary = {"suite":"packed-integration", "engine":Engine.get_version_info().string,
 		"runtime":"editor_with_release_pck","checks":checks,"failed":failures.size(),"failures":failures,
 		"display_backend":DisplayServer.get_name(),"screen_dpi":DisplayServer.screen_get_dpi()}
@@ -1336,6 +1337,184 @@ func r4_flow(isolated: IsolatedStore) -> void:
 	check(not main.audio.muted and not AudioServer.is_bus_mute(AudioServer.get_bus_index("Master")) and "Sound on" in main.status_label.text, "M unmutes")
 	await fresh_scene(isolated)
 	check(int(main.audio.volumes.music) == 30 and not main.audio.muted, "flows after this start from the default sound settings")
+
+func pad_button(button: int, pressed: bool) -> void:
+	var event := InputEventJoypadButton.new()
+	event.device = 0
+	event.button_index = button
+	event.pressed = pressed
+	event.pressure = 1.0 if pressed else 0.0
+	Input.parse_input_event(event)
+	await frames(2)
+
+func pad_tap(button: int) -> void:
+	await pad_button(button, true)
+	await pad_button(button, false)
+
+func pad_axis(axis: int, value: float) -> void:
+	var event := InputEventJoypadMotion.new()
+	event.device = 0
+	event.axis = axis
+	event.axis_value = value
+	Input.parse_input_event(event)
+	await frames(2)
+
+## Runs one shipped _process step with the given real seconds elapsed.
+func step(seconds: float) -> void:
+	main.last_usec = Time.get_ticks_usec() - int(seconds * 1_000_000)
+	main._process(0.0)
+	await frames(1)
+
+## D41 / R5: the whole game through simulated gamepad events, plus remapping.
+func r5_flow(isolated: IsolatedStore) -> void:
+	await fresh_scene(isolated)
+	check(not main.pad_active and not main.prompt_panel.visible, "prompts are hidden until the gamepad is used")
+	await view_from(Vector2(40, 30) * 16)
+	await pad_button(JOY_BUTTON_DPAD_RIGHT, true)
+	var start: Vector2i = main.pad_cursor
+	await step(0.02)
+	check(main.pad_active and main.prompt_panel.visible and main.world.pad_cursor_visible and main.pad_cursor == start + Vector2i(1, 0), "the d-pad shows the prompts and moves the cursor one tile")
+	await step(0.42)
+	check(main.pad_cursor.x >= start.x + 2 and main.pad_cursor.x <= start.x + 4, "holding repeats after a short delay (now %d)" % (main.pad_cursor.x - start.x))
+	await pad_button(JOY_BUTTON_DPAD_RIGHT, false)
+	await step(0.02)
+	var resting: Vector2i = main.pad_cursor
+	await step(0.5)
+	check(main.pad_cursor == resting and main.world.hover == resting, "releasing stops the cursor; the hover follows it")
+	check(main.prompt_panel.get_global_rect().position.y >= main.top.get_global_rect().end.y and "South build" in main.prompt_label.text and not main.prompt_panel.get_global_rect().intersects(main.inspector.get_global_rect()), "the prompt strip sits below the top bar, clear of the inspector")
+	await pad_tap(JOY_BUTTON_LEFT_STICK)
+	check(main.pad_cursor == main.city.access.root, "L3 returns the view and cursor to the outside link")
+	var root_cell: Vector2i = main.city.access.root
+	await pad_button(JOY_BUTTON_A, true)
+	await pad_axis(JOY_AXIS_LEFT_X, -1.0)
+	await step(0.02)
+	await step(0.3)
+	await pad_axis(JOY_AXIS_LEFT_X, 0.0)
+	await step(0.02)
+	var reach: int = root_cell.x - main.pad_cursor.x
+	await pad_button(JOY_BUTTON_A, false)
+	var built: int = 0
+	for x in range(root_cell.x - reach, root_cell.x + 1):
+		if main.city.occupancy[main.city.index(Vector2i(x, root_cell.y))] == City.ROAD: built += 1
+	check(reach >= 2 and built == reach + 1 and main.audio.last_effect == "build", "holding South while moving the stick builds a road run (%d tiles)" % built)
+	await pad_tap(JOY_BUTTON_RIGHT_SHOULDER)
+	check(main.tool == "home" and main.tool_buttons.home.button_pressed and "Tool: 2  Residential" in main.status_label.text, "RB picks the next tool")
+	await pad_tap(JOY_BUTTON_LEFT_SHOULDER)
+	await pad_tap(JOY_BUTTON_LEFT_SHOULDER)
+	check(main.tool == "clear", "LB wraps round to the last tool")
+	await pad_tap(JOY_BUTTON_RIGHT_SHOULDER)
+	await pad_axis(JOY_AXIS_TRIGGER_RIGHT, 1.0)
+	await pad_axis(JOY_AXIS_TRIGGER_RIGHT, 0.0)
+	check(main.world.zoom == 2, "RT zooms in")
+	await pad_axis(JOY_AXIS_TRIGGER_LEFT, 1.0)
+	await pad_axis(JOY_AXIS_TRIGGER_LEFT, 0.0)
+	check(main.world.zoom == 1, "LT zooms out")
+	var origin: Vector2 = main.world.origin
+	await pad_axis(JOY_AXIS_RIGHT_X, -1.0)
+	await step(0.1)
+	await pad_axis(JOY_AXIS_RIGHT_X, 0.0)
+	check(main.world.origin.x < origin.x, "the right stick pans (%s to %s)" % [origin, main.world.origin])
+	await pad_tap(JOY_BUTTON_START)
+	check(main.speed == 1, "Start resumes time")
+	await pad_tap(JOY_BUTTON_X)
+	check(main.speed == 3 and "Speed: 3x" in main.status_label.text, "West changes speed")
+	await pad_tap(JOY_BUTTON_X)
+	check(main.speed == 0, "and back to paused")
+	await pad_button(JOY_BUTTON_A, true)
+	await pad_tap(JOY_BUTTON_B)
+	await pad_button(JOY_BUTTON_A, false)
+	check(main.stroke.is_empty(), "East cancels a stroke in progress")
+	await pad_tap(JOY_BUTTON_Y)
+	check(main.summary_dialog.visible and main._modal_open(), "North opens the Town summary")
+	await frames(3)
+	var focus: Control = main.summary_dialog.gui_get_focus_owner()
+	check(focus != null and focus.is_visible_in_tree(), "the summary has a focused button")
+	await pad_tap(JOY_BUTTON_B)
+	check(not main.summary_dialog.visible and not main._modal_open(), "East closes the dialog")
+	if main.summary_dialog.visible: main.summary_dialog.hide()
+	await pad_tap(JOY_BUTTON_BACK)
+	await frames(3)
+	check(main.pad_menu.visible and main.pad_menu.gui_get_focus_owner() is Button and (main.pad_menu.gui_get_focus_owner() as Button).text == "Budget", "Back opens the Menu with Budget focused (%s, %s)" % [main.pad_menu.visible, main.pad_menu.gui_get_focus_owner()])
+	await pad_tap(JOY_BUTTON_A)
+	check(main.budget_dialog.visible and not main.pad_menu.visible, "South on a focused Menu button opens it")
+	await frames(3)
+	check(main.budget_dialog.gui_get_focus_owner() == main.budget_dialog.get_ok_button(), "Budget opens with its OK button focused")
+	main.budget_dialog.hide()
+	main._open_pad_menu()
+	await frames()
+	var menu_buttons: Array = []
+	for child in main.pad_menu.find_children("*", "Button", true, false):
+		if child != main.pad_menu.get_ok_button(): menu_buttons.append(child)
+	var reached: Array[String] = []
+	var dialogs: Dictionary = {"Budget": main.budget_dialog, "Town summary": main.summary_dialog, "Graphs": main.graphs_dialog, "Project": main.project_dialog,
+		"Help": main.help_dialog, "Display": main.settings, "Sound & motion": main.sound_dialog, "Controls": main.controls_dialog}
+	for button: Button in menu_buttons:
+		var label: String = button.text
+		main._open_pad_menu()
+		await frames()
+		button.pressed.emit()
+		await frames()
+		if dialogs.has(label) and (dialogs[label] as Window).visible: reached.append(label)
+		for window in main.modal_windows: window.hide()
+		await frames()
+	check(reached.size() == dialogs.size() and menu_buttons.size() == 14, "every Menu entry opens its dialog (%s)" % ", ".join(reached))
+	for resolution in [Vector2i(1280, 720), Vector2i(1366, 768)]:
+		root.size = resolution
+		for amount in [16, 18, 20]:
+			main._set_text_size(amount)
+			for window: AcceptDialog in [main.pad_menu, main.controls_dialog]:
+				if window == main.pad_menu: main._open_pad_menu()
+				else: main._open_controls()
+				await frames()
+				check(window.position.y >= 0 and window.position.y + window.size.y <= resolution.y and window.size.x <= resolution.x and window.get_ok_button().get_global_rect().end.y <= resolution.y, "%s fits %s text %d" % [window.title, resolution, amount])
+				window.hide()
+	root.size = Vector2i(1280, 720)
+	main._set_text_size(16)
+	main._open_settings()
+	await frames()
+	check(main.settings.position.y >= 0 and main.settings.position.y + main.settings.size.y <= 720, "Display with Controls still fits 720p")
+	main.settings.hide()
+	# Remapping: a key, a refused duplicate, a gamepad button, and reset.
+	main._open_controls()
+	await frames()
+	main.controls_rows.tool_home.key.pressed.emit()
+	await key(KEY_Q)
+	check(main.tool_buttons.home.text.begins_with("Q") and "Residential is now Q" in main.controls_note.text and "Key: Q" in main.controls_rows.tool_home.key.text, "Change then Q remaps Residential and relabels its tool button (%s | %s | %s)" % [main.controls_note.text, main.tool_buttons.home.text, main.rebind_wait])
+	main.controls_rows.tool_park.key.pressed.emit()
+	await key(KEY_1)
+	check("Not changed: 1 is already used by Roads." in main.controls_note.text and main.tool_buttons.park.text.begins_with("8"), "a key used elsewhere is refused with the reason")
+	main.controls_rows.tool_next.pad.pressed.emit()
+	await pad_tap(JOY_BUTTON_MISC1)
+	check("Next tool is now Misc" in main.controls_note.text, "a gamepad button can be remapped")
+	main.controls_rows.tool_road.key.pressed.emit()
+	await key(KEY_ESCAPE)
+	check("Unchanged" in main.controls_note.text and main.controls_dialog.visible, "Escape cancels a waiting change without closing Controls")
+	main.controls_dialog.hide()
+	await key(KEY_Q)
+	check(main.tool == "home", "the new key works in play")
+	await key(KEY_2)
+	check(main.tool == "home" and main.tool_buttons.home.text.begins_with("Q"), "the old key no longer selects Residential")
+	var stored: Dictionary = main.settings_store.load_settings()
+	check(stored.ok and int(stored.settings.bindings["keys"].get("tool_home", 0)) == KEY_Q and int(stored.settings.bindings["pad"].get("tool_next", 0)) == JOY_BUTTON_MISC1, "remapped keys and buttons are written to settings")
+	await fresh_scene(isolated, false, true)
+	await key(KEY_Q)
+	check(main.tool == "home" and main.tool_buttons.home.text.begins_with("Q"), "a restarted game keeps the remapped key")
+	main._open_controls()
+	await frames()
+	main.controls_dialog.custom_action.emit("reset")
+	await frames()
+	main.controls_dialog.hide()
+	await key(KEY_2)
+	check(main.tool == "home" and main.tool_buttons.home.text.begins_with("2") and main.settings_store.load_settings().settings.bindings == {"keys": {}, "pad": {}}, "Reset all restores every default")
+	await pad_tap(JOY_BUTTON_DPAD_UP)
+	check(main.pad_active, "the gamepad takes control")
+	var move := InputEventMouseMotion.new()
+	move.position = Vector2(640, 300)
+	move.relative = Vector2(12, 0)
+	Input.parse_input_event(move)
+	await frames(2)
+	check(not main.pad_active and not main.prompt_panel.visible and not main.world.pad_cursor_visible, "moving the mouse hands control back and hides the prompts")
+	await fresh_scene(isolated)
 
 func project_command(kind: String, cells: Array[Vector2i]) -> Dictionary:
 	return main.city.apply_command(kind, cells)

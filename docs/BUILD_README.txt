@@ -1,4 +1,4 @@
-UNTITLED CITY BUILDER - R4 SOUND AND ANIMATION (0.17.0-r4)
+UNTITLED CITY BUILDER - R5 CONTROLLER ROUTE (0.18.0-r5)
 
 Run citybuilder.exe. Keep citybuilder.pck beside it. A First steps card at
 the bottom left of the map shows one next step at a time (Show centres on
@@ -8,7 +8,8 @@ lots, 4x4 power plants, a calendar from 1 Jan 1950, a monthly
 economy with an adjustable tax rate, a demand meter, neighbourhood
 land value for every zone with a map overlay, police and fire stations, a town
 summary, monthly history graphs, autosaves, remembered settings, original
-sounds and music, gentle animation, a pocket park, and one optional project.
+sounds and music, gentle animation, full gamepad play, remappable controls,
+a pocket park, and one optional project.
 
 1 Roads ($10 per tile) / 2 Residential / 6 Commercial / 7 Industrial
 ($25 per 3x3 lot). P Power plant (4x4, $500, 20 lots) / 8 Park ($100)
@@ -34,6 +35,18 @@ cross = a station without road access or power).
 Hover a tile to inspect.
 M: mute or unmute all sound. Display > Sound & motion: Master, Sounds and
 Music volumes (defaults 80 / 70 / 30%), Mute all and Animation on/off.
+Display > Controls: change any tool, speed, dialog or overlay key and the
+remappable gamepad buttons (choose Key or Pad, then press the new one;
+Escape or East cancels; Reset all restores the defaults). Keys named in this
+file, Help and First steps are the defaults.
+
+Gamepad: left stick or d-pad moves a map cursor; hold South to build (move
+to extend, release to place); East cancels or closes a dialog; LB/RB change
+tool; LT/RT zoom; right stick pans; Start pauses; West changes speed; North
+opens the Town summary; Back opens the Menu (every dialog and command);
+L3 returns to the outside link. In dialogs the d-pad moves focus and South
+presses. Prompts appear below the top bar while the gamepad is in use;
+moving the mouse hands control back.
 Space: pause/resume. 4: normal speed. 5: fast speed.
 Ctrl+S: save. Ctrl+L: load. F6: display and text settings.
 Artwork: Kenney Roguelike Modern City (CC0) is the default; Display > Artwork
@@ -104,7 +117,7 @@ Settings: window size, text size, artwork, the grid, road/power marks, the
 land value and services overlays and whether the First steps card is hidden
 as well as volumes, mute and animation, are remembered in
 %APPDATA%/OriginalCityBuilder/settings.json (version 2; version-1 files keep
-their values). A damaged
+their values; version 3 adds remapped controls). A damaged
 settings file is ignored and the defaults are used; it never affects saves.
 Saves: %APPDATA%/OriginalCityBuilder/saves/manual.json
 The previous valid save is manual.json.bak; failed loads leave the city intact.
@@ -121,7 +134,8 @@ manual.schema11.json before replacement. No retroactive charges. Older builds
 cannot read format 12; use the preserved older-format copy to roll back.
 
 Windows x64, tested on the development machine. Other hardware, Windows DPI
-variants, other operating systems, and controllers remain unverified.
+variants and other operating systems remain unverified. The gamepad route was
+tested with simulated gamepad input only; no real controller has been tried.
 This export is unsigned and is not a public game release.
 
 Sound: five short sounds (build, clear, refused action, growth, a deficit

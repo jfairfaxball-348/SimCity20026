@@ -22,6 +22,8 @@ var guide_target: Vector2i = Vector2i(-1, -1)
 var guide_size: int = 1
 ## D40: real-time animation phase in seconds (0 = the static first frame).
 var anim_time: float = 0.0
+## D41: draw the gamepad cursor at the hover cell.
+var pad_cursor_visible: bool = false
 var hover: Vector2i = Vector2i(-1, -1)
 var preview_cells: Array[Vector2i] = []
 var preview_valid: bool = true
@@ -92,6 +94,7 @@ func _draw() -> void:
 		var rect: Rect2 = tile_rect(cell)
 		draw_rect(rect.grow(-zoom), Color(highlight, 0.25))
 		draw_rect(rect.grow(-zoom), highlight, false, zoom)
+	if pad_cursor_visible and city.inside(hover): _draw_pad_cursor(tile_rect(hover))
 
 func _draw_cell(cell: Vector2i) -> void:
 	var rect: Rect2 = tile_rect(cell)
@@ -267,6 +270,17 @@ func _draw_civic_sign(kind: int, at: Vector2, z: float) -> void:
 		var flame := PackedVector2Array([c + Vector2(0, -5) * z, c + Vector2(4, 1) * z, c + Vector2(2, 5) * z, c + Vector2(-2, 5) * z, c + Vector2(-4, 1) * z])
 		draw_colored_polygon(flame, Color("f2a65a"))
 		draw_colored_polygon(PackedVector2Array([c + Vector2(0, -1) * z, c + Vector2(2, 3) * z, c + Vector2(-2, 3) * z]), Color("f6d76b"))
+
+## D41: the gamepad cursor: a two-tone square outline with corner ticks.
+func _draw_pad_cursor(rect: Rect2) -> void:
+	var z: float = float(zoom)
+	var box: Rect2 = rect.grow(z)
+	draw_rect(box, Color("243f38"), false, 3 * z)
+	draw_rect(box, Color("fff4c8"), false, z)
+	var arm: float = 4 * z
+	for corner in [[box.position, Vector2(1, 1)], [Vector2(box.end.x, box.position.y), Vector2(-1, 1)], [box.end, Vector2(-1, -1)], [Vector2(box.position.x, box.end.y), Vector2(1, -1)]]:
+		draw_line(corner[0] - corner[1] * 2 * z, corner[0] - corner[1] * 2 * z + Vector2(corner[1].x * arm, 0), Color("fff4c8"), 2 * z)
+		draw_line(corner[0] - corner[1] * 2 * z, corner[0] - corner[1] * 2 * z + Vector2(0, corner[1].y * arm), Color("fff4c8"), 2 * z)
 
 ## D29 marker: four static L-shaped corners around the target footprint, distinct in
 ## shape from hover and stroke previews. No animation.
