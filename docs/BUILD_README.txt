@@ -1,6 +1,7 @@
-UNTITLED CITY BUILDER - R5 CONTROLLER ROUTE (0.18.0-r5)
+UNTITLED CITY BUILDER - R6 PLAYTEST BUILD (0.19.0-r6)
 
-Run citybuilder.exe. Keep citybuilder.pck beside it. A First steps card at
+Run citybuilder.exe. Keep citybuilder.pck beside it. PLAYTEST.txt in this
+folder is the owner's solo playtest guide and notes sheet. A First steps card at
 the bottom left of the map shows one next step at a time (Show centres on
 it; Hide closes it for the session; F1 or Help > Show first steps returns).
 Local development checkpoint; 3x3 residential, commercial and industrial
@@ -38,7 +39,8 @@ Music volumes (defaults 80 / 70 / 30%), Mute all and Animation on/off.
 Display > Controls: change any tool, speed, dialog or overlay key and the
 remappable gamepad buttons (choose Key or Pad, then press the new one;
 Escape or East cancels; Reset all restores the defaults). Keys named in this
-file, Help and First steps are the defaults.
+file are the defaults; Help opens with your current keys, and the First steps
+card and buttons show them.
 
 Gamepad: left stick or d-pad moves a map cursor; hold South to build (move
 to extend, release to place); East cancels or closes a dialog; LB/RB change
@@ -120,6 +122,7 @@ as well as volumes, mute and animation, are remembered in
 their values; version 3 adds remapped controls). A damaged
 settings file is ignored and the defaults are used; it never affects saves.
 Saves: %APPDATA%/OriginalCityBuilder/saves/manual.json
+(Help > Open save folder, or Back > Open save folder, opens that folder.)
 The previous valid save is manual.json.bak; failed loads leave the city intact.
 Format 12 (0.16.0-r3) adds the monthly history (up to 240 months) to format 11, which stores
 the tax rate, lot, power plant and police/fire station anchors and their upkeep counts; land

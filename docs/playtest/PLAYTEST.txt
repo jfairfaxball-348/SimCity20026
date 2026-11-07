@@ -1,0 +1,135 @@
+YOUR SOLO PLAYTEST - UNTITLED CITY BUILDER 0.19.0-r6
+
+Thank you for playing. This is the M3 playtest (roadmap R6). You are the
+only tester (owner decision U39), so your honest impressions are the result.
+There are no right answers. Being bored, confused or annoyed is just as
+useful to write down as enjoying it.
+
+------------------------------------------------------------------------
+1. BEFORE YOU START
+------------------------------------------------------------------------
+
+- Unzip the build anywhere and run citybuilder.exe. Keep citybuilder.pck
+  beside it. README.txt in the same folder lists every control.
+- Windows may warn that the program is unsigned. That is expected for this
+  local build.
+- Try not to read README.txt or Help before Session 1. The point is to see
+  how far the game itself guides you.
+- Keep this file open beside the game, or print the notes sheet (section 4).
+- Sound starts at Master 80%, Sounds 70%, Music 30%. M mutes everything.
+  Display > Sound & motion changes the volumes.
+
+------------------------------------------------------------------------
+2. FOUR SESSIONS
+------------------------------------------------------------------------
+
+Play them on different days if you can. Each one has a goal; it is fine
+not to reach it. Stop whenever you like, and write a few notes afterwards.
+
+Session 1 - A first town (about 15 minutes, no Help)
+  Start the game and follow only the First steps card at the bottom left.
+  Goal: residential lots growing beside a road with power.
+  Notice: the first moment you did not know what to do next.
+
+Session 2 - Growing up (20 to 30 minutes)
+  Goal: get a lot to level 4 (two yellow pips). That needs land value (parks
+  or water nearby), and police and fire stations (keys 9 and 0) within reach.
+  Also complete the optional neighbourhood project (J).
+  Use the Town summary (T) and the inspector when something will not grow.
+  Notice: whether you could find out why a lot was stuck, and fix it.
+
+Session 3 - A longer town (30 minutes or more)
+  Goal: keep a town going for ten game years (to January 1960) at 3x.
+  Try the tax rate in Budget (B), watch the R / C / I meter, and look at the
+  Graphs (H) now and then. Autosaves happen every 60 game days.
+  Notice: when it became interesting, when it became dull, and whether you
+  wanted to keep going.
+
+Session 4 - Your choice (optional, about 20 minutes)
+  If you have a gamepad, play with only the gamepad (Back opens the Menu,
+  which reaches everything). Otherwise, try Display > Controls and change a
+  few keys, or play however you like.
+  Notice: anything awkward, missing or surprising.
+
+------------------------------------------------------------------------
+3. WHAT TO NOTICE (any session)
+------------------------------------------------------------------------
+
+- Moments you were stuck, and what got you unstuck.
+- Anything that felt unfair, slow, fiddly or confusing.
+- Anything you liked, even small things.
+- How the sounds, music and animation felt: pleasant, annoying, too loud,
+  too quiet, too repetitive?
+- Anything that looked broken, wrong or out of place.
+- Whether you lost any work (saves, autosaves) or got stuck with no money.
+
+------------------------------------------------------------------------
+4. NOTES SHEET (copy and fill in; short answers are fine)
+------------------------------------------------------------------------
+
+Date and session number:
+How long you played:
+Did you reach the goal? (yes / partly / no):
+
+These questions are adapted from the product brief's playtest gates for a
+single player:
+
+a. Could you set up a working starting neighbourhood within ten minutes
+   using only the in-game guidance? What helped, what did not?
+
+b. Did you find out why at least one blocked lot would not grow, and fix it
+   without looking outside the game? Which tool told you (inspector, Town
+   summary, overlays)?
+
+c. Did you complete the neighbourhood project? Did you care about it?
+
+d. At the end, did you want to keep building for another ten minutes?
+   Why, or why not?
+
+e. Any lost work, money trap you could not get out of, or controls you kept
+   getting wrong?
+
+f. Sound, music and animation - keep, change or remove?
+
+g. The single biggest thing to improve next:
+
+h. Anything else:
+
+------------------------------------------------------------------------
+5. WHERE YOUR FILES ARE
+------------------------------------------------------------------------
+
+Help > Open save folder (or Back > Open save folder on a gamepad) opens it.
+It is usually:
+
+  %APPDATA%\OriginalCityBuilder\saves\
+      manual.json          your manual save (Save button / Ctrl+S)
+      manual.json.bak      the previous manual save
+      autosave1-3.json     the three rotating autosaves
+  %APPDATA%\OriginalCityBuilder\settings.json   your remembered settings
+
+------------------------------------------------------------------------
+6. HANDING BACK
+------------------------------------------------------------------------
+
+Nothing is sent anywhere automatically. When you are done, start a chat
+with Claude in this project and say something like "playtest done", then
+paste your notes. If a save shows a problem, mention it and where it is;
+Claude can read files in the project folder if you copy them there (for
+example into builds/playtest/, which is not committed).
+
+Your results will be written up honestly in the project's Decisions and an
+evidence record, as one player's view, and will decide what to fix before
+the next roadmap step (R7).
+
+------------------------------------------------------------------------
+7. KNOWN LIMITS OF THIS BUILD
+------------------------------------------------------------------------
+
+- No real gamepad has been tried yet; only simulated input was tested.
+- Nobody has listened to the sounds and music yet. You are the first.
+- Tested only at 1280x720 on one Windows PC.
+- If you change keys, Help lists your keys at the top but its other text and
+  README.txt still name the defaults; the First steps card and the buttons
+  show your current keys.
+- Disasters, traffic, pollution and crime are not in the game yet.

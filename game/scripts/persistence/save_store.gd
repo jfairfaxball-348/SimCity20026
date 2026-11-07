@@ -73,6 +73,10 @@ func preserve_original(source: String, path: String, schema: int) -> Error:
 const AUTOSAVE_SLOTS: int = 3
 const AUTOSAVE_DAYS: int = 60
 
+## D42: the folder holding the manual save and autosaves (tests redirect it).
+func save_folder(manual_path: String) -> String:
+	return manual_path.get_base_dir()
+
 static func autosave_path(manual_path: String, slot: int) -> String:
 	return manual_path.get_base_dir().path_join("autosave%d.json" % slot)
 

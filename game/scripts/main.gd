@@ -129,6 +129,8 @@ var rebind_wait: Dictionary = {}
 ## [button, action, format] for buttons whose text names a remappable key.
 var key_labels: Array = []
 var modal_windows: Array[Window] = []
+## D42: the fixed part of Help; a generated Your keys block goes above it.
+var help_body: String = ""
 const PAD_REPEAT_DELAY: float = 0.3
 const PAD_REPEAT_RATE: float = 12.0
 
@@ -423,11 +425,15 @@ func _build_dialogs() -> void:
 	help_dialog.title = "Controls & notes"
 	help_text = _label("1 Roads · 2 Residential · 6 Commercial · 7 Industrial\nP Power plant · 8 Park · 9 Police · 0 Fire · 3 Clear · B Budget\nT Town summary: the biggest causes holding the town back.\nH Graphs: residents, jobs and funds month by month.\nM mutes or unmutes; Display > Sound & motion sets volumes and animation.\nKeys shown here are the defaults; Display > Controls changes keys and buttons.\nGamepad: stick / d-pad cursor, South build, East cancel, LB/RB tool,\nLT/RT zoom, right stick pan, Start pause, West speed, North summary,\nBack menu (every dialog and command), L3 back to the link.\nF1 shows or hides the First steps card.\nJ Project: a square with three serviced residential lots.\nZones and police/fire stations are 3x3; power plants are 4x4. Clear removes a whole lot.\nDrag builds; right click / Escape cancels.\nWASD / arrows / middle drag pan; wheel / + / − zoom.\nSpace pauses; 4 / 5 normal / fast; Home returns to the link.\nCtrl+S / Ctrl+L save / load; R / E road / power marks.\nV land value overlay · C services overlay.\nDemand meter: R residential, C commercial, I industrial.\nDates run in 30-day months from 1 Jan 1950.\n\nJoin roads from the gold flag; zone beside them.\nAdd a power plant: 20 lots, even empty ones, nearest first.\nEvery 5 days, serviced lots with demand can gain a level (0-4).\nLevels 3-4 hold far more; they need land value 1 / 2\n(commercial 3 / 4); industry needs 100 / 250 residents. Plain streets stop at level 2.\nLevel 4 also needs police and fire cover: a station with road\naccess and power covers lots within 12 steps ($30/month each).\nStarter demand supports 12 residents before jobs exist.\nTwo rounds without road access or power lose a level.\nReconnect or add capacity to recover.\n\nLand value: park within 3 +2, water within 3 +1,\neach developed industrial lot within 2 steps −2 (up to 3).\nCommercial: +1 per developed residential lot within 3 (up to 2).\nResidential and commercial: higher grows first;\nbelow 0 a lot stops at level 1.\nIndustry ignores land value: nearest the link (by road) grows first.\nParks add no extra demand.\nBudget settles every 30 days after growth. B shows costs.\nTax rate (Budget, 0-25%, standard 10%): lower attracts\ngrowth but raises less; above 10% surplus levels leave.\nClear surplus facilities for free to reduce a deficit.\nNo debt: unpaid costs are waived; services stay on.\nSave manually; Load after restarting. Every 60 days of play\nthe game also autosaves to one of 3 slots (Load > Load autosave);\nautosaves never replace your manual save.\nDisplay, text, art, overlays and the First steps choice are remembered.", 16)
 	add_child(help_dialog)
+	help_body = help_text.text
 	help_dialog.add_button("Show first steps", false, "guide")
+	help_dialog.add_button("Open save folder", false, "saves")
 	help_dialog.custom_action.connect(func(action: String):
 		if action == "guide":
 			help_dialog.hide()
-			_set_guide_visible(true, true))
+			_set_guide_visible(true, true)
+		elif action == "saves":
+			_open_save_folder())
 	var help_scroll := ScrollContainer.new()
 	help_scroll.custom_minimum_size = Vector2(640, 440)
 	help_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -1395,7 +1401,8 @@ func _build_pad_menu() -> void:
 	var entries: Array = [["Budget", _open_budget], ["Town summary", _open_summary], ["Graphs", _open_graphs], ["Project", _open_project],
 		["Help", _open_help], ["Display", _open_settings], ["Sound & motion", _open_sound], ["Controls", _open_controls],
 		["Save", _save_clicked], ["Load", _load_clicked], ["First steps: show / hide", func(): _set_guide_visible(not guide_visible, true)],
-		["First steps: next step", _guide_action_pressed], ["Pause / resume", func(): _set_speed(1 if speed == 0 else 0)], ["Back to the link", _center_camera]]
+		["First steps: next step", _guide_action_pressed], ["Pause / resume", func(): _set_speed(1 if speed == 0 else 0)], ["Back to the link", _center_camera],
+		["Open save folder", _open_save_folder]]
 	for entry in entries:
 		var action: Callable = entry[1]
 		var button := _button(entry[0], func():
@@ -1523,10 +1530,37 @@ func _reset_bindings() -> void:
 	controls_note.text = "All keys and buttons are back to their defaults."
 	_refresh_controls()
 
-## Buttons that name a key show the current binding.
+## Buttons that name a key show the current binding; so do the card and Help (D42).
 func _refresh_key_labels() -> void:
 	for entry in key_labels:
 		(entry[0] as Button).text = String(entry[2]) % Bindings.key_name(Bindings.key_for(String(entry[1]), bindings))
+	_refresh_help()
+	_refresh_guide()
+
+func _current_key_names() -> Dictionary:
+	var out: Dictionary = {}
+	for action in Bindings.REMAP_KEYS: out[action] = Bindings.key_name(Bindings.key_for(action, bindings))
+	return out
+
+## D42: Help opens with the player's current keys and gamepad buttons.
+func _refresh_help() -> void:
+	if help_text == null: return
+	var k: Dictionary = _current_key_names()
+	var pad := func(action: String) -> String: return Bindings.pad_name(Bindings.pad_for(action, bindings))
+	var block: String = "YOUR KEYS (change them in Display > Controls)\n"
+	block += "Roads %s · Residential %s · Commercial %s · Industrial %s\nPower plant %s · Park %s · Police %s · Fire %s · Clear %s\n" % [k.tool_road, k.tool_home, k.tool_shop, k.tool_workshop, k.tool_power, k.tool_park, k.tool_police, k.tool_fire, k.tool_clear]
+	block += "Pause %s · Normal %s · Fast %s · Budget %s · Project %s\nSummary %s · Graphs %s · Mute %s · Link %s\n" % [k.pause_city, k.normal_speed, k.fast_speed, k.show_budget, k.show_project, k.show_summary, k.show_graphs, k.toggle_mute, k.center_camera]
+	block += "Grid %s · Road marks %s · Power marks %s · Land value %s · Services %s\n" % [k.toggle_grid, k.toggle_access, k.toggle_power, k.toggle_desirability, k.toggle_services]
+	block += "Gamepad: Menu %s · Pause %s · Speed %s · Summary %s · Tools %s / %s · Link %s\n" % [pad.call("pad_menu"), pad.call("pause_city"), pad.call("cycle_speed"), pad.call("show_summary"), pad.call("tool_prev"), pad.call("tool_next"), pad.call("center_camera")]
+	help_text.text = block + "\nTHE REST OF HELP names the default keys.\n\n" + help_body
+
+## D42: opens the local saves folder in the file manager; nothing is sent anywhere.
+func _open_save_folder() -> String:
+	var folder: String = ProjectSettings.globalize_path(store.save_folder(SAVE_PATH))
+	DirAccess.make_dir_recursive_absolute(folder)
+	if DisplayServer.get_name() != "headless": OS.shell_open(folder)
+	_status("Saves are in %s (manual.json and autosave1-3.json; settings.json is one folder up)." % folder)
+	return folder
 
 func _build_graphs_dialog() -> void:
 	graphs_dialog = AcceptDialog.new()
@@ -1778,7 +1812,7 @@ func _build_guide() -> void:
 ## D29: read-only; evaluation and every card action leave the town and unsaved flag alone.
 func _refresh_guide() -> void:
 	if guide_panel == null: return
-	guide_state = Guide.evaluate(city, project_seen)
+	guide_state = Guide.evaluate(city, project_seen, _current_key_names())
 	var state: String = String(guide_state.state)
 	guide_heading.text = "FIRST STEPS · DONE" if state == "done" else "FIRST STEPS" if state == "no_link" else "FIRST STEPS · %d OF %d" % [guide_state.step, guide_state.total]
 	guide_text.text = String(guide_state.text)

@@ -26,6 +26,8 @@ class IsolatedStore extends Store:
 		return super.load_autosave(test_path)
 	func has_autosave(_path: String) -> bool:
 		return super.has_autosave(test_path)
+	func save_folder(_path: String) -> String:
+		return test_path.get_base_dir()
 
 func _initialize() -> void:
 	call_deferred("run")
@@ -957,7 +959,7 @@ func calendar_flow(isolated: IsolatedStore) -> void:
 " + main.status_label.text
 	var old_words: bool = false
 	for word in ["Home", "Shop", "Workshop", "workshop", "power station", "Power station", "H homes", "H/S/W"]:
-		if word in words.replace("[Home]", "").replace("Home returns", ""): old_words = true
+		if word in words.replace("[Home]", "").replace("Home returns", "").replace("Link Home", ""): old_words = true
 	check(not old_words and "2  Residential" in main.tool_buttons.home.text and "6  Commercial" in main.tool_buttons.shop.text and "7  Industrial" in main.tool_buttons.workshop.text and "P  Power plant" in main.tool_buttons.power.text, "tools, tooltips, Help, meter and start-up status use Residential / Commercial / Industrial and power plant")
 	project_command("road", [Vector2i(63, 32), Vector2i(62, 32), Vector2i(61, 32)])
 	project_command("home", [Vector2i(60, 29)])
@@ -1457,7 +1459,7 @@ func r5_flow(isolated: IsolatedStore) -> void:
 		if dialogs.has(label) and (dialogs[label] as Window).visible: reached.append(label)
 		for window in main.modal_windows: window.hide()
 		await frames()
-	check(reached.size() == dialogs.size() and menu_buttons.size() == 14, "every Menu entry opens its dialog (%s)" % ", ".join(reached))
+	check(reached.size() == dialogs.size() and menu_buttons.size() == 15, "every Menu entry opens its dialog (%s)" % ", ".join(reached))
 	for resolution in [Vector2i(1280, 720), Vector2i(1366, 768)]:
 		root.size = resolution
 		for amount in [16, 18, 20]:
@@ -1492,6 +1494,23 @@ func r5_flow(isolated: IsolatedStore) -> void:
 	main.controls_dialog.hide()
 	await key(KEY_Q)
 	check(main.tool == "home", "the new key works in play")
+	# D42: the card and Help name the current keys; Open save folder names the folder.
+	main._set_guide_visible(true)
+	await frames()
+	var card_ok: bool = "residential lot (Q)" in main.guide_text.text if main.guide_state.step == 2 else "residential lot (Q)" in main.Guide.texts(main._current_key_names())[1]
+	check(card_ok and main.guide_text.text == String(main.guide_state.text), "the First steps card names the remapped key (step %d)" % main.guide_state.step)
+	check("Residential Q" in main.help_text.text and "YOUR KEYS" in main.help_text.text and "Gamepad: Menu Back" in main.help_text.text and "THE REST OF HELP" in main.help_text.text, "Help opens with the current keys and buttons")
+	main._open_help()
+	await frames()
+	var saves_button: Button = null
+	for child in main.help_dialog.find_children("*", "Button", true, false):
+		if (child as Button).text == "Open save folder": saves_button = child
+	check(saves_button != null and main.help_dialog.get_ok_button().get_global_rect().end.y <= 720 and saves_button.get_global_rect().end.x <= main.help_dialog.position.x + main.help_dialog.size.x, "Help offers Open save folder and still fits")
+	main.help_dialog.custom_action.emit("saves")
+	await frames()
+	check("Saves are in" in main.status_label.text and "manual.json" in main.status_label.text and ProjectSettings.globalize_path(isolated.test_path.get_base_dir()) in main.status_label.text, "Open save folder names the local saves folder")
+	main.help_dialog.hide()
+	main._set_guide_visible(false)
 	await key(KEY_2)
 	check(main.tool == "home" and main.tool_buttons.home.text.begins_with("Q"), "the old key no longer selects Residential")
 	var stored: Dictionary = main.settings_store.load_settings()

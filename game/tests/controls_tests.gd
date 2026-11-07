@@ -41,6 +41,10 @@ func test_defaults() -> void:
 	var before: int = InputMap.action_get_events("ui_accept").size()
 	Bindings.install()
 	t.check(InputMap.action_get_events("ui_accept").size() == before, "installing again adds no duplicate interface events")
+	var Guide = load("res://scripts/presentation/opening_guide.gd")
+	var remapped: Array[String] = Guide.texts({"tool_home": "Q", "pause_city": "P"})
+	t.check("residential lot (Q)" in remapped[1] and "(P or 1x)" in remapped[3] and "(1)" in remapped[0], "card texts use the given keys over the defaults")
+	t.check(Guide.done_text({}) == "Done. Next: parks, then police (9) and fire (0) for level 4. Help has every rule." and "police (K)" in Guide.done_text({"tool_police": "K"}), "the done card points at parks, police and fire")
 	t.check(Bindings.TOOL_ORDER.size() == 9 and Bindings.pad_name(JOY_BUTTON_A) == "South" and Bindings.key_name(KEY_2) == "2", "tool order and plain input names")
 
 func test_problems() -> void:

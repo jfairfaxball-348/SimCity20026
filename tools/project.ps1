@@ -37,7 +37,9 @@ if ($Action -eq 'Export') {
     Invoke-CityCheck @('--headless','--path',$cityGame,'--export-release','Windows Desktop',(Join-Path $cityExport 'citybuilder.exe')) 'export.log'
     Copy-Item -LiteralPath (Join-Path $cityRepo 'licenses/GODOT_LICENSE.txt'),(Join-Path $cityRepo 'licenses/GODOT_COPYRIGHT.txt'),(Join-Path $cityRepo 'licenses/ASSETS.md') -Destination $cityExport
     Copy-Item -LiteralPath (Join-Path $cityRepo 'docs/BUILD_README.txt') -Destination (Join-Path $cityExport 'README.txt')
-    $cityDistributionFiles = @('ASSETS.md','citybuilder.console.exe','citybuilder.exe','citybuilder.pck','GODOT_COPYRIGHT.txt','GODOT_LICENSE.txt','README.txt')
+    # D42: the owner's solo playtest kit ships beside the game.
+    Copy-Item -LiteralPath (Join-Path $cityRepo 'docs/playtest/PLAYTEST.txt') -Destination (Join-Path $cityExport 'PLAYTEST.txt')
+    $cityDistributionFiles = @('ASSETS.md','citybuilder.console.exe','citybuilder.exe','citybuilder.pck','GODOT_COPYRIGHT.txt','GODOT_LICENSE.txt','PLAYTEST.txt','README.txt')
     $cityRecords = @($cityDistributionFiles | ForEach-Object { Get-Item -LiteralPath (Join-Path $cityExport $_) } | ForEach-Object {
         [ordered]@{ file = $_.Name; bytes = $_.Length; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
     })

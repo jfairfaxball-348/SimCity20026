@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $cityRepo = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $cityExport = Join-Path $cityRepo 'builds/windows'
 $cityBuild = Get-Content -LiteralPath (Join-Path $cityExport 'BUILD.json') -Raw | ConvertFrom-Json
-$cityExpected = @('ASSETS.md','citybuilder.console.exe','citybuilder.exe','citybuilder.pck','GODOT_COPYRIGHT.txt','GODOT_LICENSE.txt','README.txt')
+$cityExpected = @('ASSETS.md','citybuilder.console.exe','citybuilder.exe','citybuilder.pck','GODOT_COPYRIGHT.txt','GODOT_LICENSE.txt','PLAYTEST.txt','README.txt')
 if (@(Compare-Object $cityExpected @($cityBuild.files.file)).Count -ne 0) { throw 'Unexpected files in build manifest. Review before packaging.' }
 $cityPaths = @()
 foreach ($cityFile in $cityBuild.files) {
